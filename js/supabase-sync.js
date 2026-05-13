@@ -30,6 +30,7 @@
     'linesheetCalendarData',
     'launchListMaster',
     'btvLinesheetChangeLog',
+    'btv_product_data',
   ];
 
   // Use page path so calendar and linesheet each get their own flag.
