@@ -171,8 +171,17 @@
   async function init() {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) {
-      // Not authenticated — wire up interceptor; writes fail with RLS until login.
+      // Not authenticated yet — wire up interceptor and wait for login.
+      // When the parent frame signs in (SIGNED_IN event propagates via shared
+      // localStorage), reload this iframe so the full sync runs with a session.
       setupWriteInterceptor();
+      sb.auth.onAuthStateChange(function (event, newSession) {
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && newSession) {
+          if (!sessionStorage.getItem(SYNC_FLAG)) {
+            window.location.reload();
+          }
+        }
+      });
       return;
     }
     _userId = session.user.id;
