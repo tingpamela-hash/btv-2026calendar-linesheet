@@ -14598,6 +14598,13 @@ function btvNormalizeDate(str) {
   // DD-MM-YYYY
   var m3 = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
   if (m3) return m3[3] + '-' + m3[2].padStart(2,'0') + '-' + m3[1].padStart(2,'0');
+  // "Weekday, D Month YYYY" e.g. "Friday, 23 January 2026"
+  var MONTHS_LONG = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  var m4 = str.match(/^(?:\w+,\s+)?(\d{1,2})\s+(\w+)\s+(\d{4})$/);
+  if (m4) {
+    var mo = MONTHS_LONG[m4[2].toLowerCase()] || MONTHS[m4[2].toLowerCase().slice(0,3)];
+    if (mo) return m4[3] + '-' + String(mo).padStart(2,'0') + '-' + m4[1].padStart(2,'0');
+  }
   // Already YYYY-MM-DD or unknown — pass through
   return str;
 }
