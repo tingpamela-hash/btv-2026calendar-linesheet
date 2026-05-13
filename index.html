@@ -397,8 +397,9 @@ html, body {
   }
 
   function _canAccess(mod) {
-    if (!_profile) return false;
-    return mod === 'cal' ? !!_profile.can_access_cal : !!_profile.can_access_ls;
+    if (!_profile) return true; // no profile yet → authenticated users get through
+    const field = mod === 'cal' ? _profile.can_access_cal : _profile.can_access_ls;
+    return field !== false; // only block when explicitly set to false
   }
 
   function _refreshOverlay() {
