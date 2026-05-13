@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTV Planner</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/supabase-config.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: #f7f6f3;
+  color: #111;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ── Top nav ── */
+.top-nav {
+  position: fixed; top: 0; left: 0; right: 0; height: 48px;
+  background: #111; display: flex; align-items: center; z-index: 200;
+  padding: 0 18px; gap: 6px;
+}
+.top-nav-brand {
+  font-size: 10px; font-weight: 800; letter-spacing: .22em;
+  text-transform: uppercase; color: #fff; margin-right: 16px;
+}
+.top-nav-btn {
+  padding: 6px 16px; border: none; background: transparent;
+  color: #888; font: inherit; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  cursor: pointer; border-radius: 7px; transition: background .15s, color .15s;
+}
+.top-nav-btn:hover { background: rgba(255,255,255,.08); color: #eee; }
+.top-nav-btn.active { background: rgba(255,255,255,.14); color: #fff; }
+.nav-right {
+  margin-left: auto; display: flex; align-items: center; gap: 8px;
+}
+.nav-right-btn {
+  padding: 5px 13px; border: 1px solid #444; background: transparent;
+  color: #aaa; font: inherit; font-size: 11px; font-weight: 600;
+  letter-spacing: .04em; cursor: pointer; border-radius: 7px;
+  transition: border-color .15s, color .15s;
+}
+.nav-right-btn:hover { border-color: #999; color: #fff; }
+
+/* ── Frames ── */
+.frame-wrap {
+  position: fixed; top: 48px; left: 0; right: 0; bottom: 0;
+}
+.frame {
+  display: none; width: 100%; height: 100%; border: none; background: #f7f6f3;
+}
+.frame.active { display: block; }
+
+/* ── Boot / loading ── */
+#boot {
+  position: fixed; inset: 0; z-index: 150; background: #f7f6f3;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 14px;
+}
+.boot-brand {
+  font-size: 10px; font-weight: 800; letter-spacing: .24em;
+  text-transform: uppercase; color: #333;
+}
+.boot-spinner {
+  width: 28px; height: 28px; border: 2.5px solid #e0ddd8;
+  border-top-color: #333; border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Module login overlay ── */
+.module-login-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(247,246,243,.96);
+  align-items: center; justify-content: center;
+}
+.module-login-overlay.show { display: flex; }
+.module-login-card {
+  background: #fff; border: 1px solid #e0ddd8; border-radius: 18px;
+  padding: 36px 34px 30px; width: 100%; max-width: 400px;
+  box-shadow: 0 4px 40px rgba(0,0,0,.09);
+}
+.module-login-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: .2em;
+  text-transform: uppercase; color: #b0ada9; margin-bottom: 8px;
+}
+.module-login-title {
+  font-size: 24px; font-weight: 600; letter-spacing: -.015em;
+  color: #111; margin-bottom: 5px;
+}
+.module-login-copy {
+  font-size: 13px; color: #787470; line-height: 1.45; margin-bottom: 24px;
+}
+
+/* ── Login input styles ── */
+.login-field { margin-bottom: 16px; }
+.login-field label {
+  display: block; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: #787470; margin-bottom: 6px;
+}
+.login-inp {
+  width: 100%; padding: 10px 13px; border: 1.5px solid #e0ddd8;
+  border-radius: 11px; font: inherit; font-size: 14px;
+  background: #fafaf9; color: #111; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+}
+.login-inp::placeholder { color: #c5c2be; }
+.login-inp:focus { border-color: #111; background: #fff; box-shadow: 0 0 0 3px rgba(0,0,0,.07); }
+
+/* ── Password wrap + visibility toggle ── */
+.login-pwd-wrap { position: relative; }
+.login-pwd-wrap .login-inp { padding-right: 44px; }
+.pwd-vis-btn {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; padding: 4px; cursor: pointer;
+  color: #c5c2be; font-size: 16px; line-height: 1;
+  display: flex; align-items: center; transition: color .15s;
+}
+.pwd-vis-btn:hover { color: #787470; }
+
+.login-actions { margin-top: 4px; margin-bottom: 20px; text-align: right; }
+.login-link-btn {
+  background: none; border: none; font: inherit; font-size: 12px;
+  color: #b0ada9; cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px; transition: color .15s; padding: 0;
+}
+.login-link-btn:hover { color: #787470; }
+.login-link-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+
+.login-submit-btn {
+  display: block; width: 100%; padding: 11px; border: none;
+  border-radius: 11px; background: #111; color: #fff;
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; letter-spacing: .02em;
+  transition: background .15s, transform .1s;
+}
+.login-submit-btn:hover { background: #2c2c2c; }
+.login-submit-btn:active { transform: scale(.99); }
+.login-submit-btn:disabled { background: #888; cursor: not-allowed; }
+
+.login-error {
+  font-size: 12.5px; margin-top: 14px; padding: 10px 12px;
+  border-radius: 9px; min-height: 0; line-height: 1.4;
+}
+
+/* ── Modal shared ── */
+.btv-modal-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 400;
+  background: rgba(0,0,0,.38); align-items: center; justify-content: center;
+}
+.btv-modal-backdrop.show { display: flex; }
+.btv-modal-bg {
+  background: #fff; border: 1px solid #e0ddd8; border-radius: 16px;
+  padding: 30px 28px 24px; width: 100%; max-width: 440px;
+  box-shadow: 0 8px 50px rgba(0,0,0,.14); position: relative;
+}
+.btv-modal-title {
+  font-size: 18px; font-weight: 700; letter-spacing: -.01em;
+  color: #111; margin-bottom: 6px;
+}
+.btv-modal-sub {
+  font-size: 13px; color: #787470; line-height: 1.45; margin-bottom: 20px;
+}
+.btv-modal-lbl {
+  display: block; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: #787470; margin-bottom: 6px; margin-top: 14px;
+}
+.btv-modal-lbl:first-of-type { margin-top: 0; }
+.btv-modal-inp {
+  width: 100%; padding: 10px 13px; border: 1.5px solid #e0ddd8;
+  border-radius: 10px; font: inherit; font-size: 13px;
+  background: #fafaf9; color: #111; outline: none;
+  transition: border-color .15s; -webkit-appearance: none;
+}
+.btv-modal-inp:focus { border-color: #111; background: #fff; }
+.btv-modal-btn {
+  display: block; width: 100%; padding: 10px; border: none;
+  border-radius: 10px; background: #111; color: #fff;
+  font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; margin-top: 18px; letter-spacing: .02em;
+  transition: background .15s;
+}
+.btv-modal-btn:hover { background: #2c2c2c; }
+.btv-modal-btn:disabled { background: #888; cursor: not-allowed; }
+.btv-modal-btn-ghost {
+  display: block; width: 100%; padding: 9px; border: 1.5px solid #e0ddd8;
+  border-radius: 10px; background: transparent; color: #787470;
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; margin-top: 8px; letter-spacing: .02em;
+  transition: border-color .15s, color .15s;
+}
+.btv-modal-btn-ghost:hover { border-color: #999; color: #111; }
+.btv-modal-err {
+  font-size: 12px; margin-top: 10px; padding: 8px 10px;
+  border-radius: 8px; line-height: 1.4; min-height: 0;
+}
+.btv-modal-err:empty { display: none; }
+.btv-modal-close {
+  position: absolute; top: 16px; right: 18px; background: none; border: none;
+  font-size: 22px; color: #aaa; cursor: pointer; line-height: 1; padding: 2px;
+  transition: color .15s;
+}
+.btv-modal-close:hover { color: #111; }
+.btv-modal-info {
+  font-size: 12.5px; color: #787470; line-height: 1.45;
+  padding: 10px 12px; background: #f5f4f1; border-radius: 8px;
+  margin-top: 12px; margin-bottom: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- Top navigation -->
+<nav class="top-nav">
+  <span class="top-nav-brand">BTV Planner</span>
+  <button class="top-nav-btn active" data-frame="cal" onclick="showFrame('cal')">Calendar</button>
+  <button class="top-nav-btn" data-frame="ls" onclick="showFrame('ls')">Linesheet</button>
+  <div class="nav-right">
+    <button class="nav-right-btn" id="navChangePwdBtn" onclick="btvOpenChangePwd()" style="display:none">Change Password</button>
+    <button class="nav-right-btn" id="navSignOutBtn" onclick="btvSignOut()" style="display:none">Sign Out</button>
+  </div>
+</nav>
+
+<!-- Iframe frames -->
+<div class="frame-wrap">
+  <iframe id="frame-cal" class="frame active" title="Calendar" src="./btv_calendar_linesheet_files/calendar.html"></iframe>
+  <iframe id="frame-ls" class="frame" title="Linesheet Manager" src="./btv_calendar_linesheet_files/linesheet.html"></iframe>
+</div>
+
+<!-- Module login overlay -->
+<div id="moduleLoginOverlay" class="module-login-overlay">
+  <div class="module-login-card">
+    <div class="module-login-eyebrow">BTV Planner</div>
+
+    <!-- Step 1: Module choice -->
+    <div id="moduleChoiceStep">
+      <div class="module-login-title">Welcome back</div>
+      <div class="module-login-copy" style="margin-bottom:22px">Where would you like to go?</div>
+      <div style="display:flex;gap:12px">
+        <button style="flex:1;padding:14px;border:none;border-radius:11px;background:#111;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('cal')">Calendar</button>
+        <button style="flex:1;padding:14px;border:none;border-radius:11px;background:#444;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('ls')">Linesheet</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Login form -->
+    <div id="moduleLoginForm" style="display:none">
+      <button type="button" class="login-link-btn" style="margin-bottom:14px" onclick="btvBackToModuleChoice()">&#8592; Back</button>
+      <div class="module-login-title" id="moduleLoginTitle">Welcome back</div>
+      <div class="module-login-copy" id="moduleLoginCopy">Sign in to access the Calendar.</div>
+      <div class="login-field">
+        <label for="moduleLoginInput">Email address</label>
+        <input type="email" id="moduleLoginInput" class="login-inp" placeholder="you@beyondthevines.com" autocomplete="email" inputmode="email">
+      </div>
+      <div class="login-field">
+        <label for="moduleLoginPwd">Password</label>
+        <div class="login-pwd-wrap">
+          <input type="password" id="moduleLoginPwd" class="login-inp" placeholder="••••••" autocomplete="current-password">
+          <button type="button" class="pwd-vis-btn" id="loginPwdVisBtn" onclick="btvTogglePwdVis('moduleLoginPwd', this)" aria-label="Show password">&#128065;</button>
+        </div>
+      </div>
+      <div class="login-link-row">
+        <button type="button" class="login-link-btn" onclick="btvOpenForgotPwd()">Forgot password?</button>
+        <button type="button" class="login-link-btn" onclick="btvOpenUserMgmt()">Manage Users</button>
+      </div>
+      <button class="login-submit-btn" id="loginSubmitBtn" style="margin-top:18px" onclick="unlockCurrentModule()">Sign in</button>
+      <div id="moduleLoginError" class="login-error" style="color:#a23a2f"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Forgot Password Modal (Supabase email reset) -->
+<div id="btvForgotPwdModal" class="btv-modal-backdrop">
+  <div class="btv-modal-bg">
+    <button class="btv-modal-close" onclick="btvCloseForgotPwd()" title="Close">&times;</button>
+    <div class="btv-modal-title">Reset password</div>
+    <div class="btv-modal-sub">Enter your email and we'll send you a link to reset your password.</div>
+    <label class="btv-modal-lbl" for="btvFPEmail">Email address</label>
+    <input type="email" id="btvFPEmail" class="btv-modal-inp" placeholder="you@beyondthevines.com" autocomplete="email">
+    <div id="btvFPErr" class="btv-modal-err" style="color:#a23a2f;background:#fdf0ef"></div>
+    <button class="btv-modal-btn" id="btvFPSubmitBtn" onclick="btvForgotPwdSubmit()">Send reset email</button>
+    <button class="btv-modal-btn-ghost" onclick="btvCloseForgotPwd()">Cancel</button>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="btvChangePwdModal" class="btv-modal-backdrop">
+  <div class="btv-modal-bg">
+    <button class="btv-modal-close" onclick="btvCloseChangePwd()" title="Close">&times;</button>
+    <div class="btv-modal-title">Change password</div>
+    <div class="btv-modal-sub">Choose a new password for your account.</div>
+    <label class="btv-modal-lbl" for="btvCPNewPwd">New password</label>
+    <input type="password" id="btvCPNewPwd" class="btv-modal-inp" placeholder="Min. 6 characters" autocomplete="new-password">
+    <label class="btv-modal-lbl" for="btvCPConfirmPwd">Confirm new password</label>
+    <input type="password" id="btvCPConfirmPwd" class="btv-modal-inp" placeholder="Repeat new password" autocomplete="new-password">
+    <div id="btvCPErr" class="btv-modal-err" style="color:#a23a2f;background:#fdf0ef"></div>
+    <button class="btv-modal-btn" id="btvCPSubmitBtn" onclick="btvChangePwdSubmit()">Update password</button>
+    <button class="btv-modal-btn-ghost" onclick="btvCloseChangePwd()">Cancel</button>
+  </div>
+</div>
+
+<!-- User Management Modal -->
+<div id="btvUserMgmtModal" class="btv-modal-backdrop">
+  <div class="btv-modal-bg" style="max-width:480px">
+    <button class="btv-modal-close" onclick="btvCloseUserMgmt()" title="Close">&times;</button>
+    <div class="btv-modal-title" id="btvUMTitle">Manage Users</div>
+    <div class="btv-modal-sub" id="btvUMSub">Control who can access each module.</div>
+    <div id="btvUMPassWrap">
+      <label class="btv-modal-lbl" for="btvUMPassInput">Admin passcode</label>
+      <input type="password" id="btvUMPassInput" class="btv-modal-inp" placeholder="Enter admin passcode" onkeydown="if(event.key==='Enter') btvUMVerifyPass()">
+      <div id="btvUMPassErr" class="btv-modal-err" style="color:#a23a2f;background:#fdf0ef"></div>
+      <button class="btv-modal-btn" onclick="btvUMVerifyPass()">Verify</button>
+      <button class="btv-modal-btn-ghost" onclick="btvCloseUserMgmt()">Cancel</button>
+    </div>
+    <div id="btvUMPanel" style="display:none">
+      <div style="font-size:11px;color:#b0ada9;margin-bottom:10px">
+        New users must first be invited via the Supabase dashboard. Once they sign in, they appear here.
+      </div>
+      <div id="btvUMList" style="margin-bottom:14px;max-height:260px;overflow-y:auto"></div>
+      <button class="btv-modal-btn-ghost" onclick="btvCloseUserMgmt()" style="margin-top:14px">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const _sb = window.supabase.createClient(
+    window.BTV_SUPABASE_CONFIG.url,
+    window.BTV_SUPABASE_CONFIG.anonKey
+  );
+
+  const MODULE_LABELS = { cal: 'Calendar', ls: 'Linesheet' };
+  let _currentModule = 'cal';
+  let _moduleChosen = false;
+  let _session = null;
+  let _profile = null;
+
+  // ── Session bootstrap ──────────────────────────────────────────────────────
+
+  async function boot() {
+    const { data: { session } } = await _sb.auth.getSession();
+    _session = session;
+    if (session) {
+      await _loadProfile(session.user.id);
+      _updateNavButtons(true);
+    }
+
+    // Handle Supabase password-recovery redirect (user clicked reset email link)
+    _sb.auth.onAuthStateChange(async function (event, session) {
+      _session = session;
+      if (event === 'PASSWORD_RECOVERY') {
+        document.getElementById('btvChangePwdModal').classList.add('show');
+        return;
+      }
+      if (session) {
+        await _loadProfile(session.user.id);
+        _updateNavButtons(true);
+      } else {
+        _profile = null;
+        _updateNavButtons(false);
+      }
+    });
+
+    _refreshOverlay();
+    const boot = document.getElementById('boot');
+    if (boot) boot.remove();
+  }
+
+  async function _loadProfile(userId) {
+    const { data } = await _sb
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    _profile = data;
+  }
+
+  function _updateNavButtons(loggedIn) {
+    document.getElementById('navChangePwdBtn').style.display = loggedIn ? '' : 'none';
+    document.getElementById('navSignOutBtn').style.display   = loggedIn ? '' : 'none';
+  }
+
+  // ── Module selection & overlay ─────────────────────────────────────────────
+
+  function _isUnlocked(mod) {
+    try { return sessionStorage.getItem('btv-unlocked-' + mod) === '1'; } catch { return false; }
+  }
+
+  function _setUnlocked(mod) {
+    try { sessionStorage.setItem('btv-unlocked-' + mod, '1'); } catch {}
+  }
+
+  function _canAccess(mod) {
+    if (!_profile) return false;
+    return mod === 'cal' ? !!_profile.can_access_cal : !!_profile.can_access_ls;
+  }
+
+  function _refreshOverlay() {
+    const overlay = document.getElementById('moduleLoginOverlay');
+    if (!_moduleChosen) {
+      document.getElementById('moduleChoiceStep').style.display = '';
+      document.getElementById('moduleLoginForm').style.display  = 'none';
+      overlay.classList.add('show');
+      return;
+    }
+    const locked = !_isUnlocked(_currentModule);
+    overlay.classList.toggle('show', locked);
+    if (locked) {
+      document.getElementById('moduleChoiceStep').style.display = 'none';
+      document.getElementById('moduleLoginForm').style.display  = '';
+      document.getElementById('moduleLoginCopy').textContent =
+        'Sign in to access the ' + MODULE_LABELS[_currentModule] + '.';
+      document.getElementById('moduleLoginTitle').textContent = 'Welcome back';
+      setTimeout(function () {
+        const e = document.getElementById('moduleLoginInput');
+        if (e) e.focus();
+      }, 50);
+    }
+  }
+
+  function btvSelectModule(name) {
+    _currentModule = name;
+    _moduleChosen  = true;
+    document.getElementById('moduleChoiceStep').style.display = 'none';
+    document.getElementById('moduleLoginForm').style.display  = '';
+    document.getElementById('moduleLoginCopy').textContent =
+      'Sign in to access the ' + MODULE_LABELS[name] + '.';
+    document.getElementById('moduleLoginError').textContent = '';
+    document.getElementById('moduleLoginInput').value = '';
+    document.getElementById('moduleLoginPwd').value   = '';
+    if (!_isUnlocked(name)) {
+      setTimeout(function () { document.getElementById('moduleLoginInput').focus(); }, 50);
+    } else {
+      document.getElementById('moduleLoginOverlay').classList.remove('show');
+      showFrame(name);
+    }
+  }
+
+  function btvBackToModuleChoice() {
+    _moduleChosen = false;
+    document.getElementById('moduleChoiceStep').style.display = '';
+    document.getElementById('moduleLoginForm').style.display  = 'none';
+  }
+
+  // ── Login ──────────────────────────────────────────────────────────────────
+
+  async function unlockCurrentModule() {
+    const emailInp = document.getElementById('moduleLoginInput');
+    const pwdInp   = document.getElementById('moduleLoginPwd');
+    const err      = document.getElementById('moduleLoginError');
+    const btn      = document.getElementById('loginSubmitBtn');
+
+    const email = (emailInp.value || '').trim().toLowerCase();
+    const pwd   = pwdInp.value || '';
+
+    err.style.color  = '#a23a2f';
+    err.textContent  = '';
+    btn.disabled     = true;
+    btn.textContent  = 'Signing in…';
+
+    try {
+      const { data, error } = await _sb.auth.signInWithPassword({ email, password: pwd });
+      if (error) {
+        err.textContent = error.message.includes('Invalid login credentials')
+          ? 'Incorrect email or password. Please try again.'
+          : error.message;
+        pwdInp.value = '';
+        pwdInp.focus();
+        return;
+      }
+      _session = data.session;
+      await _loadProfile(data.user.id);
+      _updateNavButtons(true);
+
+      if (!_canAccess(_currentModule)) {
+        err.textContent =
+          "You don't have access to the " + MODULE_LABELS[_currentModule] +
+          " module. Contact your admin.";
+        return;
+      }
+      _setUnlocked(_currentModule);
+      document.getElementById('moduleLoginOverlay').classList.remove('show');
+      showFrame(_currentModule);
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Sign in';
+    }
+  }
+
+  document.addEventListener('keydown', function (ev) {
+    const overlay = document.getElementById('moduleLoginOverlay');
+    if (ev.key === 'Enter' && overlay.classList.contains('show') && _moduleChosen) {
+      unlockCurrentModule();
+    }
+  });
+
+  // ── Sign out ───────────────────────────────────────────────────────────────
+
+  async function btvSignOut() {
+    await _sb.auth.signOut();
+    _session  = null;
+    _profile  = null;
+    _moduleChosen = false;
+    sessionStorage.clear();
+    _updateNavButtons(false);
+    _refreshOverlay();
+  }
+
+  // ── Frame switching ────────────────────────────────────────────────────────
+
+  function showFrame(name) {
+    _moduleChosen  = true;
+    _currentModule = name;
+    document.querySelectorAll('.frame').forEach(function (el) { el.classList.remove('active'); });
+    document.querySelectorAll('.top-nav-btn').forEach(function (el) { el.classList.remove('active'); });
+    var frame = document.getElementById('frame-' + name);
+    var btn   = document.querySelector('.top-nav-btn[data-frame="' + name + '"]');
+    if (frame) frame.classList.add('active');
+    if (btn)   btn.classList.add('active');
+    if (!_isUnlocked(name)) {
+      _refreshOverlay();
+    }
+  }
+
+  // ── Password visibility toggle ────────────────────────────────────────────
+
+  function btvTogglePwdVis(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === 'password') { inp.type = 'text';     if (btn) btn.innerHTML = '&#128065;&#65039;'; }
+    else                         { inp.type = 'password'; if (btn) btn.innerHTML = '&#128065;'; }
+  }
+
+  // ── Forgot password (Supabase email reset) ────────────────────────────────
+
+  function btvOpenForgotPwd() {
+    var emailInp = document.getElementById('moduleLoginInput');
+    var fpEmail  = document.getElementById('btvFPEmail');
+    var err      = document.getElementById('btvFPErr');
+    if (fpEmail && emailInp) fpEmail.value = emailInp.value.trim();
+    if (err) { err.textContent = ''; err.style.color = '#a23a2f'; }
+    document.getElementById('btvForgotPwdModal').classList.add('show');
+    setTimeout(function () { if (fpEmail) fpEmail.focus(); }, 80);
+  }
+
+  function btvCloseForgotPwd() {
+    document.getElementById('btvForgotPwdModal').classList.remove('show');
+  }
+
+  async function btvForgotPwdSubmit() {
+    var fpEmail = document.getElementById('btvFPEmail');
+    var err     = document.getElementById('btvFPErr');
+    var btn     = document.getElementById('btvFPSubmitBtn');
+    var email   = (fpEmail ? fpEmail.value.trim().toLowerCase() : '');
+
+    if (!email || email.indexOf('@') < 1) {
+      err.style.color = '#a23a2f'; err.textContent = 'Please enter a valid email address.'; return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const { error } = await _sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    btn.disabled = false; btn.textContent = 'Send reset email';
+
+    if (error) {
+      err.style.color = '#a23a2f'; err.textContent = error.message;
+    } else {
+      err.style.color = '#27ae60';
+      err.textContent = 'Reset email sent! Check your inbox and click the link.';
+      setTimeout(btvCloseForgotPwd, 3500);
+    }
+  }
+
+  // ── Change password ────────────────────────────────────────────────────────
+
+  function btvOpenChangePwd() {
+    document.getElementById('btvCPNewPwd').value     = '';
+    document.getElementById('btvCPConfirmPwd').value = '';
+    var err = document.getElementById('btvCPErr');
+    if (err) { err.textContent = ''; err.style.color = '#a23a2f'; }
+    document.getElementById('btvChangePwdModal').classList.add('show');
+    setTimeout(function () { document.getElementById('btvCPNewPwd').focus(); }, 80);
+  }
+
+  function btvCloseChangePwd() {
+    document.getElementById('btvChangePwdModal').classList.remove('show');
+  }
+
+  async function btvChangePwdSubmit() {
+    var newPwd  = document.getElementById('btvCPNewPwd').value;
+    var confirm = document.getElementById('btvCPConfirmPwd').value;
+    var err     = document.getElementById('btvCPErr');
+    var btn     = document.getElementById('btvCPSubmitBtn');
+
+    err.style.color = '#a23a2f'; err.textContent = '';
+    if (!newPwd || newPwd.length < 6) { err.textContent = 'New password must be at least 6 characters.'; return; }
+    if (newPwd !== confirm)            { err.textContent = 'Passwords do not match.'; return; }
+
+    btn.disabled = true; btn.textContent = 'Updating…';
+    const { error } = await _sb.auth.updateUser({ password: newPwd });
+    btn.disabled = false; btn.textContent = 'Update password';
+
+    if (error) {
+      err.textContent = error.message;
+    } else {
+      err.style.color = '#27ae60'; err.textContent = 'Password updated successfully!';
+      setTimeout(btvCloseChangePwd, 1400);
+    }
+  }
+
+  // ── User Management (backed by user_profiles table) ───────────────────────
+
+  function btvOpenUserMgmt() {
+    var passWrap = document.getElementById('btvUMPassWrap');
+    var panel    = document.getElementById('btvUMPanel');
+    var passErr  = document.getElementById('btvUMPassErr');
+    var passInp  = document.getElementById('btvUMPassInput');
+    passWrap.style.display = ''; panel.style.display = 'none';
+    passErr.textContent    = ''; passInp.value = '';
+    document.getElementById('btvUserMgmtModal').classList.add('show');
+    setTimeout(function () { passInp.focus(); }, 80);
+  }
+
+  function btvCloseUserMgmt() {
+    document.getElementById('btvUserMgmtModal').classList.remove('show');
+  }
+
+  function btvUMVerifyPass() {
+    var inp = document.getElementById('btvUMPassInput');
+    var err = document.getElementById('btvUMPassErr');
+    if (!inp) return;
+    if (inp.value.trim() !== window.BTV_SUPABASE_CONFIG.adminPasscode) {
+      err.style.color = '#a23a2f'; err.textContent = 'Incorrect passcode.';
+      inp.select(); inp.focus(); return;
+    }
+    document.getElementById('btvUMPassWrap').style.display = 'none';
+    document.getElementById('btvUMPanel').style.display    = '';
+    _btvUMLoad();
+  }
+
+  async function _btvUMLoad() {
+    var list = document.getElementById('btvUMList');
+    list.innerHTML = '<p style="color:#aaa;font-size:13px;padding:4px">Loading…</p>';
+    const { data, error } = await _sb.from('user_profiles').select('*').order('email');
+    if (error || !data) {
+      list.innerHTML = '<p style="color:#c00;font-size:13px;padding:4px">Error loading users.</p>';
+      return;
+    }
+    if (!data.length) {
+      list.innerHTML = '<p style="color:#aaa;font-size:13px;padding:4px 6px">No users yet. Invite users in the Supabase dashboard first.</p>';
+      return;
+    }
+    list.innerHTML = data.map(function (u, i) {
+      var bg = i % 2 === 0 ? 'background:#f8f6f2' : '';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;' + bg + '">'
+        + '<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (u.email || '') + '">' + (u.email || u.id.substring(0, 8) + '…') + '</span>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_cal ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_cal\',this.checked)"> Cal</label>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_ls ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_ls\',this.checked)"> LS</label>'
+        + '</div>';
+    }).join('');
+  }
+
+  async function _btvUMToggle(userId, field, value) {
+    const update = {};
+    update[field] = value;
+    const { error } = await _sb.from('user_profiles').update(update).eq('id', userId);
+    if (error) alert('Error updating access: ' + error.message);
+  }
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+
+  window.addEventListener('DOMContentLoaded', boot);
+</script>
+
+</body>
+</html>
