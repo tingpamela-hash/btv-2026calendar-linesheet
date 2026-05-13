@@ -10735,6 +10735,8 @@ function saveState(state){
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 
+  _btvHasUnsavedChanges = true;
+
   // Auto-push structured data for Linesheet Manager (all entries, draft + published)
 
   try {
@@ -12929,6 +12931,16 @@ var __btvCalBatch=[];
 
 var __btvCalBatchTimer=null;
 
+var _btvHasUnsavedChanges = false;
+
+window.addEventListener('beforeunload', function (e) {
+  if (_btvHasUnsavedChanges) {
+    e.preventDefault();
+    e.returnValue = 'You have unsaved changes. Click "Save Version" before leaving so your changes are recorded and the team is notified.';
+    return e.returnValue;
+  }
+});
+
 function __btvFlushCalBatch(){
   // Teams summary sent only on Save Version click — not on individual changes
   __btvCalBatch=[];
@@ -14348,6 +14360,8 @@ e("saveVersionBtn").addEventListener("click", () => {
 
 
   renderDashboard();
+
+  _btvHasUnsavedChanges = false;
 
   if (BTV_MGMT_WEBHOOK_URL && flat.length > 0) {
     btvSendTeamsSummary(BTV_MGMT_WEBHOOK_URL, teamsText);
