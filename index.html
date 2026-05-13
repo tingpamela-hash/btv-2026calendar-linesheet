@@ -523,6 +523,10 @@ html, body {
     var btn   = document.querySelector('.top-nav-btn[data-frame="' + name + '"]');
     if (frame) frame.classList.add('active');
     if (btn)   btn.classList.add('active');
+    if (name === 'ls') {
+      var lf = document.getElementById('frame-ls');
+      try { lf.contentWindow.loadFromCalendar && lf.contentWindow.loadFromCalendar(); } catch (e) {}
+    }
     if (!_isUnlocked(name)) {
       _refreshOverlay();
     }

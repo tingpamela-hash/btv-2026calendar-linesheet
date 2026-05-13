@@ -1,5 +1,7 @@
-﻿<!DOCTYPE html>
-<!-- saved from url=(0012)about:srcdoc -->
+<!DOCTYPE html>
+
+<!-- saved from url=(0060)file:///C:/Users/BTV%20-%20Charmaine/Downloads/calendar.html -->
+
 <html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 
@@ -549,15 +551,15 @@
 
     font-weight:600;
 
-    line-height:1.08;
+    line-height:1.15;
 
-    font-size:14px;
+    font-size:13px;
 
-    white-space:nowrap;
+    white-space:normal;
+
+    word-break:break-word;
 
     overflow:hidden;
-
-    text-overflow:ellipsis;
 
   }
 
@@ -633,15 +635,15 @@
 
     flex:1 1 auto;
 
-    line-height:1.08;
+    line-height:1.15;
 
     font-size:12px;
 
-    white-space:nowrap;
+    white-space:normal;
+
+    word-break:break-word;
 
     overflow:hidden;
-
-    text-overflow:ellipsis;
 
   }
 
@@ -673,8 +675,7 @@
 
   }
 
-  .prod-size{display:none}
-  .entry:hover .prod-size,.entry.expanded .prod-size{display:block}
+  .prod-size{display:none!important}
 
 
 
@@ -1064,11 +1065,11 @@
 
   .view-panel.hidden{display:none!important}
 
-  .dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
+  .dashboard-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:8px}
 
-  .dash-card{background:#fffdfa;border:1px solid var(--grid);border-radius:16px;padding:14px}
+  .dash-card{background:#fffdfa;border:1px solid var(--grid);border-radius:10px;padding:8px 10px}
 
-  .dash-card h3{margin:0 0 10px 0;font-size:18px}
+  .dash-card h3{margin:0 0 5px 0;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#7a6a55}
 
   .dash-list{margin:0;padding-left:18px}
 
@@ -1094,9 +1095,9 @@
 
   .dash-kpi{font-size:28px;font-weight:700;margin:6px 0 10px 0}
 
-  .mini-table{width:100%;border-collapse:collapse}
+  .mini-table{width:100%;border-collapse:collapse;font-size:11px}
 
-  .mini-table th,.mini-table td{border:1px solid var(--grid);padding:6px 8px;text-align:left}
+  .mini-table th,.mini-table td{border:1px solid var(--grid);padding:2px 5px;text-align:left}
 
   .toolbar-spacer{flex:1 1 auto}
 
@@ -1952,7 +1953,7 @@
 
   .restock-line{border:1px solid var(--grid);border-radius:12px;padding:12px;background:#fffdfa;margin-bottom:12px}
 
-  .restock-line .inline-restock-line{display:grid;grid-template-columns:1.3fr 1fr;gap:12px;align-items:end}
+  .restock-line .inline-restock-line{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;align-items:end}
 
   @media (max-width:900px){
 
@@ -1968,7 +1969,7 @@
 
   .restock-line{border:1px solid var(--grid);border-radius:12px;padding:12px;background:#fffdfa;margin-bottom:12px}
 
-  .restock-line .inline-restock-line{display:grid;grid-template-columns:1.3fr 1fr;gap:12px;align-items:end}
+  .restock-line .inline-restock-line{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;align-items:end}
 
   .clear-row-left{display:flex;justify-content:flex-start;margin-top:10px}
 
@@ -2844,6 +2845,38 @@ body.btv-dashboard-mode #monthGroup,
 body.btv-dashboard-mode #quarterGroup{display:none!important}
 </style>
 
+<style id="btv-admin-styles">
+  .admin-wrap{max-width:960px;margin:24px auto;padding:0 20px}
+  .admin-wrap h2{font-size:20px;font-weight:700;margin:0 0 20px;color:#111}
+  .admin-section{border:1px solid var(--grid,#e0d8cc);border-radius:12px;padding:16px 18px;margin-bottom:16px;background:#fffdfa}
+  .admin-section h3{font-size:12px;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;color:#7a6a55}
+  .admin-section p.admin-hint{font-size:11px;color:#aaa;margin:-6px 0 12px}
+  .admin-chip{display:inline-flex;align-items:center;gap:5px;background:#f0ebe3;border:1px solid #d6cebf;border-radius:20px;padding:4px 10px 4px 12px;font-size:12px;margin:3px;font-weight:600}
+  .admin-chip button{background:none;border:none;cursor:pointer;font-size:13px;color:#aaa;line-height:1;padding:0;display:flex;align-items:center}
+  .admin-chip button:hover{color:#c55}
+  .admin-add-chip{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px dashed #c7b493;border-radius:20px;padding:4px 12px;font-size:12px;margin:3px;cursor:pointer;color:#8a7a62;font-weight:600}
+  .admin-add-chip:hover{background:#faf6ef}
+  .admin-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+  .admin-table th{background:#f5f1ea;padding:7px 12px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #e0d8cc;color:#7a6a55}
+  .admin-table td{padding:7px 12px;border-bottom:1px solid #f0ebe3;vertical-align:middle}
+  .admin-table tr:last-child td{border-bottom:none}
+  .admin-table tr:hover td{background:#faf6ef}
+  .admin-market-tag{background:#e8f0fb;color:#3a5ea8;font-size:11px;font-weight:700;border-radius:5px;padding:2px 7px;letter-spacing:.04em}
+  .admin-edit-btn{background:#fff;border:1px solid #c7b493;color:#555;padding:3px 9px;border-radius:6px;font-size:11px;cursor:pointer;margin-right:4px;font-weight:600}
+  .admin-edit-btn:hover{background:#faf6ef}
+  .admin-remove-btn{background:#fff;border:1px solid #e8a0a0;color:#c44;padding:3px 9px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600}
+  .admin-remove-btn:hover{background:#fff5f5}
+  .admin-form-grid{display:grid;grid-template-columns:100px 1fr 140px 140px auto;gap:10px;align-items:end;background:#f9f5ee;border:1px solid #e0d8cc;border-radius:10px;padding:14px;margin-top:10px}
+  .admin-form-grid label.admin-fl{font-size:11px;font-weight:700;color:#888;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em}
+  .admin-form-grid input,.admin-form-grid select{width:100%;padding:7px 9px;border:1.5px solid #d6d2cc;border-radius:8px;font-size:12px;box-sizing:border-box}
+  .admin-form-grid input:focus,.admin-form-grid select:focus{outline:none;border-color:#b8a88a}
+  .admin-primary-btn{background:#111;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .admin-primary-btn:hover{background:#333}
+  .admin-ghost-btn{background:#fff;border:1px solid #d6d2cc;color:#555;padding:9px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600}
+  .admin-ghost-btn:hover{background:#f5f1ea}
+  .admin-add-row-btn{background:#111;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px;display:inline-flex;align-items:center;gap:6px}
+  .admin-add-row-btn:hover{background:#333}
+</style>
 <style id="btv-everett-font-override">
   html, body, body *, button, input, select, textarea, table, th, td {
     font-family: 'Everett', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
@@ -2853,7 +2886,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
 
 
-<body class="unlocked locked">
+<body class="unlocked">
 
 <div id="plannerLock">
 
@@ -2903,6 +2936,8 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
     <button class="tab-btn" id="launchListTabBtn" type="button">Launch List</button>
 
+    <button class="tab-btn" id="adminTabBtn" type="button" style="margin-left:auto">&#9881; Admin</button>
+
     <div class="save-note" id="versionNote">Current version: Live</div>
 
   </div>
@@ -2928,7 +2963,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
     <div class="control" id="monthGroup" style="display:none">
       <label>Month</label>
-      <select id="monthSelect"><option value="Jan">Jan</option><option value="Feb">Feb</option><option value="Mar">Mar</option><option value="Apr">Apr</option><option value="May">May</option><option value="Jun">Jun</option><option value="Jul">Jul</option><option value="Aug">Aug</option><option value="Sep">Sep</option><option value="Oct">Oct</option><option value="Nov">Nov</option><option value="Dec">Dec</option><option value="Jan">Jan</option><option value="Feb">Feb</option><option value="Mar">Mar</option><option value="Apr">Apr</option><option value="May">May</option><option value="Jun">Jun</option><option value="Jul">Jul</option><option value="Aug">Aug</option><option value="Sep">Sep</option><option value="Oct">Oct</option><option value="Nov">Nov</option><option value="Dec">Dec</option></select>
+      <select id="monthSelect"><option value="Jan">Jan</option><option value="Feb">Feb</option><option value="Mar">Mar</option><option value="Apr">Apr</option><option value="May">May</option><option value="Jun">Jun</option><option value="Jul">Jul</option><option value="Aug">Aug</option><option value="Sep">Sep</option><option value="Oct">Oct</option><option value="Nov">Nov</option><option value="Dec">Dec</option></select>
     </div>
 
     <div class="control" id="quarterGroup" style="display:none">
@@ -2941,25 +2976,25 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
       </select>
     </div>
 
-    <button id="undoBtn" title="Undo previous edit" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:7px 12px;font-size:17px;border-radius:10px;cursor:pointer;line-height:1;align-self:flex-end">←</button>
+    <button id="undoBtn" title="Undo previous edit" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:7px 12px;font-size:17px;border-radius:10px;cursor:pointer;line-height:1;align-self:flex-end">&#8592;</button>
 
     <div style="position:relative;align-self:flex-end" id="btvDlDropWrap">
-      <button onclick="btvToggleDlDrop(event)" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer">↓&nbsp;Download</button>
-      <div class="btv-dl-menu" id="btvDlMenu" onclick="this.style.display=&#39;none&#39;" style="display: none;">
-        <button id="pdfBtn">🖼️&nbsp;&nbsp;Current View PDF</button>
-        <button id="pdfTodayBtn">🖼️&nbsp;&nbsp;3-Month View from Today</button>
-        <button id="downloadVersionBtn">🗎️&nbsp;&nbsp;Version File (.json)</button>
+      <button onclick="btvToggleDlDrop(event)" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer">&#8595;&nbsp;Download</button>
+      <div class="btv-dl-menu" id="btvDlMenu" onclick="this.style.display='none'">
+        <button id="pdfBtn">&#128444;&#65039;&nbsp;&nbsp;Current View PDF</button>
+        <button id="pdfTodayBtn">&#128444;&#65039;&nbsp;&nbsp;3-Month View from Today</button>
+        <button id="downloadVersionBtn">&#128462;&#65039;&nbsp;&nbsp;Version File (.json)</button>
       </div>
     </div>
 
-    <button onclick="btvExportCSV()" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">↓&nbsp;Export CSV</button>
+    <button onclick="btvExportCSV()" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">&#8595;&nbsp;Export CSV</button>
 
-    <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="btvImportCSV(this)">
-    <button onclick="document.getElementById(&#39;csvImportInput&#39;).click()" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">↑&nbsp;Import CSV</button>
+    <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="btvImportCSV(this)"/>
+    <button onclick="document.getElementById('csvImportInput').click()" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">&#8593;&nbsp;Import CSV</button>
 
     <button id="markdownBtn" style="display:none">Markdown</button>
     <button id="copyTeamsBtn" class="hidden">Copy Teams Summary</button>
-    <button class="btn" type="button" style="font-size:11px;padding:4px 8px;background:#fff;border:1px solid #c8bfb0;align-self:flex-end" onclick="btvConfigCalWebhook()">⚙ Cal Webhook</button>
+    <button class="btn" type="button" style="font-size:11px;padding:4px 8px;background:#fff;border:1px solid #c8bfb0;align-self:flex-end" onclick="btvConfigCalWebhook()">&#9881; Cal Webhook</button>
 
     <button id="saveVersionBtn" style="margin-left:auto;background:#111;color:#fff;border:none;padding:10px 20px;font-size:13px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">Save Version</button>
 
@@ -2971,7 +3006,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
     <div class="table-wrap">
 
-      <table id="calendar"><thead><tr><th class="corner">Quarter</th><th colspan="13">Quarter 1</th><th colspan="13">Quarter 2</th><th colspan="13">Quarter 3</th><th colspan="14">Quarter 4</th></tr><tr><th class="corner">Month</th><th colspan="5">Jan 2026</th><th colspan="4">Feb 2026</th><th colspan="4">Mar 2026</th><th colspan="5">Apr 2026</th><th colspan="4">May 2026</th><th colspan="4">Jun 2026</th><th colspan="5">Jul 2026</th><th colspan="4">Aug 2026</th><th colspan="4">Sep 2026</th><th colspan="5">Oct 2026</th><th colspan="4">Nov 2026</th><th colspan="5">Dec 2026</th></tr><tr><th class="corner">Week</th><th class="wk ">Wk 1</th><th class="wk alt">Wk 2</th><th class="wk ">Wk 3</th><th class="wk alt">Wk 4</th><th class="wk ">Wk 5</th><th class="wk alt">Wk 6</th><th class="wk ">Wk 7</th><th class="wk alt">Wk 8</th><th class="wk ">Wk 9</th><th class="wk alt">Wk 10</th><th class="wk ">Wk 11</th><th class="wk alt">Wk 12</th><th class="wk ">Wk 13</th><th class="wk alt">Wk 14</th><th class="wk ">Wk 15</th><th class="wk alt">Wk 16</th><th class="wk ">Wk 17</th><th class="wk alt">Wk 18</th><th class="wk ">Wk 19</th><th class="wk alt">Wk 20</th><th class="wk ">Wk 21</th><th class="wk alt">Wk 22</th><th class="wk ">Wk 23</th><th class="wk alt">Wk 24</th><th class="wk ">Wk 25</th><th class="wk alt">Wk 26</th><th class="wk ">Wk 27</th><th class="wk alt">Wk 28</th><th class="wk ">Wk 29</th><th class="wk alt">Wk 30</th><th class="wk ">Wk 31</th><th class="wk alt">Wk 32</th><th class="wk ">Wk 33</th><th class="wk alt">Wk 34</th><th class="wk ">Wk 35</th><th class="wk alt">Wk 36</th><th class="wk ">Wk 37</th><th class="wk alt">Wk 38</th><th class="wk ">Wk 39</th><th class="wk alt">Wk 40</th><th class="wk ">Wk 41</th><th class="wk alt">Wk 42</th><th class="wk ">Wk 43</th><th class="wk alt">Wk 44</th><th class="wk ">Wk 45</th><th class="wk alt">Wk 46</th><th class="wk ">Wk 47</th><th class="wk alt">Wk 48</th><th class="wk ">Wk 49</th><th class="wk alt">Wk 50</th><th class="wk ">Wk 51</th><th class="wk alt">Wk 52</th><th class="wk ">Wk 53</th></tr><tr><th class="corner">Date</th><th class="wk ">29-Dec to 04-Jan</th><th class="wk alt">05-Jan to 11-Jan</th><th class="wk ">12-Jan to 18-Jan</th><th class="wk alt">19-Jan to 25-Jan</th><th class="wk ">26-Jan to 01-Feb</th><th class="wk alt">02-Feb to 08-Feb</th><th class="wk ">09-Feb to 15-Feb</th><th class="wk alt">16-Feb to 22-Feb</th><th class="wk ">23-Feb to 01-Mar</th><th class="wk alt">02-Mar to 08-Mar</th><th class="wk ">09-Mar to 15-Mar</th><th class="wk alt">16-Mar to 22-Mar</th><th class="wk ">23-Mar to 29-Mar</th><th class="wk alt">30-Mar to 05-Apr</th><th class="wk ">06-Apr to 12-Apr</th><th class="wk alt">13-Apr to 19-Apr</th><th class="wk ">20-Apr to 26-Apr</th><th class="wk alt">27-Apr to 03-May</th><th class="wk ">04-May to 10-May</th><th class="wk alt">11-May to 17-May</th><th class="wk ">18-May to 24-May</th><th class="wk alt">25-May to 31-May</th><th class="wk ">01-Jun to 07-Jun</th><th class="wk alt">08-Jun to 14-Jun</th><th class="wk ">15-Jun to 21-Jun</th><th class="wk alt">22-Jun to 28-Jun</th><th class="wk ">29-Jun to 05-Jul</th><th class="wk alt">06-Jul to 12-Jul</th><th class="wk ">13-Jul to 19-Jul</th><th class="wk alt">20-Jul to 26-Jul</th><th class="wk ">27-Jul to 02-Aug</th><th class="wk alt">03-Aug to 09-Aug</th><th class="wk ">10-Aug to 16-Aug</th><th class="wk alt">17-Aug to 23-Aug</th><th class="wk ">24-Aug to 30-Aug</th><th class="wk alt">31-Aug to 06-Sep</th><th class="wk ">07-Sep to 13-Sep</th><th class="wk alt">14-Sep to 20-Sep</th><th class="wk ">21-Sep to 27-Sep</th><th class="wk alt">28-Sep to 04-Oct</th><th class="wk ">05-Oct to 11-Oct</th><th class="wk alt">12-Oct to 18-Oct</th><th class="wk ">19-Oct to 25-Oct</th><th class="wk alt">26-Oct to 01-Nov</th><th class="wk ">02-Nov to 08-Nov</th><th class="wk alt">09-Nov to 15-Nov</th><th class="wk ">16-Nov to 22-Nov</th><th class="wk alt">23-Nov to 29-Nov</th><th class="wk ">30-Nov to 06-Dec</th><th class="wk alt">07-Dec to 13-Dec</th><th class="wk ">14-Dec to 20-Dec</th><th class="wk alt">21-Dec to 27-Dec</th><th class="wk ">28-Dec to 03-Jan</th></tr></thead><tbody><tr><th class="rowhead bg-global" style="white-space:nowrap">Markdown&nbsp;<button onclick="window.openMarkdownEditor()" title="Add markdown" style="background:none;border:1px solid #bbb;color:#666;font-size:10px;padding:1px 6px;border-radius:4px;cursor:pointer;font-weight:700;line-height:1.4;vertical-align:middle">+</button></th><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk alt"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td><td class="wk "><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td></tr><tr><th class="rowhead bg-global">Global</th><td class="wk ">
+      <table id="calendar"><thead><tr><th class="corner">Quarter</th><th colspan="13">Quarter 1</th><th colspan="13">Quarter 2</th><th colspan="13">Quarter 3</th><th colspan="14">Quarter 4</th></tr><tr><th class="corner">Month</th><th colspan="5">Jan 2026</th><th colspan="4">Feb 2026</th><th colspan="4">Mar 2026</th><th colspan="5">Apr 2026</th><th colspan="4">May 2026</th><th colspan="4">Jun 2026</th><th colspan="5">Jul 2026</th><th colspan="4">Aug 2026</th><th colspan="4">Sep 2026</th><th colspan="5">Oct 2026</th><th colspan="4">Nov 2026</th><th colspan="5">Dec 2026</th></tr><tr><th class="corner">Week</th><th class="wk ">Wk 1</th><th class="wk alt">Wk 2</th><th class="wk ">Wk 3</th><th class="wk alt">Wk 4</th><th class="wk ">Wk 5</th><th class="wk alt">Wk 6</th><th class="wk ">Wk 7</th><th class="wk alt">Wk 8</th><th class="wk ">Wk 9</th><th class="wk alt">Wk 10</th><th class="wk ">Wk 11</th><th class="wk alt">Wk 12</th><th class="wk ">Wk 13</th><th class="wk alt">Wk 14</th><th class="wk ">Wk 15</th><th class="wk alt">Wk 16</th><th class="wk ">Wk 17</th><th class="wk alt">Wk 18</th><th class="wk ">Wk 19</th><th class="wk alt">Wk 20</th><th class="wk ">Wk 21</th><th class="wk alt">Wk 22</th><th class="wk ">Wk 23</th><th class="wk alt">Wk 24</th><th class="wk ">Wk 25</th><th class="wk alt">Wk 26</th><th class="wk ">Wk 27</th><th class="wk alt">Wk 28</th><th class="wk ">Wk 29</th><th class="wk alt">Wk 30</th><th class="wk ">Wk 31</th><th class="wk alt">Wk 32</th><th class="wk ">Wk 33</th><th class="wk alt">Wk 34</th><th class="wk ">Wk 35</th><th class="wk alt">Wk 36</th><th class="wk ">Wk 37</th><th class="wk alt">Wk 38</th><th class="wk ">Wk 39</th><th class="wk alt">Wk 40</th><th class="wk ">Wk 41</th><th class="wk alt">Wk 42</th><th class="wk ">Wk 43</th><th class="wk alt">Wk 44</th><th class="wk ">Wk 45</th><th class="wk alt">Wk 46</th><th class="wk ">Wk 47</th><th class="wk alt">Wk 48</th><th class="wk ">Wk 49</th><th class="wk alt">Wk 50</th><th class="wk ">Wk 51</th><th class="wk alt">Wk 52</th><th class="wk ">Wk 53</th></tr><tr><th class="corner">Date</th><th class="wk ">29-Dec to 04-Jan</th><th class="wk alt">05-Jan to 11-Jan</th><th class="wk ">12-Jan to 18-Jan</th><th class="wk alt">19-Jan to 25-Jan</th><th class="wk ">26-Jan to 01-Feb</th><th class="wk alt">02-Feb to 08-Feb</th><th class="wk ">09-Feb to 15-Feb</th><th class="wk alt">16-Feb to 22-Feb</th><th class="wk ">23-Feb to 01-Mar</th><th class="wk alt">02-Mar to 08-Mar</th><th class="wk ">09-Mar to 15-Mar</th><th class="wk alt">16-Mar to 22-Mar</th><th class="wk ">23-Mar to 29-Mar</th><th class="wk alt">30-Mar to 05-Apr</th><th class="wk ">06-Apr to 12-Apr</th><th class="wk alt">13-Apr to 19-Apr</th><th class="wk ">20-Apr to 26-Apr</th><th class="wk alt">27-Apr to 03-May</th><th class="wk ">04-May to 10-May</th><th class="wk alt">11-May to 17-May</th><th class="wk ">18-May to 24-May</th><th class="wk alt">25-May to 31-May</th><th class="wk ">01-Jun to 07-Jun</th><th class="wk alt">08-Jun to 14-Jun</th><th class="wk ">15-Jun to 21-Jun</th><th class="wk alt">22-Jun to 28-Jun</th><th class="wk ">29-Jun to 05-Jul</th><th class="wk alt">06-Jul to 12-Jul</th><th class="wk ">13-Jul to 19-Jul</th><th class="wk alt">20-Jul to 26-Jul</th><th class="wk ">27-Jul to 02-Aug</th><th class="wk alt">03-Aug to 09-Aug</th><th class="wk ">10-Aug to 16-Aug</th><th class="wk alt">17-Aug to 23-Aug</th><th class="wk ">24-Aug to 30-Aug</th><th class="wk alt">31-Aug to 06-Sep</th><th class="wk ">07-Sep to 13-Sep</th><th class="wk alt">14-Sep to 20-Sep</th><th class="wk ">21-Sep to 27-Sep</th><th class="wk alt">28-Sep to 04-Oct</th><th class="wk ">05-Oct to 11-Oct</th><th class="wk alt">12-Oct to 18-Oct</th><th class="wk ">19-Oct to 25-Oct</th><th class="wk alt">26-Oct to 01-Nov</th><th class="wk ">02-Nov to 08-Nov</th><th class="wk alt">09-Nov to 15-Nov</th><th class="wk ">16-Nov to 22-Nov</th><th class="wk alt">23-Nov to 29-Nov</th><th class="wk ">30-Nov to 06-Dec</th><th class="wk alt">07-Dec to 13-Dec</th><th class="wk ">14-Dec to 20-Dec</th><th class="wk alt">21-Dec to 27-Dec</th><th class="wk ">28-Dec to 03-Jan</th></tr></thead><tbody><tr><th class="rowhead bg-global">Markdown</th><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td><td class="wk alt"><div class="cell"></div></td><td class="wk "><div class="cell"></div></td></tr><tr><th class="rowhead bg-global">Global</th><td class="wk ">
 
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2025-12-28">
 
@@ -2987,252 +3022,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-gwp published-entry" draggable="true" data-entry-id="1778483549590zqqjq" data-section="global" data-week="2026-01-04" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">09-Jan (Fri)</div>
-
-              <div class="entry-title">FESTIVE PACKET LAUNCH</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-01-04&#39;,&#39;1778483549590zqqjq&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">GWP</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Festive Packets</div>
-
-              <div class="prod-price"></div>
-
-            </div>
-
-            <div class="prod-meta">Multi</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 1</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-bags published-entry" draggable="true" data-entry-id="1778483549590l8n9n" data-section="global" data-week="2026-01-04" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">09-Jan (Fri)</div>
-
-              <div class="entry-title">CNY Capsule</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-01-04&#39;,&#39;1778483549590l8n9n&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">BAGS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 0.5</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 01</div>
-
-              <div class="prod-price">$89.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Poofy Bag</div>
-
-              <div class="prod-price">$89.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Micro Dumpling Bag</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">XS Dumpling Bag</div>
-
-              <div class="prod-price">$89.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">ACC</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">BTV-TO-GO PHONE STRAP PART A</div>
-
-              <div class="prod-price">$20.00</div>
-
-            </div>
-
-            <div class="prod-meta">Metallic Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 6</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-01-04&#39;)">+ Add</button>
 
     </div>
@@ -3242,208 +3031,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-01-11">
 
       
-
-    <div class="entry  cat-acc published-entry" draggable="true" data-entry-id="1778483549590gux2e" data-section="global" data-week="2026-01-11" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">16-Jan (Fri)</div>
-
-              <div class="entry-title">CNY Capsule</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-01-11&#39;,&#39;1778483549590gux2e&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">ACC</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">BTV-TO-GO PHONE STRAP PART B</div>
-
-              <div class="prod-price">$20.00</div>
-
-            </div>
-
-            <div class="prod-meta">Red</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">BTV-TO-GO PHONE STRAP PART C</div>
-
-              <div class="prod-price">$20.00</div>
-
-            </div>
-
-            <div class="prod-meta">Red</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">BTV-TO-GO PHONE STRAP PART A</div>
-
-              <div class="prod-price">$20.00</div>
-
-            </div>
-
-            <div class="prod-meta">Metallic Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">BAGS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 0.5</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 01</div>
-
-              <div class="prod-price">$89.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Poofy Bag</div>
-
-              <div class="prod-price">$89.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Micro Dumpling Bag</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">XS Dumpling Bag</div>
-
-              <div class="prod-price">$89.00</div>
-
-            </div>
-
-            <div class="prod-meta">Cherry</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 8</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-01-11&#39;)">+ Add</button>
 
@@ -3455,366 +3042,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-wrtw published-entry" draggable="true" data-entry-id="1778483549590yjnxe" data-section="global" data-week="2026-01-18" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">23-Jan (Fri)</div>
-
-              <div class="entry-title">CNY RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-01-18&#39;,&#39;1778483549590yjnxe&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">WRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Racerback Dress</div>
-
-              <div class="prod-price">$109.00</div>
-
-            </div>
-
-            <div class="prod-meta">Black, Brown</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Belt Detail Cami Top</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Brown, Chambray</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Front Wrap Trouser</div>
-
-              <div class="prod-price">$109.00</div>
-
-            </div>
-
-            <div class="prod-meta">Brown, Chambray</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Boxy Sleeveless Top</div>
-
-              <div class="prod-price">$79.00</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Pleated Barrel Jersey Trouser</div>
-
-              <div class="prod-price">$99.00</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Contrast Detail Long Sleeve Baby Tee</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Red, Dark Plum, Navy</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Chambray Boxy Short Sleeve Shirt</div>
-
-              <div class="prod-price">$79.00</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Indigo</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Chambray Toggle Midi Skirt</div>
-
-              <div class="prod-price">$99.00</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Indigo</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Contrast Detail Baby Tee</div>
-
-              <div class="prod-price">$59.00</div>
-
-            </div>
-
-            <div class="prod-meta">Red</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Relaxed Organic Cotton T Shirt</div>
-
-              <div class="prod-price">$59.00</div>
-
-            </div>
-
-            <div class="prod-meta">Red</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Shrunken Organic Cotton T Shirt</div>
-
-              <div class="prod-price">$55.00</div>
-
-            </div>
-
-            <div class="prod-meta">Red</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">MRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Relaxed Pocket T Shirt</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Ivory, Maroon, Steel Blue</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Long Sleeve Oxford Shirt</div>
-
-              <div class="prod-price">$89.00</div>
-
-            </div>
-
-            <div class="prod-meta">Ivory, Blue</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Long Sleeve T Shirt</div>
-
-              <div class="prod-price">$79.00</div>
-
-            </div>
-
-            <div class="prod-meta">Navy, Brown</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Jersey Cargo Trouser</div>
-
-              <div class="prod-price">$99.00</div>
-
-            </div>
-
-            <div class="prod-meta">Black, Brown</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mens Relaxed Organic Cotton T Shirt</div>
-
-              <div class="prod-price">$59.00</div>
-
-            </div>
-
-            <div class="prod-meta">Red</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">PETS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Pet T Shirt</div>
-
-              <div class="prod-price">$49.00</div>
-
-            </div>
-
-            <div class="prod-meta">Red</div><div class="prod-size prod-meta">XS,S,M</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 27</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-01-18&#39;)">+ Add</button>
 
     </div>
@@ -3824,162 +3051,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-01-25">
 
       
-
-    <div class="entry  cat-krtw published-entry" draggable="true" data-entry-id="17784835495903xh16" data-section="global" data-week="2026-01-25" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">30-Jan (Fri)</div>
-
-              <div class="entry-title">CNY RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-01-25&#39;,&#39;17784835495903xh16&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">KRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Chambray Shirt</div>
-
-              <div class="prod-price">$35.00</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Indigo</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Chambray Shorts</div>
-
-              <div class="prod-price">$39.00</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Indigo</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Chambray Dress</div>
-
-              <div class="prod-price">$49.00</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Indigo</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Waffle Knit Dress</div>
-
-              <div class="prod-price">$49.00</div>
-
-            </div>
-
-            <div class="prod-meta">Yellow Multicolour, Pink Multicolour, Purple Multicolour</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Waffle Knit Shirt</div>
-
-              <div class="prod-price">$35.00</div>
-
-            </div>
-
-            <div class="prod-meta">Green Multicolour, Blue Multicolour, Yellow Multicolour</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Waffle Knit Shorts</div>
-
-              <div class="prod-price">$39.00</div>
-
-            </div>
-
-            <div class="prod-meta">Green Multicolour, Blue Multicolour, Yellow Multicolour</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 12</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-01-25&#39;)">+ Add</button>
 
@@ -3991,82 +3062,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-gwp published-entry" draggable="true" data-entry-id="1778483549590kac6g" data-section="global" data-week="2026-02-01" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">06-Feb (Fri)</div>
-
-              <div class="entry-title">Studio Series</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-02-01&#39;,&#39;1778483549590kac6g&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">GWP</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mini Doodle</div>
-
-              <div class="prod-price"></div>
-
-            </div>
-
-            <div class="prod-meta">Multi</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 1</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-02-01&#39;)">+ Add</button>
 
     </div>
@@ -4076,174 +3071,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-02-08">
 
       
-
-    <div class="entry  cat-wrtw published-entry" draggable="true" data-entry-id="1778483549590jgfey" data-section="global" data-week="2026-02-08" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">13-Feb (Fri)</div>
-
-              <div class="entry-title">Studio Series</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-02-08&#39;,&#39;1778483549590jgfey&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">WRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Front Wrap Trouser</div>
-
-              <div class="prod-price">$109.00</div>
-
-            </div>
-
-            <div class="prod-meta">Black</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Knit Cardigan</div>
-
-              <div class="prod-price">$99.00</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Red</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">ACC</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Colourblock Scarf</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon Colourblock, Lilac Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">BAGS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Extra Small Studio Tote</div>
-
-              <div class="prod-price">$89.00</div>
-
-            </div>
-
-            <div class="prod-meta">Pink/Red, Maroon/Cobalt</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Small Studio Tote</div>
-
-              <div class="prod-price">$109.00</div>
-
-            </div>
-
-            <div class="prod-meta">Pink/Red, Maroon/Cobalt</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 8</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> CN, ID, JP, PH, SG, TH</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-02-08&#39;)">+ Add</button>
 
@@ -4265,112 +3092,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-footwear published-entry" draggable="true" data-entry-id="1778483549590axrqf" data-section="global" data-week="2026-02-22" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">27-Feb (Fri)</div>
-
-              <div class="entry-title">Studio Sneakers</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-02-22&#39;,&#39;1778483549590axrqf&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">FOOTWEAR</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Studio Sneaker</div>
-
-              <div class="prod-price">$109.00</div>
-
-            </div>
-
-            <div class="prod-meta">Black, Red, Ivory</div><div class="prod-size prod-meta">35,36,37,38,39,40,41,41,42,43,44</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">ACC</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Colourblock Socks</div>
-
-              <div class="prod-price">$15.00</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon Colourblock, Grey Colourblock, Forest Colourblock</div><div class="prod-size prod-meta">22-27cm</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 6</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-02-22&#39;)">+ Add</button>
 
     </div>
@@ -4380,192 +3101,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-03-01">
 
       
-
-    <div class="entry  cat-mrtw published-entry" draggable="true" data-entry-id="1778483549590agdhr" data-section="global" data-week="2026-03-01" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">06-Mar (Fri)</div>
-
-              <div class="entry-title">Seasonal Colour Story - RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-03-01&#39;,&#39;1778483549590agdhr&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">MRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mens Relaxed Organic Cotton T Shirt</div>
-
-              <div class="prod-price">$59.00</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Brown, Dark Heather Grey</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">WRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Racer Back Dress</div>
-
-              <div class="prod-price">$109.00</div>
-
-            </div>
-
-            <div class="prod-meta">Ivory</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Belt Detail Cami Top</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Blush, Cream</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Front Wrap Trouser</div>
-
-              <div class="prod-price">$109.00</div>
-
-            </div>
-
-            <div class="prod-meta">Blush, Cream</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Contrast Detail Long Sleeve Baby Tee</div>
-
-              <div class="prod-price">$69.00</div>
-
-            </div>
-
-            <div class="prod-meta">Brown, Light Blue</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Relaxed Organic Cotton T Shirt</div>
-
-              <div class="prod-price">$59.00</div>
-
-            </div>
-
-            <div class="prod-meta">Blush, Dark Heather Grey</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Shrunken Organic Cotton T Shirt</div>
-
-              <div class="prod-price">$55.00</div>
-
-            </div>
-
-            <div class="prod-meta">Baby Blue, Blush, Dark Heather Grey</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 14</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-03-01&#39;)">+ Add</button>
 
@@ -4587,112 +3122,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-acc published-entry" draggable="true" data-entry-id="17784885318567kea9" data-section="global" data-week="2026-03-15" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">18-Mar (Wed)</div>
-
-              <div class="entry-title">Paraparadise</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-03-15&#39;,&#39;17784885318567kea9&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">ACC</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mini ParaPouch</div>
-
-              <div class="prod-price">$49</div>
-
-            </div>
-
-            <div class="prod-meta">Forest Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">LF</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Paradise Charms</div>
-
-              <div class="prod-price">$10</div>
-
-            </div>
-
-            <div class="prod-meta">1, 2, 3</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 4</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-03-15&#39;)">+ Add</button>
 
     </div>
@@ -4712,98 +3141,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-03-29">
 
       
-
-    <div class="entry  cat-bags published-entry" draggable="true" data-entry-id="17784835495909ml2p" data-section="global" data-week="2026-03-29" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">01-Apr (Wed)</div>
-
-              <div class="entry-title">Leather Canvas</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-03-29&#39;,&#39;17784835495909ml2p&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">BAGS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Leather Canvas Carryall 0.5</div>
-
-              <div class="prod-price">$79.00</div>
-
-            </div>
-
-            <div class="prod-meta">Natural Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Leather Canvas Carryall 1.5</div>
-
-              <div class="prod-price">$99.00</div>
-
-            </div>
-
-            <div class="prod-meta">Natural Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 2</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-03-29&#39;)">+ Add</button>
 
@@ -4825,130 +3162,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-eyewear published-entry" draggable="true" data-entry-id="17784835495901okcf" data-section="global" data-week="2026-04-12" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">17-Apr (Fri)</div>
-
-              <div class="entry-title">BTV Eyewear</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-04-12&#39;,&#39;17784835495901okcf&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">EYEWEAR</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Tangent</div>
-
-              <div class="prod-price">$129.00</div>
-
-            </div>
-
-            <div class="prod-meta">Clear Sand, Tortoise Shell Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Contour</div>
-
-              <div class="prod-price">$129.00</div>
-
-            </div>
-
-            <div class="prod-meta">Clear, Brown Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Horizon</div>
-
-              <div class="prod-price">$129.00</div>
-
-            </div>
-
-            <div class="prod-meta">Tortoise Shell Colourblock, Clear Grey</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Eyewear Case</div>
-
-              <div class="prod-price">$30.00</div>
-
-            </div>
-
-            <div class="prod-meta">Brushed Silver</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 7</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-04-12&#39;)">+ Add</button>
 
     </div>
@@ -4958,314 +3171,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-04-19">
 
       
-
-    <div class="entry  cat-eyewear published-entry" draggable="true" data-entry-id="1778483549590i201n" data-section="global" data-week="2026-04-19" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">24-Apr (Fri)</div>
-
-              <div class="entry-title">BTV Eyewear</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-04-19&#39;,&#39;1778483549590i201n&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">EYEWEAR</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Tangent</div>
-
-              <div class="prod-price">$129.00</div>
-
-            </div>
-
-            <div class="prod-meta">Clear Sand, Tortoise Shell Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Contour</div>
-
-              <div class="prod-price">$129.00</div>
-
-            </div>
-
-            <div class="prod-meta">Clear, Brown Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Horizon</div>
-
-              <div class="prod-price">$129.00</div>
-
-            </div>
-
-            <div class="prod-meta">Tortoise Shell Colourblock, Clear Grey</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Eyewear Case</div>
-
-              <div class="prod-price">$30.00</div>
-
-            </div>
-
-            <div class="prod-meta">Brushed Silver</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 7</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-wrtw published-entry" draggable="true" data-entry-id="17784885318571pohc" data-section="global" data-week="2026-04-19" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">24-Apr (Fri)</div>
-
-              <div class="entry-title">RTW (JIT) - Womens RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-04-19&#39;,&#39;17784885318571pohc&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">WRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Boxy Sleeveless Top</div>
-
-              <div class="prod-price">$79</div>
-
-            </div>
-
-            <div class="prod-meta">Navy, Brown</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Pleated Barrel Jersey Trouser</div>
-
-              <div class="prod-price">$99</div>
-
-            </div>
-
-            <div class="prod-meta">Navy, Brown, Heather Grey</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 5</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-mrtw published-entry" draggable="true" data-entry-id="1778488531857d44l7" data-section="global" data-week="2026-04-19" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">24-Apr (Fri)</div>
-
-              <div class="entry-title">RTW (JIT) - Mens RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-04-19&#39;,&#39;1778488531857d44l7&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">MRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mens Relaxed Pocket T Shirt</div>
-
-              <div class="prod-price">$69</div>
-
-            </div>
-
-            <div class="prod-meta">Black</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mens Short Sleeve Jersey Overshirt</div>
-
-              <div class="prod-price">$109</div>
-
-            </div>
-
-            <div class="prod-meta">Black, Navy</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 3</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-04-19&#39;)">+ Add</button>
 
@@ -5287,114 +3192,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-gwp published-entry" draggable="true" data-entry-id="17784885318577qqfs" data-section="global" data-week="2026-05-03" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">08-May (Fri)</div>
-
-              <div class="entry-title">Packaging</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-05-03&#39;,&#39;17784885318577qqfs&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">GWP</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">M Shopper Tote (Seasonal)</div>
-
-              <div class="prod-price">$15</div>
-
-            </div>
-
-            <div class="prod-meta">Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">XS Shopper Tote (Seasonal)</div>
-
-              <div class="prod-price">$10</div>
-
-            </div>
-
-            <div class="prod-meta">Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Drawstring Pouch</div>
-
-              <div class="prod-price"></div>
-
-            </div>
-
-            <div class="prod-meta">Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 3</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-05-03&#39;)">+ Add</button>
 
     </div>
@@ -5405,114 +3202,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-lf published-entry" draggable="true" data-entry-id="1778488531856at3ku" data-section="global" data-week="2026-05-10" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">15-May (Fri)</div>
-
-              <div class="entry-title">Parapouch Recolour</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-05-10&#39;,&#39;1778488531856at3ku&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">LF</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mini ParaPouch</div>
-
-              <div class="prod-price">$49</div>
-
-            </div>
-
-            <div class="prod-meta">Lilac Colourblock</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mini Parapouch</div>
-
-              <div class="prod-price">$49</div>
-
-            </div>
-
-            <div class="prod-meta">Lilac, Navy, Light Moss</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Parapouch</div>
-
-              <div class="prod-price">$59</div>
-
-            </div>
-
-            <div class="prod-meta">Lilac, Navy, Light Moss</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 7</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-05-10&#39;)">+ Add</button>
 
     </div>
@@ -5522,114 +3211,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-05-17">
 
       
-
-    <div class="entry  cat-acc published-entry" draggable="true" data-entry-id="1778488531856d9wkr" data-section="global" data-week="2026-05-17" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">22-May (Fri)</div>
-
-              <div class="entry-title">BTV-TO-GO</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-05-17&#39;,&#39;1778488531856d9wkr&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">ACC</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">BTV-TO-GO Phone Strap Part A</div>
-
-              <div class="prod-price">$20</div>
-
-            </div>
-
-            <div class="prod-meta">Plum, Blue</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">BTV-TO-GO Phone Strap Part B</div>
-
-              <div class="prod-price">$20</div>
-
-            </div>
-
-            <div class="prod-meta">Plum, Blue</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">BTV-TO-GO Phone Strap Part C</div>
-
-              <div class="prod-price">$20</div>
-
-            </div>
-
-            <div class="prod-meta">Plum, Blue</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 6</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-05-17&#39;)">+ Add</button>
 
@@ -5661,374 +3242,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-mrtw published-entry" draggable="true" data-entry-id="17784885318575sbq3" data-section="global" data-week="2026-06-07" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">12-Jun (Fri)</div>
-
-              <div class="entry-title">BTV Summer (I) - Mens RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-07&#39;,&#39;17784885318575sbq3&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">MRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mens Long Sleeve Oxford Shirt</div>
-
-              <div class="prod-price">$89</div>
-
-            </div>
-
-            <div class="prod-meta">Black</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mens Belted Trouser</div>
-
-              <div class="prod-price">$109</div>
-
-            </div>
-
-            <div class="prod-meta">Black, Warm Olive, Dark Brown</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 4</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-wrtw published-entry" draggable="true" data-entry-id="1778488531857naoqa" data-section="global" data-week="2026-06-07" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">12-Jun (Fri)</div>
-
-              <div class="entry-title">BTV Summer (I) - Womens RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-07&#39;,&#39;1778488531857naoqa&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">WRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Oxford Long Sleeve Shirt</div>
-
-              <div class="prod-price">$79</div>
-
-            </div>
-
-            <div class="prod-meta">Blue, Red, Lilac</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Front Wrap Trouser</div>
-
-              <div class="prod-price">$109</div>
-
-            </div>
-
-            <div class="prod-meta">Mustard</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 4</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-bags published-entry" draggable="true" data-entry-id="1778488531857k07r5" data-section="global" data-week="2026-06-07" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">12-Jun (Fri)</div>
-
-              <div class="entry-title">Thailand Exclusive Crunch Carryall</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-07&#39;,&#39;1778488531857k07r5&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">BAGS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 0.5</div>
-
-              <div class="prod-price">$69</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Plum</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 01</div>
-
-              <div class="prod-price">$89</div>
-
-            </div>
-
-            <div class="prod-meta">Dark Plum</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 2</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-bags published-entry" draggable="true" data-entry-id="1778488531857o9a15" data-section="global" data-week="2026-06-07" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">12-Jun (Fri)</div>
-
-              <div class="entry-title">Studio Tote (Restock + Add Size)</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-07&#39;,&#39;1778488531857o9a15&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">BAGS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Extra Small Studio Tote</div>
-
-              <div class="prod-price">$89</div>
-
-            </div>
-
-            <div class="prod-meta">Navy/Black, Terracotta/Plum</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Large Studio Tote</div>
-
-              <div class="prod-price">$159</div>
-
-            </div>
-
-            <div class="prod-meta">Terracotta/Plum</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 3</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-06-07&#39;)">+ Add</button>
 
     </div>
@@ -6038,190 +3251,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-06-14">
 
       
-
-    <div class="entry  cat-mrtw published-entry" draggable="true" data-entry-id="1778488531857hkwm0" data-section="global" data-week="2026-06-14" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">19-Jun (Fri)</div>
-
-              <div class="entry-title">BTV Summer (I) - Mens RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-14&#39;,&#39;1778488531857hkwm0&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">MRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mens Long Sleeve Oxford Shirt</div>
-
-              <div class="prod-price">$89</div>
-
-            </div>
-
-            <div class="prod-meta">Black</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Mens Belted Trouser</div>
-
-              <div class="prod-price">$109</div>
-
-            </div>
-
-            <div class="prod-meta">Black, Warm Olive, Dark Brown</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 4</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-wrtw published-entry" draggable="true" data-entry-id="1778488531857jqlac" data-section="global" data-week="2026-06-14" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">19-Jun (Fri)</div>
-
-              <div class="entry-title">BTV Summer (I) - Womens RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-14&#39;,&#39;1778488531857jqlac&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">WRTW</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Oxford Long Sleeve Shirt</div>
-
-              <div class="prod-price">$79</div>
-
-            </div>
-
-            <div class="prod-meta">Blue, Red, Lilac</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Womens Front Wrap Trouser</div>
-
-              <div class="prod-price">$109</div>
-
-            </div>
-
-            <div class="prod-meta">Mustard</div><div class="prod-size prod-meta">XS,S,M,L,XL,XXL</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 4</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-06-14&#39;)">+ Add</button>
 
@@ -6233,222 +3262,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-gwp published-entry" draggable="true" data-entry-id="1778488531857ff54y" data-section="global" data-week="2026-06-21" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">26-Jun (Fri)</div>
-
-              <div class="entry-title">BTV Summer (I) - Kids RTW</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-21&#39;,&#39;1778488531857ff54y&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">GWP</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Striped Gathered Dress</div>
-
-              <div class="prod-price">$49</div>
-
-            </div>
-
-            <div class="prod-meta">Coral/Ivory, Lilac/Ivory, White/Pink</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Colourblock Shorts</div>
-
-              <div class="prod-price">$39</div>
-
-            </div>
-
-            <div class="prod-meta">Lime Colourblock, Pink Colourblock, Cobalt Colourblock, Green Colourblock</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Striped Raglan Tee</div>
-
-              <div class="prod-price">$35</div>
-
-            </div>
-
-            <div class="prod-meta">Cobalt Colourblock, Green Colourblock, Pink Colourblock, Lime Colourblock</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Colourblock Sleeveless Tee</div>
-
-              <div class="prod-price">$35</div>
-
-            </div>
-
-            <div class="prod-meta">Navy Colourblock, Lilac Colourblock, Grey Colourblock</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Colourblock Barrel Trouser</div>
-
-              <div class="prod-price">$49</div>
-
-            </div>
-
-            <div class="prod-meta">Blush Colourblock, Navy Colourblock</div><div class="prod-size prod-meta">100,110,120,130,140</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 16</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-pets published-entry" draggable="true" data-entry-id="1778488531857tfwxf" data-section="global" data-week="2026-06-21" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">26-Jun (Fri)</div>
-
-              <div class="entry-title">Pets</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-21&#39;,&#39;1778488531857tfwxf&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">PETS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Pet Cap</div>
-
-              <div class="prod-price">$25</div>
-
-            </div>
-
-            <div class="prod-meta">Chambray</div><div class="prod-size prod-meta">XS-S,S-M</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 1</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-06-21&#39;)">+ Add</button>
 
     </div>
@@ -6459,114 +3272,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry  cat-bags published-entry" draggable="true" data-entry-id="1778488531857ielkv" data-section="global" data-week="2026-06-28" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">03-Jul (Fri)</div>
-
-              <div class="entry-title">Crunch Carryall (Recolour)</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-06-28&#39;,&#39;1778488531857ielkv&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">BAGS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 0.5</div>
-
-              <div class="prod-price">$69</div>
-
-            </div>
-
-            <div class="prod-meta">Brick, Cerulean, Mahogany Red, Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 01</div>
-
-              <div class="prod-price">$89</div>
-
-            </div>
-
-            <div class="prod-meta">Brick, Cerulean, Mahogany Red, Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Carryall 03</div>
-
-              <div class="prod-price">$129</div>
-
-            </div>
-
-            <div class="prod-meta">Cerulean, Mahogany Red, Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 11</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-06-28&#39;)">+ Add</button>
 
     </div>
@@ -6576,174 +3281,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-07-05">
 
       
-
-    <div class="entry  cat-kids published-entry" draggable="true" data-entry-id="17784885318570nclb" data-section="global" data-week="2026-07-05" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">10-Jul (Fri)</div>
-
-              <div class="entry-title">Kids Backpack</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-07-05&#39;,&#39;17784885318570nclb&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">KIDS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Kids Backpack</div>
-
-              <div class="prod-price">$59</div>
-
-            </div>
-
-            <div class="prod-meta">Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 1</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="entry  cat-acc published-entry" draggable="true" data-entry-id="177848853185731wbk" data-section="global" data-week="2026-07-05" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">10-Jul (Fri)</div>
-
-              <div class="entry-title">Crunch Organiser (Recolour)</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-07-05&#39;,&#39;177848853185731wbk&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">ACC</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Organiser 01</div>
-
-              <div class="prod-price">$49</div>
-
-            </div>
-
-            <div class="prod-meta">Lilac/Maroon, Terracotta/Brown, Teal/Periwinkle</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Crunch Organiser 02</div>
-
-              <div class="prod-price">$59</div>
-
-            </div>
-
-            <div class="prod-meta">Lilac/Maroon, Terracotta/Brown, Teal/Periwinkle</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 6</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-07-05&#39;)">+ Add</button>
 
@@ -6764,160 +3301,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="global" data-drop-week="2026-07-19">
 
       
-
-    <div class="entry  cat-bags published-entry" draggable="true" data-entry-id="1778488531857t14gm" data-section="global" data-week="2026-07-19" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div class="title-left">
-
-            <div class="dot brand"></div>
-
-            <div>
-
-              <div class="entry-date">24-Jul (Fri)</div>
-
-              <div class="entry-title">Stretch Series</div>
-
-            </div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;global&#39;,&#39;2026-07-19&#39;,&#39;1778488531857t14gm&#39;)">Edit</button>
-
-        </div>
-
-        
-
-    <div class="group">
-
-      <div class="cat">BAGS</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Stretch Large Studio Tote</div>
-
-              <div class="prod-price">$109</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon/Periwinkle, Teal//Navy</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Stretch Small Studio Tote</div>
-
-              <div class="prod-price">$89</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon/Periwinkle, Teal//Navy</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-    <div class="group">
-
-      <div class="cat">ACC</div>
-
-      <div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Stretch Large Pouch</div>
-
-              <div class="prod-price">$39</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon/Periwinkle, Teal/Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Stretch Small Pouch</div>
-
-              <div class="prod-price">$29</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon/Periwinkle, Teal/Brown</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-          <div class="prod">
-
-            <div class="prod-top">
-
-              <div class="prod-name">Stretch Laptop Sleeve</div>
-
-              <div class="prod-price">$49</div>
-
-            </div>
-
-            <div class="prod-meta">Maroon/Periwinkle, Teal//Navy</div><div class="prod-size prod-meta">One Size</div>
-
-          </div>
-
-        
-
-      </div>
-
-    </div>
-
-  
-
-        <div class="entry-info"><span class="label">No. of styles:</span> 10</div>
-
-        <div class="entry-info"><span class="label">Launch (Mkt):</span> —</div>
-
-        <div class="entry-info"><span class="label">Launch (Channel):</span> —</div>
-
-        <div style="margin-top:10px"></div>
-
-        <div class="launch-status"><span class="label">Launch Status:</span> On Time</div>
-
-        
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;global&#39;,&#39;2026-07-19&#39;)">+ Add</button>
 
@@ -7308,54 +3691,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="nea" data-drop-week="2026-04-12">
 
       
-
-    <div class="entry published-entry" draggable="true" data-entry-id="1778488531856l9o8u" data-section="nea" data-week="2026-04-12" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div>
-
-            <div class="entry-title"></div>
-
-            <div class="entry-date"></div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;nea&#39;,&#39;2026-04-12&#39;,&#39;1778488531856l9o8u&#39;)">Edit</button>
-
-        </div>
-
-        
-
-      <div class="entry-info"><span class="label">Markets:</span> —</div>
-
-      <div class="entry-info"><span class="label">Stores:</span> —</div>
-
-      <div class="prod" style="margin-top:8px">
-
-        <div class="prod-top">
-
-          <div class="prod-name">—</div>
-
-          <div class="prod-price">—</div>
-
-        </div>
-
-        <div class="prod-meta">—</div>
-
-      </div>
-
-    
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;nea&#39;,&#39;2026-04-12&#39;)">+ Add</button>
 
@@ -7817,54 +4152,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
       
 
-    <div class="entry published-entry" draggable="true" data-entry-id="17784885318563w00c" data-section="sea" data-week="2026-02-22" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div>
-
-            <div class="entry-title"></div>
-
-            <div class="entry-date"></div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;sea&#39;,&#39;2026-02-22&#39;,&#39;17784885318563w00c&#39;)">Edit</button>
-
-        </div>
-
-        
-
-      <div class="entry-info"><span class="label">Markets:</span> —</div>
-
-      <div class="entry-info"><span class="label">Stores:</span> —</div>
-
-      <div class="prod" style="margin-top:8px">
-
-        <div class="prod-top">
-
-          <div class="prod-name">—</div>
-
-          <div class="prod-price">—</div>
-
-        </div>
-
-        <div class="prod-meta">—</div>
-
-      </div>
-
-    
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
-
       <button class="add-btn small-add" onclick="openEditor(&#39;sea&#39;,&#39;2026-02-22&#39;)">+ Add</button>
 
     </div>
@@ -7934,54 +4221,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <div class="cell drop-zone" data-drop-section="sea" data-drop-week="2026-04-12">
 
       
-
-    <div class="entry published-entry" draggable="true" data-entry-id="177848414918545ala" data-section="sea" data-week="2026-04-12" data-keylevel="brand">
-
-      <div class="entry-preview">
-
-        <div class="title-row">
-
-          <div>
-
-            <div class="entry-title"></div>
-
-            <div class="entry-date"></div>
-
-          </div>
-
-          <button class="small-btn" onclick="openEditor(&#39;sea&#39;,&#39;2026-04-12&#39;,&#39;177848414918545ala&#39;)">Edit</button>
-
-        </div>
-
-        
-
-      <div class="entry-info"><span class="label">Markets:</span> —</div>
-
-      <div class="entry-info"><span class="label">Stores:</span> —</div>
-
-      <div class="prod" style="margin-top:8px">
-
-        <div class="prod-top">
-
-          <div class="prod-name">—</div>
-
-          <div class="prod-price">—</div>
-
-        </div>
-
-        <div class="prod-meta">—</div>
-
-      </div>
-
-    
-
-        <div class="entry-info"><span class="badge published-badge">Published</span></div>
-
-      </div>
-
-    </div>
-
-  
 
       <button class="add-btn small-add" onclick="openEditor(&#39;sea&#39;,&#39;2026-04-12&#39;)">+ Add</button>
 
@@ -9963,13 +6202,13 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
           <h3 style="margin:0">Recent Changes Summary</h3>
 
-          <button type="button" style="padding:4px 10px;font-size:12px;background:#faf6ef;border:1px solid #c7b493;border-radius:8px;cursor:pointer" onclick="(function(){try{localStorage.removeItem(&#39;btvLinesheetChangeLog&#39;);}catch(e){}renderDashboard();})()">Clear</button>
+          <button type="button" style="padding:4px 10px;font-size:12px;background:#faf6ef;border:1px solid #c7b493;border-radius:8px;cursor:pointer" onclick="(function(){try{localStorage.removeItem('btvLinesheetChangeLog');}catch(e){}renderDashboard();})()">Clear</button>
 
         </div>
 
         <div id="changeSummarySub" class="summary-sub"></div>
 
-        <ul id="changeSummary" style="list-style:none;padding:0;margin:0;max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></ul>
+        <ul id="changeSummary" style="list-style:none;padding:0;margin:0;max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;font-size:11px"></ul>
 
       </div>
 
@@ -10011,7 +6250,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
 
 
-  <div id="globalMarketingView" class="view-panel hidden"><div class="panel"><h2>Global Marketing Calendar</h2><div class="summary-sub">Published entries from the Main Calendar sync here automatically.</div></div><div class="marketing-table-wrap"><table class="marketing-table"><thead><tr><th class="marketing-lefthead">Global Marketing Calendar</th><th>Wk 1<div class="small">29-Dec to 04-Jan</div></th><th>Wk 2<div class="small">05-Jan to 11-Jan</div></th><th>Wk 3<div class="small">12-Jan to 18-Jan</div></th><th>Wk 4<div class="small">19-Jan to 25-Jan</div></th><th>Wk 5<div class="small">26-Jan to 01-Feb</div></th><th>Wk 6<div class="small">02-Feb to 08-Feb</div></th><th>Wk 7<div class="small">09-Feb to 15-Feb</div></th><th>Wk 8<div class="small">16-Feb to 22-Feb</div></th><th>Wk 9<div class="small">23-Feb to 01-Mar</div></th><th>Wk 10<div class="small">02-Mar to 08-Mar</div></th><th>Wk 11<div class="small">09-Mar to 15-Mar</div></th><th>Wk 12<div class="small">16-Mar to 22-Mar</div></th><th>Wk 13<div class="small">23-Mar to 29-Mar</div></th><th>Wk 14<div class="small">30-Mar to 05-Apr</div></th><th>Wk 15<div class="small">06-Apr to 12-Apr</div></th><th>Wk 16<div class="small">13-Apr to 19-Apr</div></th><th>Wk 17<div class="small">20-Apr to 26-Apr</div></th><th>Wk 18<div class="small">27-Apr to 03-May</div></th><th>Wk 19<div class="small">04-May to 10-May</div></th><th>Wk 20<div class="small">11-May to 17-May</div></th><th>Wk 21<div class="small">18-May to 24-May</div></th><th>Wk 22<div class="small">25-May to 31-May</div></th><th>Wk 23<div class="small">01-Jun to 07-Jun</div></th><th>Wk 24<div class="small">08-Jun to 14-Jun</div></th><th>Wk 25<div class="small">15-Jun to 21-Jun</div></th><th>Wk 26<div class="small">22-Jun to 28-Jun</div></th><th>Wk 27<div class="small">29-Jun to 05-Jul</div></th><th>Wk 28<div class="small">06-Jul to 12-Jul</div></th><th>Wk 29<div class="small">13-Jul to 19-Jul</div></th><th>Wk 30<div class="small">20-Jul to 26-Jul</div></th><th>Wk 31<div class="small">27-Jul to 02-Aug</div></th><th>Wk 32<div class="small">03-Aug to 09-Aug</div></th><th>Wk 33<div class="small">10-Aug to 16-Aug</div></th><th>Wk 34<div class="small">17-Aug to 23-Aug</div></th><th>Wk 35<div class="small">24-Aug to 30-Aug</div></th><th>Wk 36<div class="small">31-Aug to 06-Sep</div></th><th>Wk 37<div class="small">07-Sep to 13-Sep</div></th><th>Wk 38<div class="small">14-Sep to 20-Sep</div></th><th>Wk 39<div class="small">21-Sep to 27-Sep</div></th><th>Wk 40<div class="small">28-Sep to 04-Oct</div></th><th>Wk 41<div class="small">05-Oct to 11-Oct</div></th><th>Wk 42<div class="small">12-Oct to 18-Oct</div></th><th>Wk 43<div class="small">19-Oct to 25-Oct</div></th><th>Wk 44<div class="small">26-Oct to 01-Nov</div></th><th>Wk 45<div class="small">02-Nov to 08-Nov</div></th><th>Wk 46<div class="small">09-Nov to 15-Nov</div></th><th>Wk 47<div class="small">16-Nov to 22-Nov</div></th><th>Wk 48<div class="small">23-Nov to 29-Nov</div></th><th>Wk 49<div class="small">30-Nov to 06-Dec</div></th><th>Wk 50<div class="small">07-Dec to 13-Dec</div></th><th>Wk 51<div class="small">14-Dec to 20-Dec</div></th><th>Wk 52<div class="small">21-Dec to 27-Dec</div></th><th>Wk 53<div class="small">28-Dec to 03-Jan</div></th></tr></thead><tbody><tr><td class="marketing-lefthead">Calendar</td><td></td><td><div class="marketing-card"><div><strong>FESTIVE PACKET LAUNCH</strong></div><div class="small">09-Jan (Fri)</div><div class="small">Festive Packets</div><div class="small"><span class="badge published-badge">Published</span></div></div><div class="marketing-card"><div><strong>CNY Capsule</strong></div><div class="small">09-Jan (Fri)</div><div class="small">Crunch Carryall 0.5, Crunch Carryall 01, Poofy Bag, Micro Dumpling Bag, XS Dumpling Bag, BTV-TO-GO PHONE STRAP PART A</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td><div class="marketing-card"><div><strong>CNY Capsule</strong></div><div class="small">16-Jan (Fri)</div><div class="small">BTV-TO-GO PHONE STRAP PART B, BTV-TO-GO PHONE STRAP PART C, Crunch Carryall 0.5, Crunch Carryall 01, Poofy Bag, Micro Dumpling Bag, XS Dumpling Bag, BTV-TO-GO PHONE STRAP PART A</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td><div class="marketing-card"><div><strong>CNY RTW</strong></div><div class="small">23-Jan (Fri)</div><div class="small">Womens Racerback Dress, Womens Belt Detail Cami Top, Womens Front Wrap Trouser, Womens Boxy Sleeveless Top, Womens Pleated Barrel Jersey Trouser, Womens Contrast Detail Long Sleeve Baby Tee, Chambray Boxy Short Sleeve Shirt, Chambray Toggle Midi Skirt, Womens Contrast Detail Baby Tee, Relaxed Pocket T Shirt, Long Sleeve Oxford Shirt, Long Sleeve T Shirt, Jersey Cargo Trouser, Mens Relaxed Organic Cotton T Shirt, Womens Relaxed Organic Cotton T Shirt, Womens Shrunken Organic Cotton T Shirt, Pet T Shirt</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td><div class="marketing-card"><div><strong>CNY RTW</strong></div><div class="small">30-Jan (Fri)</div><div class="small">Kids Chambray Shirt, Kids Chambray Shorts, Kids Chambray Dress, Kids Waffle Knit Dress, Kids Waffle Knit Shirt, Kids Waffle Knit Shorts</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td><div class="marketing-card"><div><strong>Studio Series</strong></div><div class="small">06-Feb (Fri)</div><div class="small">Mini Doodle</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td><div class="marketing-card"><div><strong>Studio Series</strong></div><div class="small">13-Feb (Fri)</div><div class="small">Womens Front Wrap Trouser, Womens Knit Cardigan, Colourblock Scarf, Extra Small Studio Tote, Small Studio Tote</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td></td><td><div class="marketing-card"><div><strong>Studio Sneakers</strong></div><div class="small">27-Feb (Fri)</div><div class="small">Studio Sneaker, Colourblock Socks</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td><div class="marketing-card"><div><strong>Seasonal Colour Story - RTW</strong></div><div class="small">06-Mar (Fri)</div><div class="small">Mens Relaxed Organic Cotton T Shirt, Womens Racer Back Dress, Womens Belt Detail Cami Top, Womens Front Wrap Trouser, Contrast Detail Long Sleeve Baby Tee, Womens Relaxed Organic Cotton T Shirt, Womens Shrunken Organic Cotton T Shirt</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td></td><td></td><td></td><td><div class="marketing-card"><div><strong>Leather Canvas</strong></div><div class="small">01-Apr (Wed)</div><div class="small">Leather Canvas Carryall 0.5, Leather Canvas Carryall 1.5</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td></td><td><div class="marketing-card"><div><strong>BTV Eyewear</strong></div><div class="small">17-Apr (Fri)</div><div class="small">Tangent, Contour, Horizon, Eyewear Case</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td><div class="marketing-card"><div><strong>BTV Eyewear</strong></div><div class="small">24-Apr (Fri)</div><div class="small">Tangent, Contour, Horizon, Eyewear Case</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">NEA</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">SEA</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td><div class="marketing-card"><div><strong>SEA</strong></div><div class="small">SG, TH, ID, PH</div><div class="small"><span class="badge published-badge">Published</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Restock</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Digital Activations</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Events</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">GWP</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Ads</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Influencer Marketing</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table></div></div>
+  <div id="globalMarketingView" class="view-panel hidden"><div class="panel"><h2>Global Marketing Calendar</h2><div class="summary-sub">Published entries from the Main Calendar sync here automatically.</div></div><div class="marketing-table-wrap"><table class="marketing-table"><thead><tr><th class="marketing-lefthead">Global Marketing Calendar</th><th>Wk 1<div class="small">29-Dec to 04-Jan</div></th><th>Wk 2<div class="small">05-Jan to 11-Jan</div></th><th>Wk 3<div class="small">12-Jan to 18-Jan</div></th><th>Wk 4<div class="small">19-Jan to 25-Jan</div></th><th>Wk 5<div class="small">26-Jan to 01-Feb</div></th><th>Wk 6<div class="small">02-Feb to 08-Feb</div></th><th>Wk 7<div class="small">09-Feb to 15-Feb</div></th><th>Wk 8<div class="small">16-Feb to 22-Feb</div></th><th>Wk 9<div class="small">23-Feb to 01-Mar</div></th><th>Wk 10<div class="small">02-Mar to 08-Mar</div></th><th>Wk 11<div class="small">09-Mar to 15-Mar</div></th><th>Wk 12<div class="small">16-Mar to 22-Mar</div></th><th>Wk 13<div class="small">23-Mar to 29-Mar</div></th><th>Wk 14<div class="small">30-Mar to 05-Apr</div></th><th>Wk 15<div class="small">06-Apr to 12-Apr</div></th><th>Wk 16<div class="small">13-Apr to 19-Apr</div></th><th>Wk 17<div class="small">20-Apr to 26-Apr</div></th><th>Wk 18<div class="small">27-Apr to 03-May</div></th><th>Wk 19<div class="small">04-May to 10-May</div></th><th>Wk 20<div class="small">11-May to 17-May</div></th><th>Wk 21<div class="small">18-May to 24-May</div></th><th>Wk 22<div class="small">25-May to 31-May</div></th><th>Wk 23<div class="small">01-Jun to 07-Jun</div></th><th>Wk 24<div class="small">08-Jun to 14-Jun</div></th><th>Wk 25<div class="small">15-Jun to 21-Jun</div></th><th>Wk 26<div class="small">22-Jun to 28-Jun</div></th><th>Wk 27<div class="small">29-Jun to 05-Jul</div></th><th>Wk 28<div class="small">06-Jul to 12-Jul</div></th><th>Wk 29<div class="small">13-Jul to 19-Jul</div></th><th>Wk 30<div class="small">20-Jul to 26-Jul</div></th><th>Wk 31<div class="small">27-Jul to 02-Aug</div></th><th>Wk 32<div class="small">03-Aug to 09-Aug</div></th><th>Wk 33<div class="small">10-Aug to 16-Aug</div></th><th>Wk 34<div class="small">17-Aug to 23-Aug</div></th><th>Wk 35<div class="small">24-Aug to 30-Aug</div></th><th>Wk 36<div class="small">31-Aug to 06-Sep</div></th><th>Wk 37<div class="small">07-Sep to 13-Sep</div></th><th>Wk 38<div class="small">14-Sep to 20-Sep</div></th><th>Wk 39<div class="small">21-Sep to 27-Sep</div></th><th>Wk 40<div class="small">28-Sep to 04-Oct</div></th><th>Wk 41<div class="small">05-Oct to 11-Oct</div></th><th>Wk 42<div class="small">12-Oct to 18-Oct</div></th><th>Wk 43<div class="small">19-Oct to 25-Oct</div></th><th>Wk 44<div class="small">26-Oct to 01-Nov</div></th><th>Wk 45<div class="small">02-Nov to 08-Nov</div></th><th>Wk 46<div class="small">09-Nov to 15-Nov</div></th><th>Wk 47<div class="small">16-Nov to 22-Nov</div></th><th>Wk 48<div class="small">23-Nov to 29-Nov</div></th><th>Wk 49<div class="small">30-Nov to 06-Dec</div></th><th>Wk 50<div class="small">07-Dec to 13-Dec</div></th><th>Wk 51<div class="small">14-Dec to 20-Dec</div></th><th>Wk 52<div class="small">21-Dec to 27-Dec</div></th><th>Wk 53<div class="small">28-Dec to 03-Jan</div></th></tr></thead><tbody><tr><td class="marketing-lefthead">Calendar</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">NEA</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">SEA</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Restock</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Digital Activations</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Events</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">GWP</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Ads</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="marketing-lefthead">Influencer Marketing</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table></div></div>
 
   <div id="marketMarketingView" class="view-panel hidden"><div class="marketing-toolbar panel"><div><h2>Market Marketing Calendar</h2><div class="summary-sub">First row pulls from published Main Calendar NEA / SEA / Restock entries by market.</div></div><div class="toolbar-spacer"></div><div class="market-tabs"><button type="button" class="tab-btn active" onclick="window.switchMarketMarketing(&#39;SG&#39;)">SG</button><button type="button" class="tab-btn" onclick="window.switchMarketMarketing(&#39;TH&#39;)">TH</button><button type="button" class="tab-btn" onclick="window.switchMarketMarketing(&#39;ID&#39;)">ID</button><button type="button" class="tab-btn" onclick="window.switchMarketMarketing(&#39;PH&#39;)">PH</button><button type="button" class="tab-btn" onclick="window.switchMarketMarketing(&#39;JP&#39;)">JP</button><button type="button" class="tab-btn" onclick="window.switchMarketMarketing(&#39;CN&#39;)">CN</button></div></div><div class="panel"><div class="grid">
 
@@ -10085,6 +6324,12 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
 </div>
 
+  <div id="adminView" class="view-panel hidden">
+    <div class="admin-wrap" id="adminViewContent">
+      <p class="muted" style="margin-top:40px;text-align:center">Loading admin…</p>
+    </div>
+  </div>
+
 
 
 <script>
@@ -10098,6 +6343,14 @@ const HISTORY_KEY = "calendar-2026-working-v5-history";
 const VERSION_KEY = "calendar-2026-working-v5-versions";
 
 const CHANGELOG_KEY = "calendar-2026-working-v5-changelog";
+var _btvHasUnsavedChanges = false;
+window.addEventListener("beforeunload", function (e) {
+  if (_btvHasUnsavedChanges) {
+    e.preventDefault();
+    e.returnValue = "You have unsaved changes. Click Save Version before leaving so your changes are recorded and the team is notified.";
+    return e.returnValue;
+  }
+});
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -10142,6 +6395,60 @@ const CHANNELS = {
   TH:["CW","MB","Online"]
 
 };
+
+const ADMIN_CONFIG_KEY = 'btv-admin-config-v1';
+
+function getDefaultAdminConfig(){
+
+  const stores = [];
+
+  let sid = 1;
+
+  const defaults = {CN:["JAKC","Online","TKH"],ID:["Online"],JP:["Marui","Online"],PH:["Anthem","Online"],SG:["CAGT2","CAGT3","Funan","Ion","MBS","NAC","NB","Online"],TH:["CW","MB","Online"]};
+
+  Object.entries(defaults).forEach(([mkt,names]) => names.forEach(name => stores.push({id:'store_'+(sid++),name,market:mkt,openFrom:'2026-01-01',openTo:'2026-12-31'})));
+
+  return {categories:["ACC","BAGS","EYEWEAR","FOOTWEAR","KRTW","LF","MRTW","PETS","WRTW"], stores};
+
+}
+
+function loadAdminConfig(){
+
+  try{ const s=localStorage.getItem(ADMIN_CONFIG_KEY); if(s) return JSON.parse(s); }catch(e){}
+
+  const def=getDefaultAdminConfig();
+
+  try{ localStorage.setItem(ADMIN_CONFIG_KEY,JSON.stringify(def)); }catch(e){}
+
+  return def;
+
+}
+
+function saveAdminConfig(cfg){ try{ localStorage.setItem(ADMIN_CONFIG_KEY,JSON.stringify(cfg)); }catch(e){} }
+
+function getActiveStores(market, dateStr){
+
+  try{
+
+    const cfg=loadAdminConfig();
+
+    const matching=cfg.stores.filter(s=>{
+
+      if(s.market!==market) return false;
+
+      if(!dateStr) return true;
+
+      return (!s.openFrom||s.openFrom<=dateStr) && (!s.openTo||s.openTo>=dateStr);
+
+    });
+
+    if(matching.length) return matching.map(s=>s.name).sort();
+
+  }catch(e){}
+
+  return (CHANNELS[market]||[]).slice().sort();
+
+}
 
 const KEY_DOTS = {
 
@@ -10734,7 +7041,6 @@ function loadState(){
 function saveState(state){
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-
   _btvHasUnsavedChanges = true;
 
   // Auto-push structured data for Linesheet Manager (all entries, draft + published)
@@ -10780,6 +7086,137 @@ function saveState(state){
             });
 
           });
+
+        });
+
+      });
+
+    });
+
+    // NEA entries
+    Object.values(state.nea || {}).flat().forEach(entry => {
+
+      if(!entry.productTitle) return;
+
+      const colours = entry.colour ? entry.colour.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [""];
+
+      const rawSize = entry.size || (entry.colorSize && entry.colorSize.includes(' / ') ? entry.colorSize.split(' / ').slice(1).join(' / ') : '') || "";
+
+      const sizes = rawSize ? rawSize.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [""];
+
+      colours.forEach(col => {
+
+        sizes.forEach(siz => {
+
+          linesheetRows.push({
+
+            calEntryId: entry.id,
+
+            launchDate: entry.launchDate || entry.startDateISO || "",
+
+            launchTitle: entry.launchTitle || entry.optionType || "",
+
+            category: entry.optionType || "NEA",
+
+            productName: entry.productTitle || "",
+
+            colour: col,
+
+            size: siz,
+
+            sgdRrp: entry.price || "",
+
+            section: "nea",
+
+            workflowStatus: entry.workflowStatus || "draft"
+
+          });
+
+        });
+
+      });
+
+    });
+
+    // SEA entries
+    Object.values(state.sea || {}).flat().forEach(entry => {
+
+      if(!entry.productTitle) return;
+
+      const colours = entry.colour ? entry.colour.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [""];
+
+      const rawSize = entry.size || (entry.colorSize && entry.colorSize.includes(' / ') ? entry.colorSize.split(' / ').slice(1).join(' / ') : '') || "";
+
+      const sizes = rawSize ? rawSize.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [""];
+
+      colours.forEach(col => {
+
+        sizes.forEach(siz => {
+
+          linesheetRows.push({
+
+            calEntryId: entry.id,
+
+            launchDate: entry.launchDate || entry.startDateISO || "",
+
+            launchTitle: entry.launchTitle || entry.optionType || "",
+
+            category: entry.optionType || "SEA",
+
+            productName: entry.productTitle || "",
+
+            colour: col,
+
+            size: siz,
+
+            sgdRrp: entry.price || "",
+
+            section: "sea",
+
+            workflowStatus: entry.workflowStatus || "draft"
+
+          });
+
+        });
+
+      });
+
+    });
+
+    // Restock entries
+    Object.values(state.restocks || {}).flat().forEach(entry => {
+
+      const restockLines = (entry.lines && entry.lines.length) ? entry.lines : (entry.productTitle ? [{productTitle: entry.productTitle, colour: "", size: "", colors: entry.colors || ""}] : []);
+
+      restockLines.forEach(line => {
+
+        if(!line.productTitle) return;
+
+        const col = line.colour || (line.colors && !line.colors.includes(' / ') ? line.colors : (line.colors || "").split(' / ')[0]) || "";
+
+        const siz = line.size || (line.colors && line.colors.includes(' / ') ? line.colors.split(' / ').slice(1).join(' / ') : '') || "";
+
+        linesheetRows.push({
+
+          calEntryId: entry.id,
+
+          launchDate: entry.etaISO || "",
+
+          launchTitle: line.productTitle || "",
+
+          category: "Restock",
+
+          productName: line.productTitle || "",
+
+          colour: col,
+
+          size: siz,
+
+          sgdRrp: "",
+
+          section: "restocks",
+
+          workflowStatus: entry.workflowStatus || "draft"
 
         });
 
@@ -10835,7 +7272,7 @@ function renderGlobalProductRow(line, i){
 
                   <option value=""></option>
 
-                  ${GLOBAL_CATEGORIES.map(c => `<option value="${c}" ${line.category===c?"selected":""}>${c}</option>`).join("")}
+                  ${(loadAdminConfig().categories||GLOBAL_CATEGORIES).map(c => `<option value="${c}" ${line.category===c?"selected":""}>${c}</option>`).join("")}
 
                 </select>
 
@@ -11258,6 +7695,8 @@ function switchView(view){
 
   if(e("launchListView")) e("launchListView").classList.toggle("hidden", view!=="launch_list");
 
+  if(e("adminView")) e("adminView").classList.toggle("hidden", view!=="admin");
+
   e("calendarTabBtn").classList.toggle("active", view==="calendar");
 
   e("dashboardTabBtn").classList.toggle("active", view==="dashboard");
@@ -11268,6 +7707,8 @@ function switchView(view){
 
   if(e("launchListTabBtn")) e("launchListTabBtn").classList.toggle("active", view==="launch_list");
 
+  if(e("adminTabBtn")) e("adminTabBtn").classList.toggle("active", view==="admin");
+
   if(view==="dashboard") renderDashboard();
 
   if(view==="global_marketing") renderGlobalMarketingView();
@@ -11275,6 +7716,8 @@ function switchView(view){
   if(view==="market_marketing") renderMarketMarketingView();
 
   if(view==="launch_list") renderLaunchList();
+
+  if(view==="admin") renderAdminView();
 
 }
 
@@ -11583,31 +8026,27 @@ function renderGlobal(entry){
 
 function renderRegional(entry){
 
-  const body = entry.optionType === "GWP"
+  const dotCls = ((KEY_DOTS[entry.keyLevel] || KEY_DOTS.brand) || {}).cls || "brand";
 
-    ? `<div class="entry-info"><span class="label">Markets:</span> ${(entry.allMarkets || false) ? "All" : esc((entry.countries || []).join(", ") || "—")}</div><div class="prod" style="margin-top:8px"><div class="prod-top"><div class="prod-name">${esc(entry.productTitle || "—")}</div><div class="prod-price">${entry.price ? "$" + esc(entry.price) : "—"}</div></div><div class="prod-meta">${esc(entry.colorSize || "—")}</div></div><div class="entry-info"><span class="label">Mechanics:</span> ${esc(entry.mechanics || "—")}</div>`
+  const displayDate = entry.launchDate || entry.startDateISO || "";
 
-    : `
+  const dateStr = displayDate ? fmtDDMMM(displayDate) + " (" + dayNameFromISO(displayDate) + ")" : (entry.startDate || "");
 
-      <div class="entry-info"><span class="label">Markets:</span> ${(entry.allMarkets || false) ? "All" : esc((entry.countries || []).join(", ") || "—")}</div>
+  const displayTitle = entry.launchTitle || entry.optionType || "";
 
-      <div class="entry-info"><span class="label">Stores:</span> ${esc((entry.stores || []).join(", ") || "—")}</div>
+  const marketStr = (entry.allMarkets || false) ? "All" : esc((entry.countries || []).join(", ") || "—");
 
-      <div class="prod" style="margin-top:8px">
+  const colour = entry.colour || (entry.colorSize && !entry.colorSize.includes(' / ') ? entry.colorSize : (entry.colorSize || "").split(' / ')[0]) || "";
 
-        <div class="prod-top">
+  const size = entry.size || (entry.colorSize && entry.colorSize.includes(' / ') ? entry.colorSize.split(' / ').slice(1).join(' / ') : '') || "";
 
-          <div class="prod-name">${esc(entry.productTitle || "—")}</div>
+  const dateRange = entry.startDate ? (entry.startDate + (entry.endDate ? " → " + entry.endDate : "")) : "";
 
-          <div class="prod-price">${entry.price ? "$" + esc(entry.price) : "—"}</div>
+  const bottomInfo = entry.optionType === "GWP"
 
-        </div>
+    ? `<div class="entry-info"><span class="label">Mechanics:</span> ${esc(entry.mechanics || "—")}</div>`
 
-        <div class="prod-meta">${esc(entry.colorSize || "—")}</div>
-
-      </div>
-
-    `;
+    : `<div class="entry-info"><span class="label">Stores:</span> ${esc((entry.stores || []).join(", ") || "—")}</div>`;
 
   return `
 
@@ -11617,11 +8056,17 @@ function renderRegional(entry){
 
         <div class="title-row">
 
-          <div>
+          <div class="title-left">
 
-            <div class="entry-title">${esc(entry.optionType || "")}</div>
+            <div class="dot ${dotCls}"></div>
 
-            <div class="entry-date">${entry.startDate || ""}${entry.endDate ? " to " + entry.endDate : ""}</div>
+            <div>
+
+              <div class="entry-date">${dateStr}</div>
+
+              <div class="entry-title">${esc(displayTitle)}</div>
+
+            </div>
 
           </div>
 
@@ -11629,7 +8074,35 @@ function renderRegional(entry){
 
         </div>
 
-        ${body}
+        <div class="group">
+
+          <div class="cat">${esc(entry.optionType || "")}</div>
+
+          <div>
+
+            <div class="prod">
+
+              <div class="prod-top">
+
+                <div class="prod-name">${esc(entry.productTitle || "—")}</div>
+
+                <div class="prod-price">${entry.price ? "$" + esc(entry.price) : ""}</div>
+
+              </div>
+
+              <div class="prod-meta">${esc(colour)}</div><div class="prod-size prod-meta">${esc(size)}</div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="entry-info"><span class="label">Markets:</span> ${marketStr}</div>
+
+        ${dateRange ? `<div class="entry-info"><span class="label">Dates:</span> ${esc(dateRange)}</div>` : ""}
+
+        ${bottomInfo}
 
         <div class="entry-info">${statusBadge(getEntryStatus(entry))}</div>
 
@@ -11643,6 +8116,28 @@ function renderRegional(entry){
 
 function renderRestock(entry){
 
+  const dotCls = ((KEY_DOTS[entry.keyLevel] || KEY_DOTS.brand) || {}).cls || "brand";
+
+  const displayDate = entry.etaISO || "";
+
+  const dateStr = displayDate ? "ETA " + fmtDDMMM(displayDate) + " (" + dayNameFromISO(displayDate) + ")" : (entry.eta ? "ETA " + entry.eta : "");
+
+  const lines = (entry.lines && entry.lines.length) ? entry.lines : [{productTitle: entry.productTitle || "", colour: "", size: "", colors: entry.colors || ""}];
+
+  const displayTitle = lines.length > 1 ? lines.map(l => l.productTitle).filter(Boolean).join(", ") : (lines[0]?.productTitle || entry.productTitle || "");
+
+  const marketStr = (entry.allMarkets || false) ? "All Markets" : esc((entry.markets || []).join(", ") || "—");
+
+  const lineHTML = lines.filter(l => l.productTitle || l.colour || l.colors).map(line => {
+
+    const col = line.colour || (line.colors && !line.colors.includes(' / ') ? line.colors : (line.colors || "").split(' / ')[0]) || "";
+
+    const siz = line.size || (line.colors && line.colors.includes(' / ') ? line.colors.split(' / ').slice(1).join(' / ') : '') || "";
+
+    return `<div class="prod"><div class="prod-top"><div class="prod-name">${esc(line.productTitle || "—")}</div></div><div class="prod-meta">${esc(col)}</div><div class="prod-size prod-meta">${esc(siz)}</div></div>`;
+
+  }).join("");
+
   return `
 
     <div class="entry ${getEntryStatus(entry)==="published"?"published-entry":"draft-entry"}" draggable="true" data-entry-id="${entry.id}" data-section="${entry.section}" data-week="${entry.weekId}" data-keylevel="${entry.keyLevel||'brand'}">
@@ -11651,11 +8146,17 @@ function renderRestock(entry){
 
         <div class="title-row">
 
-          <div>
+          <div class="title-left">
 
-            <div class="entry-title">${esc(entry.productTitle || "")}</div>
+            <div class="dot ${dotCls}"></div>
 
-            <div class="entry-date">ETA ${entry.eta || ""}</div>
+            <div>
+
+              <div class="entry-date">${dateStr}</div>
+
+              <div class="entry-title">${esc(displayTitle)}</div>
+
+            </div>
 
           </div>
 
@@ -11663,13 +8164,17 @@ function renderRestock(entry){
 
         </div>
 
-        <div class="entry-info">${statusBadge(getEntryStatus(entry))}</div><div class="prod" style="margin-top:10px">
+        <div class="group">
 
-          <div class="prod-name">${esc(entry.colors || "—")}</div>
+          <div class="cat">Restock</div>
 
-          <div class="prod-meta">${(entry.allMarkets || false) ? "All Markets" : esc((entry.markets || []).join(", ") || "—")}</div>
+          <div>${lineHTML}</div>
 
         </div>
+
+        <div class="entry-info"><span class="label">Markets:</span> ${marketStr}</div>
+
+        <div class="entry-info">${statusBadge(getEntryStatus(entry))}</div>
 
       </div>
 
@@ -11765,7 +8270,7 @@ function renderCell(section, weekId){
 
         if(section === "global") return renderGlobal(entry);
 
-        if(section === "nea" || section === "sea") return renderRegional(entry);
+        if(section === "nea" || section === "sea") return (entry.lines ? renderGlobal(entry) : renderRegional(entry));
 
         if(section === "restocks") return renderRestock(entry);
 
@@ -11921,13 +8426,17 @@ function marketChecks(name, arr, selected, allId){
 
 
 
-function channelChecksWithAll(selectedCollapsed){
+function channelChecksWithAll(selectedCollapsed, filterDate){
 
   const selectedMap = {};
 
   (selectedCollapsed || []).forEach(item => selectedMap[item.market] = new Set(item.stores));
 
-  return Object.keys(CHANNELS).sort().map(mkt => `
+  return Object.keys(CHANNELS).sort().map(mkt => {
+
+    const stores = getActiveStores(mkt, filterDate||"");
+
+    return `
 
     <div class="market-box">
 
@@ -11935,25 +8444,25 @@ function channelChecksWithAll(selectedCollapsed){
 
         <h4>${mkt}</h4>
 
-        ${CHANNELS[mkt] && CHANNELS[mkt].length ? `<label class="check"><input type="checkbox" data-channel-all="${mkt}"> All</label>` : ``}
+        ${stores.length ? `<label class="check"><input type="checkbox" data-channel-all="${mkt}"> All</label>` : ``}
 
       </div>
 
       <div class="checks">
 
-        ${CHANNELS[mkt].length ? CHANNELS[mkt].slice().sort().map(store => {
+        ${stores.length ? stores.map(store => {
 
           const checked = selectedMap[mkt] && selectedMap[mkt].has(store);
 
           return `<label class="check"><input type="checkbox" data-market-channel="${mkt}" value="${store}" ${checked ? "checked" : ""}> ${store}</label>`;
 
-        }).join("") : `<span class="muted">No stores configured</span>`}
+        }).join("") : `<span class="muted">No active stores for this date</span>`}
 
       </div>
 
     </div>
 
-  `).join("");
+  `;}).join("");
 
 }
 
@@ -12101,7 +8610,7 @@ function delayRows(rows){
 
 }
 
-function buildGlobalForm(existing){
+function buildGlobalForm(existing, weekId){
 
   const lines = ensureMinProductLines(existing?.lines, Math.max(5, (existing?.lines || []).length || 5));
 
@@ -12141,7 +8650,7 @@ function buildGlobalForm(existing){
 
       <div class="field span4"><label>No. of SKUs<span class="team-badge merch">Merch</span></label><input id="skuCount" type="number" min="0" step="1" value="${esc(existing?.skuCount ?? "")}" placeholder="Auto-counted, editable"></div><div class="field span4"><label>Markets<span class="required-star">*</span><span class="team-badge merch">Merch</span></label>${marketChecks("noLaunchMarkets", GLOBAL_MARKETS, existing?.noLaunchMarkets || [], "noLaunchAll")}</div>
 
-      <div class="field span12"><label>Launch (Channel)<span class="team-badge merch">Merch</span></label>${channelChecksWithAll(existing?.noLaunchChannelsCollapsed || [])}</div>
+      <div class="field span12"><label>Launch (Channel)<span class="team-badge merch">Merch</span></label>${channelChecksWithAll(existing?.noLaunchChannelsCollapsed || [], existing?.launchDate || weekId || "")}</div>
 
 
 
@@ -12175,21 +8684,34 @@ function buildGlobalForm(existing){
 
 }
 
-function buildRegionalForm(section, existing){
+function buildRegionalForm(section, existing, weekId){
 
   const markets = section === "nea" ? ["CN","JP"] : ["SG","ID","TH","PH"];
 
-  const channelsByMarket = section === "nea"
+  const refDate = existing?.startDateISO || existing?.launchDate || weekId || "";
 
-    ? {"CN":["JAKC","Online","TKH"],"JP":["Marui","Online"]}
+  const channelsByMarket = {};
 
-    : {"SG":["CAGT2","CAGT3","Funan","Ion","MBS","NAC","NB","Online"],"ID":["Online"],"TH":["CW","MB","Online"],"PH":["Anthem","Online"]};
+  markets.forEach(mkt => { channelsByMarket[mkt] = getActiveStores(mkt, refDate); });
 
 
+
+  const existingColour = existing?.colour || (existing?.colorSize ? existing.colorSize.split(' / ')[0] : '') || '';
+  const existingSize   = existing?.size   || (existing?.colorSize && existing.colorSize.includes(' / ') ? existing.colorSize.split(' / ').slice(1).join(' / ') : '') || '';
 
   return `
 
     <div class="grid">
+
+      <div class="field span8"><label>Launch Title<span class="team-badge merch">Merch</span></label><input id="launchTitle" type="text" value="${esc(existing?.launchTitle || "")}"></div>
+
+      <div class="field span4"><label>Priority<span class="team-badge merch">Merch</span></label>
+        <select id="keyLevel">
+          <option value="brand" ${(!existing?.keyLevel || existing?.keyLevel==="brand")?"selected":""}>🟡 Brand</option>
+          <option value="revenue" ${existing?.keyLevel==="revenue"?"selected":""}>🔵 Revenue</option>
+          <option value="both" ${existing?.keyLevel==="both"?"selected":""}>🟢 Both</option>
+        </select>
+      </div>
 
       <div class="field span4"><label>Type</label>
 
@@ -12205,11 +8727,11 @@ function buildRegionalForm(section, existing){
 
       </div>
 
-      <div class="field span4"><label>Start Date</label><input id="startDate" type="date" value="${esc(existing?.startDateISO || "")}"></div>
+      <div class="field span4"><label>Start Date<span class="team-badge merch">Merch</span></label><input id="startDate" type="date" value="${esc(existing?.startDateISO || "")}"></div>
 
       <div class="field span4">
 
-        <label>End Date</label>
+        <label>End Date<span class="team-badge merch">Merch</span></label>
 
         <input id="endDate" type="date" value="${esc(existing?.endDateISO || "")}" class="${existing?.tillSoldOut ? 'disabled-date' : ''}" ${existing?.tillSoldOut ? 'disabled' : ''}>
 
@@ -12231,7 +8753,7 @@ function buildRegionalForm(section, existing){
 
             <div>
 
-              <label>Product Title</label>
+              <label>Product Title<span class="team-badge design">Design</span></label>
 
               <input id="productTitle" type="text" value="${esc(existing?.productTitle || "")}">
 
@@ -12249,9 +8771,17 @@ function buildRegionalForm(section, existing){
 
           <div class="field-gap">
 
-            <label>Colour / Size<span class="team-badge design">Design</span></label>
+            <label>Colour / Variant<span class="team-badge design">Design</span></label>
 
-            <textarea id="colorSize" rows="2">${esc(existing?.colorSize || "")}</textarea>
+            <textarea id="regionalColour" rows="2">${esc(existingColour)}</textarea>
+
+          </div>
+
+          <div class="field-gap">
+
+            <label>Size<span class="team-badge design">Design</span></label>
+
+            <textarea id="regionalSize" rows="2">${esc(existingSize)}</textarea>
 
           </div>
 
@@ -12263,9 +8793,9 @@ function buildRegionalForm(section, existing){
 
       <div id="regionWrap" class="span12">
 
-        <div class="field span12"><label>Markets</label>${marketChecks("countries", markets, existing?.allMarkets ? markets : (existing?.countries || []), section + "AllMarkets")}</div>
+        <div class="field span12"><label>Markets<span class="team-badge merch">Merch</span></label>${marketChecks("countries", markets, existing?.allMarkets ? markets : (existing?.countries || []), section + "AllMarkets")}</div>
 
-        <div class="field span12"><label>Channels</label>
+        <div class="field span12"><label>Channels<span class="team-badge merch">Merch</span></label>
 
           ${markets.map(mkt => `
 
@@ -12303,7 +8833,7 @@ function buildRegionalForm(section, existing){
 
       <div class="field span12 ${existing?.optionType==="GWP"?"":"hidden"}" id="gwpWrap">
 
-        <label>GWP Mechanics</label>
+        <label>GWP Mechanics<span class="team-badge merch">Merch</span></label>
 
         <textarea id="mechanics" rows="4">${esc(existing?.mechanics || "")}</textarea>
 
@@ -12317,6 +8847,9 @@ function buildRegionalForm(section, existing){
 
 function renderRestockLine(line, i){
 
+  const lineColour = line.colour || (line.colors && !line.colors.includes(' / ') ? line.colors : (line.colors || '').split(' / ')[0]) || '';
+  const lineSize   = line.size   || (line.colors && line.colors.includes(' / ') ? line.colors.split(' / ').slice(1).join(' / ') : '') || '';
+
   return `
 
     <div class="restock-line">
@@ -12325,7 +8858,7 @@ function renderRestockLine(line, i){
 
         <div>
 
-          <label>Product Title</label>
+          <label>Product Title<span class="team-badge merch">Merch</span></label>
 
           <input class="restock-product" data-i="${i}" type="text" placeholder="Product Title" value="${esc(line.productTitle || "")}">
 
@@ -12333,9 +8866,17 @@ function renderRestockLine(line, i){
 
         <div>
 
-          <label>Colour / Size</label>
+          <label>Colour / Variant<span class="team-badge design">Design</span></label>
 
-          <input class="restock-colors" data-i="${i}" type="text" placeholder="Colour / Size" value="${esc(line.colors || "")}">
+          <input class="restock-colour" data-i="${i}" type="text" placeholder="e.g. Black, Ivory" value="${esc(lineColour)}">
+
+        </div>
+
+        <div>
+
+          <label>Size<span class="team-badge design">Design</span></label>
+
+          <input class="restock-size" data-i="${i}" type="text" placeholder="e.g. XS–XL" value="${esc(lineSize)}">
 
         </div>
 
@@ -12367,9 +8908,17 @@ function buildRestockForm(existing){
 
       </div>
 
-      <div class="field span6"><label>ETA</label><input id="eta" type="date" value="${esc(existing?.etaISO || "")}"></div>
+      <div class="field span4"><label>ETA<span class="team-badge merch">Merch</span></label><input id="eta" type="date" value="${esc(existing?.etaISO || "")}"></div>
 
-      <div class="field span12"><label>Markets</label>${marketChecks("restockMarkets", GLOBAL_MARKETS, selected, "restockAll")}</div>
+      <div class="field span4"><label>Priority<span class="team-badge merch">Merch</span></label>
+        <select id="keyLevel">
+          <option value="brand" ${(!existing?.keyLevel || existing?.keyLevel==="brand")?"selected":""}>🟡 Brand</option>
+          <option value="revenue" ${existing?.keyLevel==="revenue"?"selected":""}>🔵 Revenue</option>
+          <option value="both" ${existing?.keyLevel==="both"?"selected":""}>🟢 Both</option>
+        </select>
+      </div>
+
+      <div class="field span12"><label>Markets<span class="team-badge merch">Merch</span></label>${marketChecks("restockMarkets", GLOBAL_MARKETS, selected, "restockAll")}</div>
 
     </div>
 
@@ -12931,16 +9480,6 @@ var __btvCalBatch=[];
 
 var __btvCalBatchTimer=null;
 
-var _btvHasUnsavedChanges = false;
-
-window.addEventListener('beforeunload', function (e) {
-  if (_btvHasUnsavedChanges) {
-    e.preventDefault();
-    e.returnValue = 'You have unsaved changes. Click "Save Version" before leaving so your changes are recorded and the team is notified.';
-    return e.returnValue;
-  }
-});
-
 function __btvFlushCalBatch(){
   // Teams summary sent only on Save Version click — not on individual changes
   __btvCalBatch=[];
@@ -13043,9 +9582,9 @@ window.openEditor = function(section, weekId, entryId){
 
   let inner = "";
 
-  if(section === "global") inner = buildGlobalForm(existing) + actions(existing);
+  if(section === "global") inner = buildGlobalForm(existing, weekId) + actions(existing);
 
-  else if(section === "nea" || section === "sea") inner = buildRegionalForm(section, existing) + actions(existing);
+  else if(section === "nea" || section === "sea") inner = buildRegionalForm(section, existing, weekId) + actions(existing);
 
   else if(section === "restocks") inner = buildRestockForm(existing) + actions(existing);
 
@@ -13435,6 +9974,10 @@ window.openEditor = function(section, weekId, entryId){
 
     } else if(section === "nea" || section === "sea"){
 
+      payload.launchTitle = e("launchTitle").value.trim();
+
+      payload.keyLevel = e("keyLevel").value;
+
       payload.optionType = e("optionType").value;
 
       payload.startDateISO = e("startDate").value;
@@ -13457,7 +10000,11 @@ window.openEditor = function(section, weekId, entryId){
 
       payload.productTitle = e("productTitle").value.trim();
 
-      payload.colorSize = e("colorSize").value.trim();
+      payload.colour = e("regionalColour").value.trim();
+
+      payload.size = e("regionalSize").value.trim();
+
+      payload.colorSize = payload.colour + (payload.size ? ' / ' + payload.size : '');
 
       payload.price = e("price").value.trim();
 
@@ -13475,13 +10022,19 @@ window.openEditor = function(section, weekId, entryId){
 
     } else if(section === "restocks"){
 
+      payload.keyLevel = e("keyLevel").value;
+
       payload.lines = Array.from(document.querySelectorAll(".restock-product")).map(inp => {
 
         const i = inp.getAttribute("data-i");
 
-        return {productTitle: inp.value.trim(), colors: (document.querySelector(`.restock-colors[data-i="${i}"]`)?.value || "").trim()};
+        const colour = (document.querySelector(`.restock-colour[data-i="${i}"]`)?.value || "").trim();
 
-      }).filter(x => x.productTitle || x.colors);
+        const size   = (document.querySelector(`.restock-size[data-i="${i}"]`)?.value || "").trim();
+
+        return {productTitle: inp.value.trim(), colour, size, colors: colour + (size ? ' / ' + size : '')};
+
+      }).filter(x => x.productTitle || x.colour || x.size);
 
       payload.productTitle = payload.lines[0]?.productTitle || "";
 
@@ -13726,13 +10279,17 @@ window.openEditor = function(section, weekId, entryId){
 
 
 
-function channelChecksWithAll(selectedCollapsed){
+function channelChecksWithAll(selectedCollapsed, filterDate){
 
   const selectedMap = {};
 
   (selectedCollapsed || []).forEach(item => selectedMap[item.market] = new Set(item.stores));
 
-  return Object.keys(CHANNELS).sort().map(mkt => `
+  return Object.keys(CHANNELS).sort().map(mkt => {
+
+    const stores = getActiveStores(mkt, filterDate||"");
+
+    return `
 
     <div class="market-box">
 
@@ -13740,25 +10297,25 @@ function channelChecksWithAll(selectedCollapsed){
 
         <h4>${mkt}</h4>
 
-        ${CHANNELS[mkt] && CHANNELS[mkt].length ? `<label class="check"><input type="checkbox" data-channel-all="${mkt}"> All</label>` : ``}
+        ${stores.length ? `<label class="check"><input type="checkbox" data-channel-all="${mkt}"> All</label>` : ``}
 
       </div>
 
       <div class="checks">
 
-        ${CHANNELS[mkt].length ? CHANNELS[mkt].slice().sort().map(store => {
+        ${stores.length ? stores.map(store => {
 
           const checked = selectedMap[mkt] && selectedMap[mkt].has(store);
 
           return `<label class="check"><input type="checkbox" data-market-channel="${mkt}" value="${store}" ${checked ? "checked" : ""}> ${store}</label>`;
 
-        }).join("") : `<span class="muted">No stores configured</span>`}
+        }).join("") : `<span class="muted">No active stores for this date</span>`}
 
       </div>
 
     </div>
 
-  `).join("");
+  `;}).join("");
 
 }
 
@@ -14307,6 +10864,8 @@ e("marketMarketingTabBtn").addEventListener("click", ()=>switchView("market_mark
 
 e("launchListTabBtn").addEventListener("click", ()=>switchView("launch_list"));
 
+e("adminTabBtn").addEventListener("click", ()=>switchView("admin"));
+
 document.addEventListener("click", (ev) => {
 
   if(ev.target && ev.target.id === "archiveToggleBtn"){
@@ -14361,12 +10920,11 @@ e("saveVersionBtn").addEventListener("click", () => {
 
   renderDashboard();
 
-  _btvHasUnsavedChanges = false;
-
   if (BTV_MGMT_WEBHOOK_URL && flat.length > 0) {
     btvSendTeamsSummary(BTV_MGMT_WEBHOOK_URL, teamsText);
   }
 
+  _btvHasUnsavedChanges = false;
   alert(`Saved ${label}`);
 
 });
@@ -14502,6 +11060,10 @@ window.btvConfigCalWebhook = btvConfigCalWebhook;
 window.btvConfigWebhook = btvConfigWebhook;
 window._btvCalRender = render;
 window._btvCalSaveState = saveState;
+window.loadAdminConfig = loadAdminConfig;
+window.saveAdminConfig = saveAdminConfig;
+window.getActiveStores = getActiveStores;
+window.btvEsc = esc;
 window._btvCalImportEntries = function(entries) {
   var added = 0, skipped = 0;
   entries.forEach(function(entry) {
@@ -14509,7 +11071,9 @@ window._btvCalImportEntries = function(entries) {
     if (!state[sec]) state[sec] = {};
     if (!state[sec][wk]) state[sec][wk] = [];
     var dup = state[sec][wk].some(function(ex) {
-      return ex.launchTitle === entry.launchTitle && ex.launchDate === entry.launchDate;
+      if (ex.launchTitle !== entry.launchTitle || ex.launchDate !== entry.launchDate) return false;
+      if (entry.optionType !== undefined) return ex.productTitle === entry.productTitle && ex.optionType === entry.optionType;
+      return true;
     });
     if (dup) { skipped++; return; }
     state[sec][wk].push(entry);
@@ -14612,12 +11176,12 @@ function btvNormalizeDate(str) {
   // DD-MM-YYYY
   var m3 = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
   if (m3) return m3[3] + '-' + m3[2].padStart(2,'0') + '-' + m3[1].padStart(2,'0');
-  // "Weekday, D Month YYYY" e.g. "Friday, 23 January 2026"
-  var MONTHS_LONG = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
-  var m4 = str.match(/^(?:\w+,\s+)?(\d{1,2})\s+(\w+)\s+(\d{4})$/);
-  if (m4) {
-    var mo = MONTHS_LONG[m4[2].toLowerCase()] || MONTHS[m4[2].toLowerCase().slice(0,3)];
-    if (mo) return m4[3] + '-' + String(mo).padStart(2,'0') + '-' + m4[1].padStart(2,'0');
+  // Weekday, DD Month YYYY or DD Month YYYY (e.g. Friday, 23 January 2026)
+  var FULL_MONTHS = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  var stripped = str.replace(/^[A-Za-z]+,\s*/, '');
+  var m4 = stripped.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if (m4 && FULL_MONTHS[m4[2].toLowerCase()]) {
+    return m4[3] + '-' + String(FULL_MONTHS[m4[2].toLowerCase()]).padStart(2,'0') + '-' + m4[1].padStart(2,'0');
   }
   // Already YYYY-MM-DD or unknown — pass through
   return str;
@@ -14632,6 +11196,238 @@ function btvMondayOf(dateStr) {
   mon.setDate(d.getDate() + diff);
   return mon.toISOString().slice(0, 10);
 }
+
+// ─── Admin Panel ─────────────────────────────────────────────────────────────
+
+function renderAdminView(){
+
+  const _esc = window.btvEsc || function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  const _load = window.loadAdminConfig || function(){ return {categories:[],stores:[]}; };
+  const _save = window.saveAdminConfig || function(){};
+
+  const cfg = _load();
+  const cats = (cfg.categories || []).slice().sort();
+  const stores = (cfg.stores || []).slice().sort((a,b)=>(a.market+a.name).localeCompare(b.market+b.name));
+
+  const el = document.getElementById("adminViewContent");
+  if(!el) return;
+
+  const catChips = cats.map(c =>
+    `<span class="admin-chip">${_esc(c)}<button onclick="btvAdminRemoveCat('${_esc(c)}')" title="Remove">&#xd7;</button></span>`
+  ).join("") + `<span class="admin-add-chip" onclick="btvAdminAddCat()">+ Add</span>`;
+
+  const inpStyle = 'padding:4px 6px;border:1.5px solid #d6d2cc;border-radius:6px;font-size:12px;background:#fff;font-family:inherit;width:100%';
+
+  const storeRows = stores.map(s => `
+    <tr>
+      <td style="width:90px">
+        <select class="admin-si" data-sid="${_esc(s.id)}" data-field="market" style="${inpStyle}">
+          ${["CN","ID","JP","PH","SG","TH"].map(m=>`<option value="${m}" ${s.market===m?"selected":""}>${m}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <input type="text" class="admin-si" data-sid="${_esc(s.id)}" data-field="name" value="${_esc(s.name)}" style="${inpStyle}">
+      </td>
+      <td style="width:150px">
+        <input type="date" class="admin-si" data-sid="${_esc(s.id)}" data-field="openFrom" value="${_esc(s.openFrom||'')}" style="${inpStyle}">
+      </td>
+      <td style="width:150px">
+        <input type="date" class="admin-si" data-sid="${_esc(s.id)}" data-field="openTo" value="${_esc(s.openTo||'')}" style="${inpStyle}">
+      </td>
+      <td style="width:80px;text-align:center">
+        <button class="admin-remove-btn" onclick="btvAdminRemoveStore('${_esc(s.id)}')">Remove</button>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="5" style="text-align:center;padding:20px;color:#aaa">No stores yet — click + Add below</td></tr>`;
+
+  el.innerHTML = `
+    <h2 style="font-size:22px;font-weight:700;margin:0 0 22px;color:#111">Admin Settings</h2>
+
+    <div class="admin-section">
+      <h3>Product Categories</h3>
+      <p class="admin-hint">Appear in the Global section's Category dropdown. Changes take effect when the editor is reopened.</p>
+      <div style="margin-top:4px">${catChips}</div>
+    </div>
+
+    <div class="admin-section">
+      <h3>Stores &amp; Channels</h3>
+      <p class="admin-hint">Edit market, name, and date range directly in the table — changes save automatically. Only stores active on an entry's date appear in the editor.</p>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Market</th>
+            <th>Store / Channel</th>
+            <th>Open From</th>
+            <th>Open To</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="adminStoreBody">${storeRows}</tbody>
+      </table>
+      <div id="adminStoreFormWrap" style="margin-top:10px"></div>
+      <button class="admin-add-row-btn" onclick="btvAdminShowAddStore()" style="margin-top:12px">+ Add Store / Channel</button>
+    </div>
+  `;
+
+  // Inline auto-save: any change to market/name/dates saves immediately
+  el.querySelectorAll('.admin-si').forEach(function(inp){
+    inp.addEventListener('change', function(){
+      var sid = this.getAttribute('data-sid');
+      var field = this.getAttribute('data-field');
+      var val = this.value;
+      var cfg2 = _load();
+      var store = cfg2.stores.find(function(s){ return s.id === sid; });
+      if(store){ store[field] = val; _save(cfg2); }
+    });
+  });
+
+}
+
+function _btvAdminCfg(){ return (window.loadAdminConfig||function(){ return {categories:[],stores:[]}; })(); }
+function _btvAdminSave(cfg){ if(window.saveAdminConfig) window.saveAdminConfig(cfg); }
+function _btvAdminEsc(v){ return (window.btvEsc||function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); })(v); }
+
+function btvAdminAddCat(){
+
+  const v = prompt("Enter new category code (e.g. SWIM):");
+
+  if(!v) return;
+
+  const trimmed = v.trim().toUpperCase();
+
+  if(!trimmed) return;
+
+  const cfg = _btvAdminCfg();
+
+  if(cfg.categories.includes(trimmed)){ alert('Category "'+trimmed+'" already exists.'); return; }
+
+  cfg.categories.push(trimmed);
+
+  cfg.categories.sort();
+
+  _btvAdminSave(cfg);
+
+  renderAdminView();
+
+}
+
+function btvAdminRemoveCat(cat){
+
+  if(!confirm('Remove category "'+cat+'"? This does not affect existing entries.')) return;
+
+  const cfg = _btvAdminCfg();
+
+  cfg.categories = cfg.categories.filter(c => c !== cat);
+
+  _btvAdminSave(cfg);
+
+  renderAdminView();
+
+}
+
+function _btvAdminStoreFormHTML(store){
+
+  const isNew = !store;
+
+  const _esc = _btvAdminEsc;
+
+  return `<div class="admin-form-grid" id="adminStoreForm">
+    <div><label class="admin-fl">Market</label>
+      <select id="asMkt">
+        <option value=""></option>
+        ${["CN","ID","JP","PH","SG","TH"].map(m=>`<option value="${m}" ${store?.market===m?"selected":""}>${m}</option>`).join("")}
+      </select>
+    </div>
+    <div><label class="admin-fl">Store / Channel Name</label>
+      <input id="asName" type="text" placeholder="e.g. ION Orchard" value="${_esc(store?.name||'')}">
+    </div>
+    <div><label class="admin-fl">Open From</label>
+      <input id="asFrom" type="date" value="${_esc(store?.openFrom||'2026-01-01')}">
+    </div>
+    <div><label class="admin-fl">Open To</label>
+      <input id="asTo" type="date" value="${_esc(store?.openTo||'2026-12-31')}">
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="admin-primary-btn" onclick="btvAdminSaveStore('${_esc(store?.id||'')}')">
+        ${isNew?'Add':'Save'}
+      </button>
+      <button class="admin-ghost-btn" onclick="document.getElementById('adminStoreFormWrap').innerHTML=''">Cancel</button>
+    </div>
+  </div>`;
+
+}
+
+function btvAdminShowAddStore(){
+
+  const wrap = document.getElementById("adminStoreFormWrap");
+
+  if(wrap) wrap.innerHTML = _btvAdminStoreFormHTML(null);
+
+}
+
+function btvAdminEditStore(storeId){
+
+  const cfg = _btvAdminCfg();
+
+  const store = cfg.stores.find(s => s.id === storeId);
+
+  if(!store) return;
+
+  const wrap = document.getElementById("adminStoreFormWrap");
+
+  if(wrap) wrap.innerHTML = _btvAdminStoreFormHTML(store);
+
+}
+
+function btvAdminSaveStore(existingId){
+
+  const mkt = (document.getElementById("asMkt")?.value||"").trim();
+
+  const name = (document.getElementById("asName")?.value||"").trim();
+
+  const from = document.getElementById("asFrom")?.value||"";
+
+  const to = document.getElementById("asTo")?.value||"";
+
+  if(!mkt||!name){ alert("Market and Store Name are required."); return; }
+
+  const cfg = _btvAdminCfg();
+
+  if(existingId){
+
+    const idx = cfg.stores.findIndex(s => s.id === existingId);
+
+    if(idx>=0) cfg.stores[idx] = {id:existingId, market:mkt, name, openFrom:from, openTo:to};
+
+  } else {
+
+    cfg.stores.push({id:'store_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), market:mkt, name, openFrom:from, openTo:to});
+
+  }
+
+  _btvAdminSave(cfg);
+
+  renderAdminView();
+
+}
+
+function btvAdminRemoveStore(storeId){
+
+  const cfg = _btvAdminCfg();
+
+  const store = cfg.stores.find(s => s.id === storeId);
+
+  if(!confirm('Remove "'+store?.name+'" ('+store?.market+')?\nThis does not affect existing entries.')) return;
+
+  cfg.stores = cfg.stores.filter(s => s.id !== storeId);
+
+  _btvAdminSave(cfg);
+
+  renderAdminView();
+
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function btvImportCSV(input) {
   var file = input.files[0];
@@ -14676,51 +11472,78 @@ function btvImportCSV(input) {
         // Map status
         status = (status === 'published') ? 'published' : 'draft';
 
-        var entryKey = title + '||' + date + '||' + section;
-        if (!entryMap[entryKey]) {
-          var wkId = btvMondayOf(date);
-          if (!wkId) {
-            console.warn('BTV Import: invalid date —', date, '(', title, ')');
-            return;
+        var wkId = btvMondayOf(date);
+        if (!wkId) { console.warn('BTV Import: invalid date —', date, '(', title, ')'); return; }
+
+        if (section === 'nea' || section === 'sea') {
+          // Regional entry: each product row → one regional card (optionType/productTitle/colorSize)
+          var optMap = {'GWP':'GWP','CE':'Country Exclusive','COUNTRY EXCLUSIVE':'Country Exclusive','LAUNCH':'Launch'};
+          var optionType = optMap[cat] || cat || 'Launch';
+          var markets = section === 'nea' ? ["CN","JP"] : ["SG","TH","ID","PH"];
+          var colorSize = colours + (sizes ? ' / ' + sizes : '');
+          var entryKey = title + '||' + date + '||' + section + '||' + prod + '||' + cat;
+          if (!entryMap[entryKey]) {
+            entryMap[entryKey] = {
+              id: String(Date.now()) + Math.random().toString(36).slice(2,7),
+              section: section,
+              weekId: wkId,
+              workflowStatus: status,
+              launchTitle: title,
+              launchDate: date,
+              keyLevel: keyLvl,
+              optionType: optionType,
+              allMarkets: true,
+              countries: markets,
+              stores: [],
+              productTitle: prod,
+              colour: colours,
+              size: sizes,
+              colorSize: colorSize,
+              price: price,
+              mechanics: ''
+            };
+            entryOrder.push(entryKey);
           }
-          var entry = {
-            id: String(Date.now()) + Math.random().toString(36).slice(2,7),
-            section: section,
-            weekId: wkId,
-            workflowStatus: status,
-            launchTitle: title,
-            launchDate: date,
-            keyLevel: keyLvl,
-            lines: []
-          };
-          entryMap[entryKey] = entry;
-          entryOrder.push(entryKey);
-        }
+        } else {
+          // Global / restocks: group rows by title+date+section into one entry with lines[]
+          var entryKey = title + '||' + date + '||' + section;
+          if (!entryMap[entryKey]) {
+            entryMap[entryKey] = {
+              id: String(Date.now()) + Math.random().toString(36).slice(2,7),
+              section: section,
+              weekId: wkId,
+              workflowStatus: status,
+              launchTitle: title,
+              launchDate: date,
+              keyLevel: keyLvl,
+              lines: []
+            };
+            entryOrder.push(entryKey);
+          }
 
-        var entry = entryMap[entryKey];
+          var entry = entryMap[entryKey];
 
-        // Find existing line for same product + category, else create
-        var line = null;
-        for (var j = 0; j < entry.lines.length; j++) {
-          if (entry.lines[j].productName === prod && entry.lines[j].category === cat) { line = entry.lines[j]; break; }
+          // Find existing line for same product + category, else create
+          var line = null;
+          for (var j = 0; j < entry.lines.length; j++) {
+            if (entry.lines[j].productName === prod && entry.lines[j].category === cat) { line = entry.lines[j]; break; }
+          }
+          if (!line) {
+            line = { category: cat, productName: prod, colour: '', size: sizes, price: price };
+            entry.lines.push(line);
+          }
+          if (colours) {
+            if (line.colour) {
+              var existing = line.colour.split(',').map(function(s){ return s.trim().toLowerCase(); });
+              colours.split(',').forEach(function(c) {
+                var cv = c.trim();
+                if (cv && !existing.includes(cv.toLowerCase())) { line.colour += ', ' + cv; existing.push(cv.toLowerCase()); }
+              });
+            } else { line.colour = colours; }
+          }
+          if (!line.price && price) line.price = price;
+          if (!line.size && sizes) line.size = sizes;
         }
-        if (!line) {
-          line = { category: cat, productName: prod, colour: '', size: sizes, price: price };
-          entry.lines.push(line);
-        }
-        // Merge colour into line
-        if (colours) {
-          if (line.colour) {
-            var existing = line.colour.split(',').map(function(s){ return s.trim().toLowerCase(); });
-            colours.split(',').forEach(function(c) {
-              var cv = c.trim();
-              if (cv && !existing.includes(cv.toLowerCase())) { line.colour += ', ' + cv; existing.push(cv.toLowerCase()); }
-            });
-          } else { line.colour = colours; }
-        }
-        // Keep price / sizes from first occurrence
-        if (!line.price && price) line.price = price;
-        if (!line.size && sizes) line.size = sizes;
       });
 
       if (!entryOrder.length) { alert('No valid rows found in the CSV. Check the format.'); input.value=''; return; }
@@ -14767,16 +11590,15 @@ function btvImportCSV(input) {
 
 
 
-<div id="btvWebhookModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center"><div style="background:#fffdfa;border:1px solid #c7b493;border-radius:16px;padding:24px;max-width:520px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,.2)"><h3 style="margin:0 0 8px 0;font-size:16px" id="btvWhkTitle">Configure Webhook</h3><p style="margin:0 0 14px;font-size:13px;color:#75695c">Paste your Microsoft Teams incoming webhook URL below. Leave blank to disable.</p><input type="url" id="btvWhkInput" placeholder="https://prod.webhooks.office.com/..." style="width:100%;padding:10px 12px;border:1px solid #c7b493;border-radius:10px;font:inherit;font-size:13px;margin-bottom:14px"><div style="display:flex;gap:10px;justify-content:flex-end"><button type="button" onclick="document.getElementById(&#39;btvWebhookModal&#39;).style.display=&#39;none&#39;" style="padding:9px 18px;border:1px solid #c7b493;border-radius:10px;background:#faf6ef;cursor:pointer;font:inherit">Cancel</button><button type="button" onclick="__btvSaveWebhook()" style="padding:9px 18px;border:1px solid #8B6F4E;border-radius:10px;background:#8B6F4E;color:#fff;cursor:pointer;font:inherit;font-weight:700">Save</button></div></div></div>
-
-
-
-
-
-
-
-
-
-
+<div id="btvWebhookModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center"><div style="background:#fffdfa;border:1px solid #c7b493;border-radius:16px;padding:24px;max-width:520px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,.2)"><h3 style="margin:0 0 8px 0;font-size:16px" id="btvWhkTitle">Configure Webhook</h3><p style="margin:0 0 14px;font-size:13px;color:#75695c">Paste your Microsoft Teams incoming webhook URL below. Leave blank to disable.</p><input type="url" id="btvWhkInput" placeholder="https://prod.webhooks.office.com/..." style="width:100%;padding:10px 12px;border:1px solid #c7b493;border-radius:10px;font:inherit;font-size:13px;margin-bottom:14px"><div style="display:flex;gap:10px;justify-content:flex-end"><button type="button" onclick="document.getElementById('btvWebhookModal').style.display='none'" style="padding:9px 18px;border:1px solid #c7b493;border-radius:10px;background:#faf6ef;cursor:pointer;font:inherit">Cancel</button><button type="button" onclick="__btvSaveWebhook()" style="padding:9px 18px;border:1px solid #8B6F4E;border-radius:10px;background:#8B6F4E;color:#fff;cursor:pointer;font:inherit;font-weight:700">Save</button></div></div></div>
 
 </body></html>
+
+
+
+
+
+
+
+
+
