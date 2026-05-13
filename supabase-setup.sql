@@ -1,11 +1,10 @@
 -- ============================================================
 -- BTV Planner – Supabase Setup SQL
+-- Safe to re-run at any time — all statements are idempotent.
 -- Run this entire script in Supabase → SQL Editor → New query
 -- ============================================================
 
 -- ── 1. app_state ─────────────────────────────────────────────
--- Key-value store for all shared app data (calendar state,
--- linesheet launch list, change logs, etc.)
 
 create table if not exists public.app_state (
   key        text        primary key,
@@ -16,7 +15,10 @@ create table if not exists public.app_state (
 
 alter table public.app_state enable row level security;
 
--- Authenticated users can read and write all app state.
+drop policy if exists "Authenticated users can read app_state"   on public.app_state;
+drop policy if exists "Authenticated users can write app_state"  on public.app_state;
+drop policy if exists "Authenticated users can update app_state" on public.app_state;
+
 create policy "Authenticated users can read app_state"
   on public.app_state for select
   to authenticated
@@ -34,7 +36,6 @@ create policy "Authenticated users can update app_state"
 
 
 -- ── 2. user_profiles ─────────────────────────────────────────
--- Controls which users can access the Calendar and/or Linesheet.
 
 create table if not exists public.user_profiles (
   id             uuid        primary key references auth.users(id) on delete cascade,
@@ -46,26 +47,26 @@ create table if not exists public.user_profiles (
 
 alter table public.user_profiles enable row level security;
 
--- Users can read their own profile.
+drop policy if exists "Users can read own profile"               on public.user_profiles;
+drop policy if exists "Authenticated users can read all profiles" on public.user_profiles;
+drop policy if exists "Authenticated users can update profiles"  on public.user_profiles;
+drop policy if exists "Allow insert on user_profiles"            on public.user_profiles;
+
 create policy "Users can read own profile"
   on public.user_profiles for select
   to authenticated
   using (auth.uid() = id);
 
--- Any authenticated user can read ALL profiles (needed for the admin panel).
 create policy "Authenticated users can read all profiles"
   on public.user_profiles for select
   to authenticated
   using (true);
 
--- Any authenticated user can update profiles (admin panel uses this).
--- For a tighter setup, restrict this to users where is_admin = true.
 create policy "Authenticated users can update profiles"
   on public.user_profiles for update
   to authenticated
   using (true);
 
--- Allow the trigger function to insert new rows.
 create policy "Allow insert on user_profiles"
   on public.user_profiles for insert
   to authenticated
@@ -95,13 +96,14 @@ create trigger on_auth_user_created
   execute function public.handle_new_user();
 
 
--- ── 4. Grant yourself admin access ───────────────────────────
--- Run this AFTER you have signed in at least once so your row exists.
--- Replace the email with yours.
+-- ── 4. Grant access to your account ──────────────────────────
 
-update public.user_profiles
-set can_access_cal = true,
-    can_access_ls  = true
-where email = 'charmaine.lau.btv@gmail.com';
+insert into public.user_profiles (id, email, can_access_cal, can_access_ls)
+select id, email, true, true
+from auth.users
+where email = 'charmaine.lau.btv@gmail.com'
+on conflict (id) do update
+  set can_access_cal = true,
+      can_access_ls  = true;
 
 -- ── Done! ─────────────────────────────────────────────────────
