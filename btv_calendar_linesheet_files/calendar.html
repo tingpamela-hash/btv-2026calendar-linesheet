@@ -6215,14 +6215,6 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
         <ul id="changeSummary" style="list-style:none;padding:0;margin:0;max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;font-size:11px"></ul>
 
-        <div style="margin-top:16px;border-top:1px solid #e8e2d8;padding-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <h4 style="margin:0;font-size:13px;font-weight:700;color:#555">Recent Saves by Account</h4>
-            <button type="button" onclick="btvKpiLoadActivity()" style="padding:3px 10px;font-size:12px;background:#faf6ef;border:1px solid #c7b493;border-radius:8px;cursor:pointer">Refresh</button>
-          </div>
-          <div id="btvKpiActivity" style="font-size:12px;color:#555">Loading…</div>
-        </div>
-
       </div>
 
       <div class="dash-card"><h3>Launches by Category</h3><div id="kpiLaunchesByCategory"></div></div>
@@ -7729,7 +7721,7 @@ function switchView(view){
   if(view==="launch_list") renderLaunchList();
 
   if(view==="admin") renderAdminView();
-  if(view==="dashboard"){ renderDashboard(); btvKpiLoadActivity(); }
+  if(view==="dashboard") renderDashboard();
 
 }
 
@@ -9579,7 +9571,7 @@ function __btvPushCalChange(field, from, to, entryRef){
 
     var log = JSON.parse(localStorage.getItem(BTV_LOG)||"[]");
 
-    log.unshift({ts:Date.now(), productName:productName, variant:"", field:field, from:String(from||"—"), to:String(to||"—"), action:"calendar"});
+    log.unshift({ts:Date.now(), productName:productName, variant:"", field:field, from:String(from||"—"), to:String(to||"—"), action:"calendar", email:(window.btvGetCurrentEmail?window.btvGetCurrentEmail():null)});
 
     if(log.length>300) log.length=300;
 
@@ -9695,7 +9687,7 @@ window.openEditor = function(section, weekId, entryId){
 
         var _dLog = JSON.parse(localStorage.getItem(_BTV_LOG)||"[]");
 
-        _dLog.unshift({ts:Date.now(), productName:_pName, variant:"", field:"Removed from Calendar", from:_pName, to:"—", action:"delete"});
+        _dLog.unshift({ts:Date.now(), productName:_pName, variant:"", field:"Removed from Calendar", from:_pName, to:"—", action:"delete", email:(window.btvGetCurrentEmail?window.btvGetCurrentEmail():null)});
 
         if(_dLog.length>300) _dLog.length=300;
 
@@ -10718,7 +10710,7 @@ function renderDashboard(){
 
           +'<span style="font-weight:700;font-size:13px">'+nm+'</span>'
 
-          +'<span style="font-size:10px;color:'+sc+';font-weight:700">'+esc(src)+'&nbsp;&nbsp;'+esc(t)+'</span>'
+          +'<span style="font-size:10px;color:'+sc+';font-weight:700">'+esc(src)+'&nbsp;&nbsp;'+esc(t)+(entry.email?'&nbsp;&nbsp;<span style="color:#999;font-weight:400">'+esc(entry.email)+'</span>':'')+'</span>'
 
           +'</div>'
 
@@ -11343,39 +11335,6 @@ function renderAdminView(){
 
 }
 
-async function btvKpiLoadActivity() {
-  const el = document.getElementById('btvKpiActivity');
-  if (!el) return;
-  if (!window.btvFetchChangeLog) {
-    el.innerHTML = '<em style="color:#aaa">Sync not available — please reload and log in.</em>';
-    return;
-  }
-  el.textContent = 'Loading…';
-  const rows = await window.btvFetchChangeLog(100);
-  if (!rows.length) {
-    el.innerHTML = '<em style="color:#aaa">No activity recorded yet.</em>';
-    return;
-  }
-
-  function fmtTime(iso) {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString('en-SG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12:false });
-    } catch(e) { return iso; }
-  }
-
-  const html = rows.map(function(r) {
-    const name = r.email ? r.email.split('@')[0] : '—';
-    const domain = r.email ? '@' + r.email.split('@')[1] : '';
-    return `<div style="display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid #f0ede8">
-      <span style="flex:0 0 130px;color:#999;font-size:11px">${fmtTime(r.changed_at)}</span>
-      <span style="flex:0 0 140px;font-weight:600;color:#333">${name}<span style="font-weight:400;color:#aaa;font-size:11px">${domain}</span></span>
-      <span style="flex:1;color:#666">${r.label || r.key}</span>
-    </div>`;
-  }).join('');
-
-  el.innerHTML = html;
-}
 
 function _btvAdminCfg(){ return (window.loadAdminConfig||function(){ return {categories:[],stores:[]}; })(); }
 function _btvAdminSave(cfg){ if(window.saveAdminConfig) window.saveAdminConfig(cfg); }

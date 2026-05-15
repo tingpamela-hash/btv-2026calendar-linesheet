@@ -318,6 +318,9 @@
     window.location.reload();
   };
 
+  // Expose current user email so calendar.html can stamp change log entries
+  window.btvGetCurrentEmail = function () { return _userEmail; };
+
   // Expose fetch helper so the admin panel can query change_log
   window.btvFetchChangeLog = async function (limit) {
     const { data, error } = await sb
