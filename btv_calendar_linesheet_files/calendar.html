@@ -2499,7 +2499,7 @@
   .markdown-bubble-span .small,.markdown-bubble-span button{display:none!important}
 
   .markdown-title{font-weight:700}
-  .markdown-bubble-span.md-start{border-radius:999px 0 0 999px;margin-right:0;padding-right:2px}
+  .markdown-bubble-span.md-start{border-radius:999px 0 0 999px;margin-right:0;padding-right:2px;border-right:none}
   .markdown-bubble-span.md-mid{border-radius:0;margin:2px 0;padding:0 4px;border-left:none;border-right:none}
   .markdown-bubble-span.md-end{border-radius:0 999px 999px 0;margin-left:0;padding-left:4px;border-left:none}
   .drag-insert-before{border-top:3px solid #4a8eb5!important}
@@ -2519,7 +2519,7 @@
 
 
 
-  .markdown-track{position:relative;min-height:20px}
+  .markdown-track{position:relative;height:28px;min-height:28px}
 
   .markdown-bubble-span{height:24px;line-height:22px}
 
@@ -6215,6 +6215,14 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
         <ul id="changeSummary" style="list-style:none;padding:0;margin:0;max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;font-size:11px"></ul>
 
+        <div style="margin-top:16px;border-top:1px solid #e8e2d8;padding-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h4 style="margin:0;font-size:13px;font-weight:700;color:#555">Recent Saves by Account</h4>
+            <button type="button" onclick="btvKpiLoadActivity()" style="padding:3px 10px;font-size:12px;background:#faf6ef;border:1px solid #c7b493;border-radius:8px;cursor:pointer">Refresh</button>
+          </div>
+          <div id="btvKpiActivity" style="font-size:12px;color:#555">Loading…</div>
+        </div>
+
       </div>
 
       <div class="dash-card"><h3>Launches by Category</h3><div id="kpiLaunchesByCategory"></div></div>
@@ -7714,15 +7722,14 @@ function switchView(view){
 
   if(e("adminTabBtn")) e("adminTabBtn").classList.toggle("active", view==="admin");
 
-  if(view==="dashboard") renderDashboard();
-
   if(view==="global_marketing") renderGlobalMarketingView();
 
   if(view==="market_marketing") renderMarketMarketingView();
 
   if(view==="launch_list") renderLaunchList();
 
-  if(view==="admin"){ renderAdminView(); btvAdminLoadActivity(); }
+  if(view==="admin") renderAdminView();
+  if(view==="dashboard"){ renderDashboard(); btvKpiLoadActivity(); }
 
 }
 
@@ -11320,12 +11327,6 @@ function renderAdminView(){
       <button class="admin-add-row-btn" onclick="btvAdminShowAddStore()" style="margin-top:12px">+ Add Store / Channel</button>
     </div>
 
-    <div class="admin-section">
-      <h3>Recent Activity</h3>
-      <p class="admin-hint">Who last saved each section. Updates in real-time when you refresh this panel.</p>
-      <div id="btvActivityLog" style="margin-top:8px;font-size:12px;color:#555">Loading…</div>
-      <button class="admin-add-row-btn" onclick="btvAdminLoadActivity()" style="margin-top:10px">Refresh</button>
-    </div>
   `;
 
   // Inline auto-save: any change to market/name/dates saves immediately
@@ -11342,8 +11343,8 @@ function renderAdminView(){
 
 }
 
-async function btvAdminLoadActivity() {
-  const el = document.getElementById('btvActivityLog');
+async function btvKpiLoadActivity() {
+  const el = document.getElementById('btvKpiActivity');
   if (!el) return;
   if (!window.btvFetchChangeLog) {
     el.innerHTML = '<em style="color:#aaa">Sync not available — please reload and log in.</em>';
