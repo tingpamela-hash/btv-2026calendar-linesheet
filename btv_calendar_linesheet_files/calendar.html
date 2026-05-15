@@ -8352,34 +8352,40 @@ function render(){
   // Build a weekId → [markdowns] map so multiple markdowns per week are supported
   const _mdByWeek = {};
   weeks.forEach(w => { _mdByWeek[w.id] = []; });
-  Object.values(markdownState || {}).forEach(function(md){
-    weekIdsInRange(md.startDate, md.endDate).forEach(function(wid){
-      if(_mdByWeek[wid] !== undefined) _mdByWeek[wid].push(md);
-    });
-  });
-
-  html += `<tr><th class="rowhead bg-global" style="white-space:nowrap">Markdown&nbsp;<button onclick="window.openMarkdownEditor()" title="Add markdown" style="background:none;border:1px solid #bbb;color:#666;font-size:10px;padding:1px 6px;border-radius:4px;cursor:pointer;font-weight:700;line-height:1.4;vertical-align:middle">+</button></th>`;
-
-  weeks.forEach(function(w, i){
-    const mds = _mdByWeek[w.id] || [];
-    if(!mds.length){
-      html += `<td class="wk ${i%2?"alt":""}"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td>`;
-    } else {
-      html += `<td class="wk ${i%2?"alt":""} markdown-span-cell">`;
-      mds.forEach(function(md){
-        const cov = weekIdsInRange(md.startDate, md.endDate).filter(id => visibleWeekIds.includes(id));
-        const isStart = cov[0] === w.id;
-        const isEnd   = cov[cov.length-1] === w.id;
-        const spanCls = (isStart && isEnd) ? '' : (isStart ? 'md-start' : (isEnd ? 'md-end' : 'md-mid'));
-        html += `<div class="markdown-track"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
-          (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${fmtDDMMM(md.startDate)}→${fmtDDMMM(md.endDate)}</div>` : '') +
-          `</div></div>`;
+  try {
+    Object.values(markdownState || {}).forEach(function(md){
+      if(!md || !md.startDate || !md.endDate) return;
+      weekIdsInRange(md.startDate, md.endDate).forEach(function(wid){
+        if(_mdByWeek[wid] !== undefined) _mdByWeek[wid].push(md);
       });
-      html += `</td>`;
-    }
-  });
+    });
+  } catch(e) { console.warn('[BTV] markdown map error', e); }
 
-  html += `</tr>`;
+  try {
+    html += `<tr><th class="rowhead bg-global" style="white-space:nowrap">Markdown&nbsp;<button onclick="window.openMarkdownEditor()" title="Add markdown" style="background:none;border:1px solid #bbb;color:#666;font-size:10px;padding:1px 6px;border-radius:4px;cursor:pointer;font-weight:700;line-height:1.4;vertical-align:middle">+</button></th>`;
+
+    weeks.forEach(function(w, i){
+      const mds = _mdByWeek[w.id] || [];
+      if(!mds.length){
+        html += `<td class="wk ${i%2?"alt":""}"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td>`;
+      } else {
+        html += `<td class="wk ${i%2?"alt":""} markdown-span-cell">`;
+        mds.forEach(function(md){
+          if(!md || !md.startDate || !md.endDate) return;
+          const cov = weekIdsInRange(md.startDate, md.endDate).filter(id => visibleWeekIds.includes(id));
+          const isStart = cov[0] === w.id;
+          const isEnd   = cov[cov.length-1] === w.id;
+          const spanCls = (isStart && isEnd) ? '' : (isStart ? 'md-start' : (isEnd ? 'md-end' : 'md-mid'));
+          html += `<div class="markdown-track"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
+            (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${fmtDDMMM(md.startDate)}→${fmtDDMMM(md.endDate)}</div>` : '') +
+            `</div></div>`;
+        });
+        html += `</td>`;
+      }
+    });
+
+    html += `</tr>`;
+  } catch(e) { console.warn('[BTV] markdown row render error', e); }
 
   SECTIONS.forEach(sec => {
 
