@@ -41,7 +41,39 @@
   const SYNC_FLAG = 'btv-synced-v2-' + window.location.pathname;
 
   let _userId = null;
+  let _userEmail = null;
   const _origSetItem = localStorage.setItem.bind(localStorage);
+
+  // Human-readable labels for loggable keys (null = skip logging)
+  const KEY_LABELS = {
+    'calendar-2026-working-v5':           'Calendar',
+    'calendar-2026-working-v5-history':   null,
+    'calendar-2026-working-v5-versions':  null,
+    'calendar-2026-working-v5-changelog': null,
+    'calendar-2026-marketing-workflow-v1':'Marketing Workflow',
+    'calendar-2026-markdown-bars-v1':     'Markdown',
+    'linesheetCalendarData':              'Linesheet Data',
+    'launchListMaster':                   'Launch List',
+    'btvLinesheetChangeLog':              null,
+    'btv_product_data':                   'Product Data',
+    'btv-admin-config-v1':               'Admin Settings',
+  };
+
+  // Debounce per key: don't log the same key more than once per 3 s
+  const _logDebounce = {};
+
+  function logChange(key) {
+    const label = KEY_LABELS[key];
+    if (!label) return;
+    const now = Date.now();
+    if (_logDebounce[key] && now - _logDebounce[key] < 3000) return;
+    _logDebounce[key] = now;
+    sb.from('change_log')
+      .insert({ key, label, changed_by: _userId, email: _userEmail, changed_at: new Date().toISOString() })
+      .then(function (res) {
+        if (res.error) console.warn('[BTV Sync] Change log error:', res.error);
+      });
+  }
 
   // ── Loading overlay ────────────────────────────────────────────────────────
 
@@ -114,6 +146,7 @@
             console.error('[BTV Sync] Save error for key:', key, res.error);
           }
         });
+      logChange(key);
     };
   }
 
@@ -185,9 +218,11 @@
       return;
     }
     _userId = session.user.id;
+    _userEmail = session.user.email || null;
 
     sb.auth.onAuthStateChange(function (_, s) {
       _userId = s ? s.user.id : null;
+      _userEmail = s ? (s.user.email || null) : null;
     });
 
     if (sessionStorage.getItem(SYNC_FLAG)) {
@@ -281,6 +316,17 @@
     alert('Sync complete — pushed ' + n + ' data keys to Supabase. Reloading…');
     sessionStorage.removeItem(SYNC_FLAG);
     window.location.reload();
+  };
+
+  // Expose fetch helper so the admin panel can query change_log
+  window.btvFetchChangeLog = async function (limit) {
+    const { data, error } = await sb
+      .from('change_log')
+      .select('label, email, changed_at')
+      .order('changed_at', { ascending: false })
+      .limit(limit || 100);
+    if (error) { console.warn('[BTV Sync] Fetch change_log error:', error); return []; }
+    return data || [];
   };
 
   init();

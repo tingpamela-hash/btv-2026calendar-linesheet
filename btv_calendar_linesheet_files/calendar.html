@@ -7722,7 +7722,7 @@ function switchView(view){
 
   if(view==="launch_list") renderLaunchList();
 
-  if(view==="admin") renderAdminView();
+  if(view==="admin"){ renderAdminView(); btvAdminLoadActivity(); }
 
 }
 
@@ -11319,6 +11319,13 @@ function renderAdminView(){
       <div id="adminStoreFormWrap" style="margin-top:10px"></div>
       <button class="admin-add-row-btn" onclick="btvAdminShowAddStore()" style="margin-top:12px">+ Add Store / Channel</button>
     </div>
+
+    <div class="admin-section">
+      <h3>Recent Activity</h3>
+      <p class="admin-hint">Who last saved each section. Updates in real-time when you refresh this panel.</p>
+      <div id="btvActivityLog" style="margin-top:8px;font-size:12px;color:#555">Loading…</div>
+      <button class="admin-add-row-btn" onclick="btvAdminLoadActivity()" style="margin-top:10px">Refresh</button>
+    </div>
   `;
 
   // Inline auto-save: any change to market/name/dates saves immediately
@@ -11333,6 +11340,40 @@ function renderAdminView(){
     });
   });
 
+}
+
+async function btvAdminLoadActivity() {
+  const el = document.getElementById('btvActivityLog');
+  if (!el) return;
+  if (!window.btvFetchChangeLog) {
+    el.innerHTML = '<em style="color:#aaa">Sync not available — please reload and log in.</em>';
+    return;
+  }
+  el.textContent = 'Loading…';
+  const rows = await window.btvFetchChangeLog(100);
+  if (!rows.length) {
+    el.innerHTML = '<em style="color:#aaa">No activity recorded yet.</em>';
+    return;
+  }
+
+  function fmtTime(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('en-SG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12:false });
+    } catch(e) { return iso; }
+  }
+
+  const html = rows.map(function(r) {
+    const name = r.email ? r.email.split('@')[0] : '—';
+    const domain = r.email ? '@' + r.email.split('@')[1] : '';
+    return `<div style="display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid #f0ede8">
+      <span style="flex:0 0 130px;color:#999;font-size:11px">${fmtTime(r.changed_at)}</span>
+      <span style="flex:0 0 140px;font-weight:600;color:#333">${name}<span style="font-weight:400;color:#aaa;font-size:11px">${domain}</span></span>
+      <span style="flex:1;color:#666">${r.label || r.key}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = html;
 }
 
 function _btvAdminCfg(){ return (window.loadAdminConfig||function(){ return {categories:[],stores:[]}; })(); }

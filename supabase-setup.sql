@@ -106,4 +106,33 @@ on conflict (id) do update
   set can_access_cal = true,
       can_access_ls  = true;
 
+-- ── 5. change_log ────────────────────────────────────────────
+
+create table if not exists public.change_log (
+  id          bigint      generated always as identity primary key,
+  key         text        not null,
+  label       text,
+  changed_by  uuid        references auth.users(id) on delete set null,
+  email       text,
+  changed_at  timestamptz not null default now()
+);
+
+create index if not exists change_log_changed_at_idx on public.change_log (changed_at desc);
+
+alter table public.change_log enable row level security;
+
+drop policy if exists "Authenticated users can read change_log"   on public.change_log;
+drop policy if exists "Authenticated users can insert change_log" on public.change_log;
+
+create policy "Authenticated users can read change_log"
+  on public.change_log for select
+  to authenticated
+  using (true);
+
+create policy "Authenticated users can insert change_log"
+  on public.change_log for insert
+  to authenticated
+  with check (true);
+
+
 -- ── Done! ─────────────────────────────────────────────────────
