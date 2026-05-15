@@ -227,13 +227,19 @@
 
     const remoteRows = data || [];
 
+    let _anyChanged = false;
+
     if (remoteRows.length > 0) {
       // ── Case A: Supabase has data → load it into localStorage ─────────
       updateOverlayMsg('Loading shared data…');
       remoteRows.forEach(function (row) {
         const val =
           typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
-        _origSetItem(row.key, val);
+        // Only write — and flag reload needed — if something actually changed
+        if (localStorage.getItem(row.key) !== val) {
+          _origSetItem(row.key, val);
+          _anyChanged = true;
+        }
       });
     } else {
       // ── Case B: Supabase is empty → push any local data up (migration) ─
@@ -252,7 +258,17 @@
     }
 
     sessionStorage.setItem(SYNC_FLAG, '1');
-    window.location.reload();
+
+    if (_anyChanged) {
+      // Data changed — reload so the app re-initialises with fresh state
+      window.location.reload();
+    } else {
+      // Nothing changed — skip reload, go straight to live-sync mode
+      hideOverlay();
+      setupWriteInterceptor();
+      setupRealtime();
+      setupPolling();
+    }
   }
 
   // Expose force-push utility for emergency use from browser console.

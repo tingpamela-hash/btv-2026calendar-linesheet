@@ -2499,6 +2499,11 @@
   .markdown-bubble-span .small,.markdown-bubble-span button{display:none!important}
 
   .markdown-title{font-weight:700}
+  .markdown-bubble-span.md-start{border-radius:999px 0 0 999px;margin-right:0;padding-right:2px}
+  .markdown-bubble-span.md-mid{border-radius:0;margin:2px 0;padding:0 4px;border-left:none;border-right:none}
+  .markdown-bubble-span.md-end{border-radius:0 999px 999px 0;margin-left:0;padding-left:4px;border-left:none}
+  .drag-insert-before{border-top:3px solid #4a8eb5!important}
+  .drag-insert-after{border-bottom:3px solid #4a8eb5!important}
 
   .entry.draft-entry{border-style:dashed!important}
 
@@ -6358,9 +6363,9 @@ const SECTIONS = [
 
   {key:"global", label:"Global", cls:"bg-global"},
 
-  {key:"nea", label:"NEA", cls:"bg-nea"},
-
   {key:"sea", label:"SEA", cls:"bg-sea"},
+
+  {key:"nea", label:"NEA", cls:"bg-nea"},
 
   {key:"restocks", label:"Restocks", cls:"bg-restocks"},
 
@@ -6470,7 +6475,7 @@ const KEY_DOTS = {
 
 const STATUS_OPTIONS = [{value:"draft", label:"Draft"},{value:"published", label:"Published"}];
 
-const GM_ROWS = ["Calendar","NEA","SEA","Restock","Digital Activations","Events","GWP","Ads","Influencer Marketing"];
+const GM_ROWS = ["Calendar","SEA","NEA","Restock","Digital Activations","Events","GWP","Ads","Influencer Marketing"];
 
 const MARKET_CAL_ROWS = ["Launch","Key Moments","Brand Events","Retail Events","Digital Activations","Social Activations","Support","Seeding","GWP"];
 
@@ -8344,41 +8349,35 @@ function render(){
 
   const visibleWeekIds = weeks.map(w => w.id);
 
-  const markdowns = Object.values(markdownState || {}).map(md => {
-
-    const ids = weekIdsInRange(md.startDate, md.endDate).filter(id => visibleWeekIds.includes(id));
-
-    if(!ids.length) return null;
-
-    return { ...md, startIdx: weeks.findIndex(w => w.id === ids[0]), endIdx: weeks.findIndex(w => w.id === ids[ids.length-1]) };
-
-  }).filter(Boolean).sort((a,b) => a.startIdx - b.startIdx);
+  // Build a weekId → [markdowns] map so multiple markdowns per week are supported
+  const _mdByWeek = {};
+  weeks.forEach(w => { _mdByWeek[w.id] = []; });
+  Object.values(markdownState || {}).forEach(function(md){
+    weekIdsInRange(md.startDate, md.endDate).forEach(function(wid){
+      if(_mdByWeek[wid] !== undefined) _mdByWeek[wid].push(md);
+    });
+  });
 
   html += `<tr><th class="rowhead bg-global" style="white-space:nowrap">Markdown&nbsp;<button onclick="window.openMarkdownEditor()" title="Add markdown" style="background:none;border:1px solid #bbb;color:#666;font-size:10px;padding:1px 6px;border-radius:4px;cursor:pointer;font-weight:700;line-height:1.4;vertical-align:middle">+</button></th>`;
 
-  let cursor = 0;
-
-  while(cursor < weeks.length){
-
-    const md = markdowns.find(x => x.startIdx === cursor);
-
-    if(md){
-
-      const span = Math.max(1, md.endIdx - md.startIdx + 1);
-
-      html += `<td colspan="${span}" class="markdown-span-cell" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer"><div class="markdown-track"><div class="markdown-bubble-span"><div class="markdown-title">${esc(md.title || "")}</div><div>${fmtDDMMM(md.startDate)} to ${fmtDDMMM(md.endDate)}</div><div>${md.days || 0} days • ${md.weekendDays || 0} weekend days</div><div>${esc((md.markets || []).join(", "))}</div><div class="small"><button class="small-btn" onclick="openMarkdownEditor('${md.id}')">Edit</button></div></div></div></td>`;
-
-      cursor += span;
-
+  weeks.forEach(function(w, i){
+    const mds = _mdByWeek[w.id] || [];
+    if(!mds.length){
+      html += `<td class="wk ${i%2?"alt":""}"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td>`;
     } else {
-
-      html += `<td class="wk ${cursor%2?"alt":""}"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td>`;
-
-      cursor += 1;
-
+      html += `<td class="wk ${i%2?"alt":""} markdown-span-cell">`;
+      mds.forEach(function(md){
+        const cov = weekIdsInRange(md.startDate, md.endDate).filter(id => visibleWeekIds.includes(id));
+        const isStart = cov[0] === w.id;
+        const isEnd   = cov[cov.length-1] === w.id;
+        const spanCls = (isStart && isEnd) ? '' : (isStart ? 'md-start' : (isEnd ? 'md-end' : 'md-mid'));
+        html += `<div class="markdown-track"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
+          (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${fmtDDMMM(md.startDate)}→${fmtDDMMM(md.endDate)}</div>` : '') +
+          `</div></div>`;
+      });
+      html += `</td>`;
     }
-
-  }
+  });
 
   html += `</tr>`;
 
@@ -9256,6 +9255,41 @@ function bindDragDrop(){
 
       }
 
+    });
+
+    // Within-cell reorder: dragover on a sibling entry shows insertion indicator
+    entry.addEventListener('dragover', function(ev){
+      if(!dragData || dragData.entryId === entry.dataset.entryId) return;
+      if(dragData.section !== entry.dataset.section || dragData.weekId !== entry.dataset.week) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const before = ev.clientY < entry.getBoundingClientRect().top + entry.getBoundingClientRect().height / 2;
+      entry.classList.toggle('drag-insert-before', before);
+      entry.classList.toggle('drag-insert-after', !before);
+      entry._btvInsertBefore = before;
+    });
+
+    entry.addEventListener('dragleave', function(){
+      entry.classList.remove('drag-insert-before','drag-insert-after');
+    });
+
+    entry.addEventListener('drop', function(ev){
+      entry.classList.remove('drag-insert-before','drag-insert-after');
+      if(!dragData || dragData.entryId === entry.dataset.entryId) return;
+      if(dragData.section !== entry.dataset.section || dragData.weekId !== entry.dataset.week) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const list = (((state||{})[dragData.section]||{})[dragData.weekId])||[];
+      const srcIdx = list.findIndex(x => x.id === dragData.entryId);
+      const tgtIdx = list.findIndex(x => x.id === entry.dataset.entryId);
+      if(srcIdx < 0 || tgtIdx < 0) return;
+      pushHistory(state);
+      const moved = list.splice(srcIdx, 1)[0];
+      const rawAt = entry._btvInsertBefore ? tgtIdx : tgtIdx + 1;
+      list.splice(rawAt > srcIdx ? rawAt - 1 : rawAt, 0, moved);
+      saveState(state);
+      dragData = null;
+      render();
     });
 
   });
