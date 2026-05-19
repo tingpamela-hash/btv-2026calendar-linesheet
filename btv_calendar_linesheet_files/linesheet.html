@@ -7762,6 +7762,11 @@ function escapeHtml(value=''){ return String(value).replace(/&/g,'&amp;').replac
 
 function switchView(view){
             try{ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }catch(e){}
+            // If leaving the product form, clear editing presence
+            if (view !== 'form' && typeof window.btvClearEditing === 'function') {
+              window.btvClearEditing();
+              var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
+            }
             document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
 
 
@@ -11909,6 +11914,8 @@ var BTV_TRACKED_FIELDS = {name:'Product Name',category:'Category',description:'D
 
 
 function saveProductGroup(){
+  if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+  var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
 
 
 
@@ -13105,6 +13112,8 @@ function saveProductGroup(){
 
 
 function clearForm(){
+  if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+  var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
 
 
 
@@ -13740,6 +13749,28 @@ function editGroup(groupId){
 
   switchView('form');
 
+  // Presence: announce editing and warn if someone else is already in this product group
+  if (typeof window.btvSetEditing === 'function') {
+    var _btvLsKey = 'ls::group::' + groupId;
+    window.btvSetEditing(_btvLsKey);
+    setTimeout(function() {
+      var _btvEditors = typeof window.btvGetEditingUsers === 'function' ? window.btvGetEditingUsers(_btvLsKey) : [];
+      var _btvWarn = document.getElementById('btv-ls-presence-warn');
+      if (_btvEditors.length) {
+        if (!_btvWarn) {
+          _btvWarn = document.createElement('div');
+          _btvWarn.id = 'btv-ls-presence-warn';
+          _btvWarn.style.cssText = 'background:#fff3cd;border:1px solid #e6a817;border-radius:8px;padding:10px 14px;margin:0 0 12px;font-size:12px;color:#7a5a00;line-height:1.4;position:sticky;top:0;z-index:100';
+          var _fv = document.getElementById('view-form');
+          if (_fv) _fv.insertBefore(_btvWarn, _fv.firstChild);
+        }
+        _btvWarn.textContent = _btvEditors.join(', ') + ' is also working on this item/product, please check with the person before overwriting.';
+        _btvWarn.style.display = 'block';
+      } else if (_btvWarn) {
+        _btvWarn.style.display = 'none';
+      }
+    }, 500);
+  }
 
 
 

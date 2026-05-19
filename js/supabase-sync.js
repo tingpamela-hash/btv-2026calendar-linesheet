@@ -166,6 +166,51 @@
       });
   }
 
+  // ── Editing presence — who is editing which item right now ───────────────
+
+  let _presenceChannel = null;
+
+  function setupPresence() {
+    _presenceChannel = _sb.channel('btv-editing-v1', {
+      config: { presence: { key: _userId } },
+    });
+    _presenceChannel
+      .on('presence', { event: 'sync' }, function () {})
+      .subscribe(function (status) {
+        if (status === 'SUBSCRIBED') {
+          console.log('[BTV Sync] Presence channel connected.');
+        }
+      });
+  }
+
+  // Call when user opens an edit modal/form for itemId.
+  window.btvSetEditing = async function (itemId) {
+    if (!_presenceChannel) return;
+    await _presenceChannel.track({ item: itemId, email: _userEmail, ts: Date.now() });
+  };
+
+  // Call when user closes the modal/form.
+  window.btvClearEditing = async function () {
+    if (!_presenceChannel) return;
+    await _presenceChannel.untrack();
+  };
+
+  // Returns array of email strings of OTHER users currently editing itemId.
+  window.btvGetEditingUsers = function (itemId) {
+    if (!_presenceChannel) return [];
+    const state = _presenceChannel.presenceState();
+    const others = [];
+    Object.keys(state).forEach(function (key) {
+      if (key === _userId) return;
+      (state[key] || []).forEach(function (p) {
+        if (p.item === itemId && p.email && others.indexOf(p.email) === -1) {
+          others.push(p.email);
+        }
+      });
+    });
+    return others;
+  };
+
   // ── Polling fallback every 15 s (catches missed Realtime events) ───────────
 
   function setupPolling() {
@@ -287,6 +332,7 @@
     setupWriteInterceptor();
     setupRealtime();
     setupPolling();
+    setupPresence();
 
     console.log('[BTV Sync] Live sync ready.');
   };

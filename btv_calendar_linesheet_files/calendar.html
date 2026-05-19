@@ -9112,6 +9112,21 @@ window.openMarkdownEditor = function(id){
 
   e("modal").classList.add("show");
 
+  // Presence: announce editing and warn if someone else is already in this markdown entry
+  if (id && typeof window.btvSetEditing === 'function') {
+    var _btvMdKey = 'cal::markdown::' + id;
+    window.btvSetEditing(_btvMdKey);
+    setTimeout(function() {
+      var _btvEditors = typeof window.btvGetEditingUsers === 'function' ? window.btvGetEditingUsers(_btvMdKey) : [];
+      if (_btvEditors.length) {
+        var _btvWarn = document.getElementById('btv-edit-presence-warn');
+        if (!_btvWarn) { _btvWarn = document.createElement('div'); _btvWarn.id = 'btv-edit-presence-warn'; var _mb = e('modalBody'); if (_mb) _mb.insertBefore(_btvWarn, _mb.firstChild); }
+        _btvWarn.style.cssText = 'background:#fff3cd;border:1px solid #e6a817;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#7a5a00;line-height:1.4';
+        _btvWarn.textContent = _btvEditors.join(', ') + ' is also working on this item/product, please check with the person before overwriting.';
+      }
+    }, 500);
+  }
+
   bindAllToggle("mdAll", "mdMarkets");
 
   const wf = document.getElementById("workflowStatus"); if(wf){ const box = wf.closest(".field"); if(box) box.style.display = "none"; }
@@ -9647,9 +9662,22 @@ window.openEditor = function(section, weekId, entryId){
 
   e("modal").classList.add("show");
 
+  // Presence: announce we are editing this entry, then warn if someone else is too
+  if (entryId && typeof window.btvSetEditing === 'function') {
+    var _btvEditKey = 'cal::' + section + '::' + weekId + '::' + entryId;
+    window.btvSetEditing(_btvEditKey);
+    setTimeout(function() {
+      var _btvEditors = typeof window.btvGetEditingUsers === 'function' ? window.btvGetEditingUsers(_btvEditKey) : [];
+      if (_btvEditors.length) {
+        var _btvWarn = document.getElementById('btv-edit-presence-warn');
+        if (!_btvWarn) { _btvWarn = document.createElement('div'); _btvWarn.id = 'btv-edit-presence-warn'; var _mb = e('modalBody'); if (_mb) _mb.insertBefore(_btvWarn, _mb.firstChild); }
+        _btvWarn.style.cssText = 'background:#fff3cd;border:1px solid #e6a817;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#7a5a00;line-height:1.4';
+        _btvWarn.textContent = _btvEditors.join(', ') + ' is also working on this item/product, please check with the person before overwriting.';
+      }
+    }, 500);
+  }
 
-
-  e("cancelBtn").onclick = () => e("modal").classList.remove("show");
+  e("cancelBtn").onclick = () => { e("modal").classList.remove("show"); if (typeof window.btvClearEditing === 'function') window.btvClearEditing(); };
 
 
 
@@ -10854,9 +10882,18 @@ e("exportLaunchListBtn").addEventListener("click", ()=>{
 
 e("modal").addEventListener("click", (ev) => {
 
-  if(ev.target === e("modal")) e("modal").classList.remove("show");
+  if(ev.target === e("modal")) { e("modal").classList.remove("show"); if (typeof window.btvClearEditing === 'function') window.btvClearEditing(); }
 
 });
+
+// Clear presence whenever the modal closes (catches save/delete/cancel/outside-click)
+(new MutationObserver(function(muts) {
+  muts.forEach(function(m) {
+    if (m.attributeName === 'class' && !e('modal').classList.contains('show')) {
+      if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+    }
+  });
+})).observe(e('modal'), { attributes: true, attributeFilter: ['class'] });
 
 e("viewMode").addEventListener("change", render);
 
