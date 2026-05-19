@@ -250,27 +250,19 @@ html, body {
       </div>
     </div>
 
-    <!-- Step 2: Login form -->
+    <!-- Step 2: Passcode -->
     <div id="moduleLoginForm" style="display:none">
       <button type="button" class="login-link-btn" style="margin-bottom:14px" onclick="btvBackToModuleChoice()">&#8592; Back</button>
       <div class="module-login-title" id="moduleLoginTitle">Welcome back</div>
-      <div class="module-login-copy" id="moduleLoginCopy">Sign in to access the Calendar.</div>
+      <div class="module-login-copy" id="moduleLoginCopy">Enter the team passcode to access the Calendar.</div>
       <div class="login-field">
-        <label for="moduleLoginInput">Email address</label>
-        <input type="email" id="moduleLoginInput" class="login-inp" placeholder="you@beyondthevines.com" autocomplete="email" inputmode="email">
-      </div>
-      <div class="login-field">
-        <label for="moduleLoginPwd">Password</label>
+        <label for="moduleLoginPwd">Passcode</label>
         <div class="login-pwd-wrap">
           <input type="password" id="moduleLoginPwd" class="login-inp" placeholder="••••••" autocomplete="current-password">
-          <button type="button" class="pwd-vis-btn" id="loginPwdVisBtn" onclick="btvTogglePwdVis('moduleLoginPwd', this)" aria-label="Show password">&#128065;</button>
+          <button type="button" class="pwd-vis-btn" id="loginPwdVisBtn" onclick="btvTogglePwdVis('moduleLoginPwd', this)" aria-label="Show passcode">&#128065;</button>
         </div>
       </div>
-      <div class="login-link-row">
-        <button type="button" class="login-link-btn" onclick="btvOpenForgotPwd()">Forgot password?</button>
-        <button type="button" class="login-link-btn" onclick="btvOpenUserMgmt()">Manage Users</button>
-      </div>
-      <button class="login-submit-btn" id="loginSubmitBtn" style="margin-top:18px" onclick="unlockCurrentModule()">Sign in</button>
+      <button class="login-submit-btn" id="loginSubmitBtn" style="margin-top:18px" onclick="unlockCurrentModule()">Enter</button>
       <div id="moduleLoginError" class="login-error" style="color:#a23a2f"></div>
     </div>
   </div>
@@ -400,22 +392,42 @@ html, body {
   function _refreshOverlay() {
     const overlay = document.getElementById('moduleLoginOverlay');
     if (!_moduleChosen) {
-      // Show module-choice step only (Calendar / Linesheet picker)
       document.getElementById('moduleChoiceStep').style.display = '';
       document.getElementById('moduleLoginForm').style.display  = 'none';
       overlay.classList.add('show');
       return;
     }
-    // Module chosen — dismiss overlay immediately, no login step needed
-    overlay.classList.remove('show');
+    const locked = !_isUnlocked(_currentModule);
+    overlay.classList.toggle('show', locked);
+    if (locked) {
+      document.getElementById('moduleChoiceStep').style.display = 'none';
+      document.getElementById('moduleLoginForm').style.display  = '';
+      document.getElementById('moduleLoginCopy').textContent =
+        'Enter the team passcode to access the ' + MODULE_LABELS[_currentModule] + '.';
+      document.getElementById('moduleLoginTitle').textContent = 'Welcome back';
+      setTimeout(function () {
+        const e = document.getElementById('moduleLoginPwd');
+        if (e) e.focus();
+      }, 50);
+    }
   }
 
   function btvSelectModule(name) {
     _currentModule = name;
     _moduleChosen  = true;
-    _setUnlocked(name);
-    document.getElementById('moduleLoginOverlay').classList.remove('show');
-    showFrame(name);
+    document.getElementById('moduleChoiceStep').style.display = 'none';
+    document.getElementById('moduleLoginForm').style.display  = '';
+    document.getElementById('moduleLoginCopy').textContent =
+      'Enter the team passcode to access the ' + MODULE_LABELS[name] + '.';
+    document.getElementById('moduleLoginTitle').textContent = 'Welcome back';
+    document.getElementById('moduleLoginError').textContent = '';
+    document.getElementById('moduleLoginPwd').value = '';
+    if (!_isUnlocked(name)) {
+      setTimeout(function () { document.getElementById('moduleLoginPwd').focus(); }, 50);
+    } else {
+      document.getElementById('moduleLoginOverlay').classList.remove('show');
+      showFrame(name);
+    }
   }
 
   function btvBackToModuleChoice() {
@@ -426,47 +438,41 @@ html, body {
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
-  async function unlockCurrentModule() {
-    const emailInp = document.getElementById('moduleLoginInput');
-    const pwdInp   = document.getElementById('moduleLoginPwd');
-    const err      = document.getElementById('moduleLoginError');
-    const btn      = document.getElementById('loginSubmitBtn');
+  function unlockCurrentModule() {
+    const pwdInp = document.getElementById('moduleLoginPwd');
+    const err    = document.getElementById('moduleLoginError');
+    const btn    = document.getElementById('loginSubmitBtn');
 
-    const email = (emailInp.value || '').trim().toLowerCase();
-    const pwd   = pwdInp.value || '';
+    const input   = (pwdInp.value || '').trim();
+    const correct = (window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026';
 
     err.style.color  = '#a23a2f';
     err.textContent  = '';
-    btn.disabled     = true;
-    btn.textContent  = 'Signing in…';
 
-    try {
-      const { data, error } = await _sb.auth.signInWithPassword({ email, password: pwd });
-      if (error) {
-        err.textContent = error.message.includes('Invalid login credentials')
-          ? 'Incorrect email or password. Please try again.'
-          : error.message;
-        pwdInp.value = '';
-        pwdInp.focus();
-        return;
-      }
-      _session = data.session;
-      await _loadProfile(data.user.id);
-      _updateNavButtons(true);
-
-      if (!_canAccess(_currentModule)) {
-        err.textContent =
-          "You don't have access to the " + MODULE_LABELS[_currentModule] +
-          " module. Contact your admin.";
-        return;
-      }
-      _setUnlocked(_currentModule);
-      document.getElementById('moduleLoginOverlay').classList.remove('show');
-      showFrame(_currentModule);
-    } finally {
-      btn.disabled    = false;
-      btn.textContent = 'Sign in';
+    if (input !== correct) {
+      err.textContent = 'Incorrect passcode. Please try again.';
+      pwdInp.value    = '';
+      pwdInp.focus();
+      return;
     }
+
+    _setUnlocked(_currentModule);
+    document.getElementById('moduleLoginOverlay').classList.remove('show');
+    showFrame(_currentModule);
+  }
+
+  // After the frame becomes active, silently unlock its internal passcode
+  // so users don't need to enter the same passcode twice.
+  function _bypassFramePasscode(frame, passcode) {
+    var attempt = function () {
+      try {
+        if (frame.contentWindow && frame.contentWindow.plannerUnlockWith) {
+          frame.contentWindow.plannerUnlockWith(passcode);
+        }
+      } catch (e) {}
+    };
+    attempt(); // works if iframe is already loaded
+    frame.addEventListener('load', attempt, { once: true });
   }
 
   document.addEventListener('keydown', function (ev) {
@@ -502,6 +508,12 @@ html, body {
     if (name === 'ls') {
       var lf = document.getElementById('frame-ls');
       try { lf.contentWindow.loadFromCalendar && lf.contentWindow.loadFromCalendar(); } catch (e) {}
+    }
+    // If module is unlocked, also unlock the iframe's internal passcode
+    // so users don't see a second passcode prompt inside the frame.
+    if (_isUnlocked(name) && frame) {
+      var pc = (window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026';
+      _bypassFramePasscode(frame, pc);
     }
     if (!_isUnlocked(name)) {
       _refreshOverlay();
