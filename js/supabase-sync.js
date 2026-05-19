@@ -107,7 +107,8 @@
     const isOtherUser = fromUserId && fromUserId !== _userId;
     if (!isOtherUser) return;
     try {
-      if (typeof window.render === 'function') window.render();
+      if (typeof window.btvReloadAndRender === 'function') window.btvReloadAndRender();
+      else if (typeof window._btvCalRender === 'function') window._btvCalRender();
     } catch (e) {}
     showToast('Calendar updated by another team member');
   }
@@ -246,7 +247,10 @@
       });
       if (changed) {
         console.log('[BTV Sync] Applied remote state — re-rendering.');
-        try { if (typeof window.render === 'function') window.render(); } catch (e) {}
+        try {
+          if (typeof window.btvReloadAndRender === 'function') window.btvReloadAndRender();
+          else if (typeof window._btvCalRender === 'function') window._btvCalRender();
+        } catch (e) {}
       } else {
         console.log('[BTV Sync] Local state already up to date.');
       }

@@ -11111,6 +11111,20 @@ window.btvConfigCalWebhook = btvConfigCalWebhook;
 window.btvConfigWebhook = btvConfigWebhook;
 window._btvCalRender = render;
 window._btvCalSaveState = saveState;
+
+// Called by supabase-sync.js when a remote change arrives.
+// Re-reads all in-memory state from localStorage then re-renders,
+// so the calendar reflects data written by another user's browser.
+window.btvReloadAndRender = function() {
+  var fresh = loadState();
+  Object.keys(state).forEach(function(k) { delete state[k]; });
+  Object.assign(state, fresh);
+  markdownState = loadMarkdownState();
+  marketingState = loadMarketingState();
+  render();
+  if (e("globalMarketingView")) renderGlobalMarketingView();
+  if (e("marketMarketingView")) renderMarketMarketingView();
+};
 window.loadAdminConfig = loadAdminConfig;
 window.saveAdminConfig = saveAdminConfig;
 window.getActiveStores = getActiveStores;
