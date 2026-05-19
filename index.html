@@ -496,6 +496,9 @@ html, body {
 
   // After the frame becomes active, silently unlock its internal passcode
   // so users don't need to enter the same passcode twice.
+  // Persistent listener (no { once }) because supabase-sync may reload the
+  // iframe up to twice (auth reload + data-changed reload) and we must
+  // re-unlock after every reload.
   function _bypassFramePasscode(frame, passcode) {
     var attempt = function () {
       try {
@@ -505,7 +508,7 @@ html, body {
       } catch (e) {}
     };
     attempt(); // works if iframe is already loaded
-    frame.addEventListener('load', attempt, { once: true });
+    frame.addEventListener('load', attempt); // fires on every reload
   }
 
   document.addEventListener('keydown', function (ev) {

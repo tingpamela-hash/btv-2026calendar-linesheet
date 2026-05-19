@@ -293,6 +293,7 @@
       // Already synced this session — just set up live sync.
       setupWriteInterceptor();
       setupRealtime();
+      setupPolling();
       return;
     }
 
