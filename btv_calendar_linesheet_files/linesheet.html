@@ -17937,6 +17937,17 @@ function btvCheckMondayReminder(){
 
 
 
+// Called by supabase-sync.js when a remote change arrives in this iframe.
+// Re-reads product data, reloads calendar data, and refreshes all views.
+window.btvReloadAndRender = function() {
+  try {
+    var raw = localStorage.getItem('btv_product_data');
+    _btvProductData = raw ? JSON.parse(raw) : [];
+  } catch(e) {}
+  if (typeof loadFromCalendar === 'function') loadFromCalendar(false);
+  if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
+};
+
 // BTV patch init: keep layout tweaks separate from core save/export logic
 (function(){
   function runBtvUiPatch(){

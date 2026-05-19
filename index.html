@@ -343,26 +343,29 @@ html, body {
 
   // ── Session bootstrap ──────────────────────────────────────────────────────
 
-  function _startSyncInCalFrame(session) {
-    var calFrame = document.getElementById('frame-cal');
-    if (!calFrame) return;
+  function _startSyncInFrame(frameId, session) {
+    var frame = document.getElementById(frameId);
+    if (!frame) return;
     function tryStart() {
       try {
-        if (calFrame.contentWindow && typeof calFrame.contentWindow.btvSyncStart === 'function') {
-          // Pass _sb so the iframe reuses the already-authenticated client
-          // instead of creating a new one and re-doing session management.
-          calFrame.contentWindow.btvSyncStart(session, _sb);
+        if (frame.contentWindow && typeof frame.contentWindow.btvSyncStart === 'function') {
+          frame.contentWindow.btvSyncStart(session, _sb);
           return true;
         }
-      } catch (e) { console.error('[BTV] _startSyncInCalFrame error:', e); }
+      } catch (e) { console.error('[BTV] _startSyncInFrame error (' + frameId + '):', e); }
       return false;
     }
     if (!tryStart()) {
-      calFrame.addEventListener('load', function onLoad() {
-        calFrame.removeEventListener('load', onLoad);
+      frame.addEventListener('load', function onLoad() {
+        frame.removeEventListener('load', onLoad);
         tryStart();
       });
     }
+  }
+
+  function _startSyncInCalFrame(session) {
+    _startSyncInFrame('frame-cal', session);
+    _startSyncInFrame('frame-ls', session);
   }
 
   async function boot() {

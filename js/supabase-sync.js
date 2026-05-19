@@ -40,11 +40,17 @@
     'btv-admin-config-v1',
   ];
 
-  // Keys that trigger a UI re-render when changed remotely
+  // Keys that trigger a UI re-render when changed remotely.
+  // Each iframe defines its own btvReloadAndRender — calendar only
+  // refreshes calendar state, linesheet only refreshes linesheet state.
   const RENDER_KEYS = [
     'calendar-2026-working-v5',
     'calendar-2026-markdown-bars-v1',
     'calendar-2026-marketing-workflow-v1',
+    'linesheetCalendarData',
+    'launchListMaster',
+    'btvLinesheetChangeLog',
+    'btv_product_data',
   ];
 
   // Capture the real setItem before we intercept it
