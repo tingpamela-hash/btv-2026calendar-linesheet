@@ -135,4 +135,11 @@ create policy "Authenticated users can insert change_log"
   with check (true);
 
 
+-- ── 6. Enable Realtime on app_state ─────────────────────────
+
+-- This allows Supabase Realtime to broadcast row changes to all
+-- connected browsers so the calendar auto-updates for everyone.
+alter publication supabase_realtime add table public.app_state;
+
+
 -- ── Done! ─────────────────────────────────────────────────────

@@ -150,6 +150,54 @@
     };
   }
 
+  // ── Apply remote state to localStorage + re-render ───────────────────────
+
+  const RENDER_KEYS = [
+    'calendar-2026-working-v5',
+    'calendar-2026-markdown-bars-v1',
+    'calendar-2026-marketing-workflow-v1',
+  ];
+
+  function applyRemoteRow(key, val, remoteUserId) {
+    if (localStorage.getItem(key) === val) return; // nothing changed
+    _origSetItem(key, val);
+    // Re-render the calendar UI if a visible key changed
+    if (RENDER_KEYS.includes(key)) {
+      try {
+        if (typeof window.render === 'function') window.render();
+      } catch (e) {}
+      // Toast — only show when change came from someone else
+      if (remoteUserId && remoteUserId !== _userId) {
+        showSyncToast('Calendar updated by another team member');
+      }
+    }
+    // StorageEvent for any other listeners
+    try {
+      window.dispatchEvent(new StorageEvent('storage', { key, newValue: val }));
+    } catch (e) {}
+  }
+
+  function showSyncToast(msg) {
+    let toast = document.getElementById('btv-sync-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'btv-sync-toast';
+      toast.style.cssText = [
+        'position:fixed;bottom:20px;right:20px;z-index:9998;',
+        'background:#111;color:#fff;border-radius:10px;',
+        'padding:10px 16px;font-size:12px;font-weight:500;letter-spacing:.02em;',
+        "font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;",
+        'box-shadow:0 4px 20px rgba(0,0,0,.25);opacity:0;',
+        'transition:opacity .3s ease;pointer-events:none;',
+      ].join('');
+      if (document.body) document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.opacity = '1';
+    clearTimeout(toast._hideTimer);
+    toast._hideTimer = setTimeout(function () { toast.style.opacity = '0'; }, 3500);
+  }
+
   // ── Realtime: receive changes from other users ─────────────────────────────
 
   function setupRealtime() {
@@ -164,13 +212,29 @@
             typeof payload.new.value === 'string'
               ? payload.new.value
               : JSON.stringify(payload.new.value);
-          _origSetItem(key, val);
-          try {
-            window.dispatchEvent(new StorageEvent('storage', { key, newValue: val }));
-          } catch (e) {}
+          applyRemoteRow(key, val, payload.new.updated_by);
         }
       )
       .subscribe();
+  }
+
+  // ── Polling fallback (every 30 s in case Realtime drops) ──────────────────
+
+  function setupPolling() {
+    setInterval(async function () {
+      try {
+        const { data } = await sb
+          .from('app_state')
+          .select('key, value, updated_by')
+          .in('key', RENDER_KEYS);
+        if (!data) return;
+        data.forEach(function (row) {
+          const val =
+            typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
+          applyRemoteRow(row.key, val, row.updated_by);
+        });
+      } catch (e) {}
+    }, 30000);
   }
 
   // ── Push all local data up to Supabase (one-time migration) ───────────────
