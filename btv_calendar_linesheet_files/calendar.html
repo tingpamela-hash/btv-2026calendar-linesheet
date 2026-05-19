@@ -10886,11 +10886,40 @@ e("modal").addEventListener("click", (ev) => {
 
 });
 
-// Clear presence whenever the modal closes (catches save/delete/cancel/outside-click)
+// Clear presence and dirty state whenever the modal closes
+var _btvCalModalDirty = false;
+function _btvCalSetDirty(isDirty) {
+  _btvCalModalDirty = isDirty;
+  var ind = document.getElementById('btv-cal-unsaved-ind');
+  var title = e('modalTitle');
+  if (isDirty) {
+    if (!ind && title) {
+      ind = document.createElement('span');
+      ind.id = 'btv-cal-unsaved-ind';
+      ind.style.cssText = 'background:#e6a817;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:10px;letter-spacing:.03em;vertical-align:middle';
+      ind.textContent = 'UNSAVED CHANGES';
+      title.parentNode.insertBefore(ind, title.nextSibling);
+    }
+    if (ind) ind.style.display = 'inline';
+  } else {
+    if (ind) ind.style.display = 'none';
+  }
+}
+
+// Track any input/change inside the modal as a dirty signal
+e('modal').addEventListener('input',  function() { if (e('modal').classList.contains('show')) _btvCalSetDirty(true); });
+e('modal').addEventListener('change', function() { if (e('modal').classList.contains('show')) _btvCalSetDirty(true); });
+
+// Warn before page close/refresh when the modal has unsaved changes
+window.addEventListener('beforeunload', function(ev) {
+  if (_btvCalModalDirty) { ev.preventDefault(); ev.returnValue = ''; }
+});
+
 (new MutationObserver(function(muts) {
   muts.forEach(function(m) {
     if (m.attributeName === 'class' && !e('modal').classList.contains('show')) {
       if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+      _btvCalSetDirty(false);
     }
   });
 })).observe(e('modal'), { attributes: true, attributeFilter: ['class'] });

@@ -7762,9 +7762,13 @@ function escapeHtml(value=''){ return String(value).replace(/&/g,'&amp;').replac
 
 function switchView(view){
             try{ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }catch(e){}
-            // If leaving the product form, clear editing presence
-            if (view !== 'form' && typeof window.btvClearEditing === 'function') {
-              window.btvClearEditing();
+            // If leaving the product form, guard unsaved changes and clear presence
+            if (view !== 'form') {
+              if (_btvFormDirty) {
+                if (!confirm('You have unsaved changes in the Product Form. Leave without saving?')) return;
+                _btvSetDirty(false);
+              }
+              if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
               var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
             }
             document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
@@ -11916,6 +11920,7 @@ var BTV_TRACKED_FIELDS = {name:'Product Name',category:'Category',description:'D
 function saveProductGroup(){
   if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
   var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
+  _btvSetDirty(false);
 
 
 
@@ -13114,6 +13119,7 @@ function saveProductGroup(){
 function clearForm(){
   if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
   var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
+  _btvSetDirty(false);
 
 
 
@@ -13304,6 +13310,7 @@ function groupProductsById(groupId){ return products.filter(p => p.groupId === g
 
 
 function editGroup(groupId){
+  _btvSetDirty(false); // opening a product = clean slate
 
 
 
@@ -17968,13 +17975,73 @@ function btvCheckMondayReminder(){
 
 
 
+// ── Unsaved changes tracking ──────────────────────────────────────────────
+var _btvFormDirty = false;
+
+function _btvSetDirty(isDirty) {
+  _btvFormDirty = isDirty;
+  var ind = document.getElementById('btv-unsaved-ind');
+  if (isDirty) {
+    if (!ind) {
+      ind = document.createElement('span');
+      ind.id = 'btv-unsaved-ind';
+      ind.style.cssText = 'background:#e6a817;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px;letter-spacing:.03em;vertical-align:middle;display:inline';
+      ind.textContent = 'UNSAVED CHANGES';
+      var saveBtn = document.querySelector('button[onclick="saveProductGroup()"]');
+      if (saveBtn && saveBtn.parentNode) saveBtn.parentNode.insertBefore(ind, saveBtn.nextSibling);
+    }
+    ind.style.display = 'inline';
+  } else {
+    if (ind) ind.style.display = 'none';
+  }
+}
+
+// Mark form dirty on any input or change inside the form view
+(function() {
+  function _btvDirtyHandler() { if (editingGroupId !== null) _btvSetDirty(true); }
+  document.addEventListener('DOMContentLoaded', function() {
+    var fv = document.getElementById('view-form');
+    if (fv) {
+      fv.addEventListener('input', _btvDirtyHandler);
+      fv.addEventListener('change', _btvDirtyHandler);
+    }
+  });
+  if (document.readyState !== 'loading') {
+    var fv = document.getElementById('view-form');
+    if (fv) {
+      fv.addEventListener('input', _btvDirtyHandler);
+      fv.addEventListener('change', _btvDirtyHandler);
+    }
+  }
+})();
+
+// Warn before closing/refreshing the page with unsaved changes
+window.addEventListener('beforeunload', function(e) {
+  if (_btvFormDirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
 // Called by supabase-sync.js when a remote change arrives in this iframe.
-// Re-reads product data, reloads calendar data, and refreshes all views.
+// If the product form has unsaved changes, skip re-rendering to protect them.
 window.btvReloadAndRender = function() {
   try {
     var raw = localStorage.getItem('btv_product_data');
     _btvProductData = raw ? JSON.parse(raw) : [];
   } catch(e) {}
+  if (_btvFormDirty) {
+    // Don't blow away the user's in-progress edits — just refresh dashboard
+    if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
+    // Show a toast so the user knows a sync happened but their edits are safe
+    if (typeof showBtvSyncToast === 'function') showBtvSyncToast('Live update received — save your changes first to sync.');
+    else {
+      var _t = document.getElementById('btv-sync-toast-ls');
+      if (!_t) { _t = document.createElement('div'); _t.id = 'btv-sync-toast-ls'; _t.style.cssText = 'position:fixed;bottom:70px;right:20px;z-index:9999;background:#222;color:#fff;border-radius:10px;padding:10px 16px;font-size:12px;font-weight:500;pointer-events:none;opacity:0;transition:opacity .3s'; document.body.appendChild(_t); }
+      _t.textContent = 'Live update received — save your changes first.';
+      _t.style.opacity = '1';
+      clearTimeout(_t._tmr);
+      _t._tmr = setTimeout(function() { _t.style.opacity = '0'; }, 4000);
+    }
+    return;
+  }
   if (typeof loadFromCalendar === 'function') loadFromCalendar(false);
   if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
 };
