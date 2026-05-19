@@ -191,20 +191,18 @@
 
     console.log('[BTV Sync] Starting for', _userEmail);
 
-    // Create a fresh authenticated Supabase client
+    // Create a Supabase client for this iframe. Because index.html and
+    // calendar.html are same-origin, the parent's signInWithPassword already
+    // wrote the session to localStorage — this client reads it automatically.
     _sb = window.supabase.createClient(url, anonKey, {
       auth: { persistSession: true, autoRefreshToken: true },
     });
 
-    // Restore the session so this client uses the logged-in user's JWT
-    const { error: sessionErr } = await _sb.auth.setSession({
-      access_token:  session.access_token,
-      refresh_token: session.refresh_token,
-    });
-    if (sessionErr) {
-      console.error('[BTV Sync] setSession failed:', sessionErr.message);
-      showError('Sync session error: ' + sessionErr.message + '. Live sync may not work.');
-      // Still set up interceptor so local saves at least work
+    // Confirm the shared session is readable (no setSession call needed).
+    const { data: { session: activeSession } } = await _sb.auth.getSession();
+    if (!activeSession) {
+      console.error('[BTV Sync] No session found in shared localStorage.');
+      showError('Sync could not restore your session. Sign out and sign in again to activate live sync.');
       setupWriteInterceptor();
       return;
     }
