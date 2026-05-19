@@ -343,12 +343,33 @@ html, body {
 
   // ── Session bootstrap ──────────────────────────────────────────────────────
 
+  function _startSyncInCalFrame(session) {
+    var calFrame = document.getElementById('frame-cal');
+    if (!calFrame) return;
+    function tryStart() {
+      try {
+        if (calFrame.contentWindow && typeof calFrame.contentWindow.btvSyncStart === 'function') {
+          calFrame.contentWindow.btvSyncStart(session);
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+    if (!tryStart()) {
+      calFrame.addEventListener('load', function onLoad() {
+        calFrame.removeEventListener('load', onLoad);
+        tryStart();
+      });
+    }
+  }
+
   async function boot() {
     const { data: { session } } = await _sb.auth.getSession();
     _session = session;
     if (session) {
       await _loadProfile(session.user.id);
       _updateNavButtons(true);
+      _startSyncInCalFrame(session);
     }
 
     _sb.auth.onAuthStateChange(async function (event, session) {
@@ -488,6 +509,7 @@ html, body {
       _setUnlocked(_currentModule);
       document.getElementById('moduleLoginOverlay').classList.remove('show');
       showFrame(_currentModule);
+      _startSyncInCalFrame(data.session);
     } finally {
       btn.disabled    = false;
       btn.textContent = 'Sign in';

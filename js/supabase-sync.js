@@ -1,28 +1,31 @@
 /**
- * BTV Supabase Sync Layer
+ * BTV Supabase Sync — v3
  *
- * Strategy:
- *  - On first page load in a session:
- *      a) Pull all keys from Supabase.
- *      b) If Supabase has data  → write to localStorage, reload so the app
- *         initialises with correct data.
- *      c) If Supabase is empty but localStorage has data → push localStorage
- *         up to Supabase first (one-time migration), then reload.
- *      d) If both empty → just mark synced and continue.
- *  - On subsequent loads (flag already set): wire up the write interceptor
- *    and Realtime subscription only.
- *  - All writes to watched keys are mirrored to Supabase in real-time.
- *  - Realtime subscription keeps localStorage fresh when another user saves.
+ * Architecture change from v2:
+ *   The parent frame (index.html) calls window.btvSyncStart(session) directly
+ *   after login instead of relying on cross-frame SIGNED_IN event propagation.
+ *   This eliminates all iframe-reload chains and timing race conditions.
+ *
+ * Flow:
+ *   1. index.html logs the user in with signInWithPassword.
+ *   2. index.html calls frame.contentWindow.btvSyncStart(session) on the iframe.
+ *   3. btvSyncStart: sets up the authenticated Supabase client, pulls latest
+ *      state from cloud into localStorage, re-renders, then subscribes to
+ *      Realtime so future changes from other users appear automatically.
+ *   4. Write interceptor mirrors every localStorage.setItem (for watched keys)
+ *      to Supabase in real time.
  */
 (function () {
+  'use strict';
+
   if (!window.BTV_SUPABASE_CONFIG || !window.supabase) {
-    console.warn('[BTV Sync] Missing Supabase config or SDK — sync disabled.');
+    console.warn('[BTV Sync] Config or SDK missing — sync disabled.');
     return;
   }
 
   const { url, anonKey } = window.BTV_SUPABASE_CONFIG;
-  const sb = window.supabase.createClient(url, anonKey);
 
+  // Keys that are synced to Supabase
   const SYNCED_KEYS = [
     'calendar-2026-working-v5',
     'calendar-2026-working-v5-history',
@@ -37,82 +40,46 @@
     'btv-admin-config-v1',
   ];
 
-  // Per-page flag so calendar and linesheet each sync independently.
-  const SYNC_FLAG = 'btv-synced-v2-' + window.location.pathname;
+  // Keys that trigger a UI re-render when changed remotely
+  const RENDER_KEYS = [
+    'calendar-2026-working-v5',
+    'calendar-2026-markdown-bars-v1',
+    'calendar-2026-marketing-workflow-v1',
+  ];
 
-  let _userId = null;
-  let _userEmail = null;
+  // Capture the real setItem before we intercept it
   const _origSetItem = localStorage.setItem.bind(localStorage);
 
-  // Human-readable labels for loggable keys (null = skip logging)
-  const KEY_LABELS = {
-    'calendar-2026-working-v5':           'Calendar',
-    'calendar-2026-working-v5-history':   null,
-    'calendar-2026-working-v5-versions':  null,
-    'calendar-2026-working-v5-changelog': null,
-    'calendar-2026-marketing-workflow-v1':'Marketing Workflow',
-    'calendar-2026-markdown-bars-v1':     'Markdown',
-    'linesheetCalendarData':              'Linesheet Data',
-    'launchListMaster':                   'Launch List',
-    'btvLinesheetChangeLog':              null,
-    'btv_product_data':                   'Product Data',
-    'btv-admin-config-v1':               'Admin Settings',
-  };
+  let _sb         = null;  // authenticated Supabase client
+  let _userId     = null;
+  let _userEmail  = null;
+  let _started    = false;
 
-  // Debounce per key: don't log the same key more than once per 3 s
-  const _logDebounce = {};
+  // ── Toast ──────────────────────────────────────────────────────────────────
 
-  function logChange(key) {
-    const label = KEY_LABELS[key];
-    if (!label) return;
-    const now = Date.now();
-    if (_logDebounce[key] && now - _logDebounce[key] < 3000) return;
-    _logDebounce[key] = now;
-    sb.from('change_log')
-      .insert({ key, label, changed_by: _userId, email: _userEmail, changed_at: new Date().toISOString() })
-      .then(function (res) {
-        if (res.error) console.warn('[BTV Sync] Change log error:', res.error);
-      });
-  }
-
-  // ── Loading overlay ────────────────────────────────────────────────────────
-
-  function showOverlay(msg) {
-    let el = document.getElementById('btv-sync-overlay');
+  function showToast(msg) {
+    let el = document.getElementById('btv-sync-toast');
     if (!el) {
       el = document.createElement('div');
-      el.id = 'btv-sync-overlay';
+      el.id = 'btv-sync-toast';
       el.style.cssText = [
-        'position:fixed;inset:0;z-index:9999;',
-        'background:#f7f6f3;display:flex;align-items:center;',
-        'justify-content:center;flex-direction:column;gap:14px;',
+        'position:fixed;bottom:20px;right:20px;z-index:9998;',
+        'background:#111;color:#fff;border-radius:10px;',
+        'padding:10px 16px;font-size:12px;font-weight:500;letter-spacing:.02em;',
         "font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;",
+        'box-shadow:0 4px 20px rgba(0,0,0,.25);opacity:0;',
+        'transition:opacity .3s ease;pointer-events:none;',
       ].join('');
-      const attach = function () { document.body.appendChild(el); };
-      if (document.body) attach();
-      else document.addEventListener('DOMContentLoaded', attach);
+      document.body.appendChild(el);
     }
-    el.innerHTML =
-      '<div style="font-size:10px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:#333">BTV Planner</div>' +
-      '<div style="width:28px;height:28px;border:2.5px solid #e0ddd8;border-top-color:#333;border-radius:50%;animation:btvSpin .7s linear infinite"></div>' +
-      '<div id="btv-sync-msg" style="font-size:12px;color:#888;letter-spacing:.04em">' + (msg || 'Syncing data…') + '</div>' +
-      '<style>@keyframes btvSpin{to{transform:rotate(360deg)}}</style>';
-  }
-
-  function updateOverlayMsg(msg) {
-    const el = document.getElementById('btv-sync-msg');
-    if (el) el.textContent = msg;
-  }
-
-  function hideOverlay() {
-    const el = document.getElementById('btv-sync-overlay');
-    if (el) el.remove();
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.style.opacity = '0'; }, 3500);
   }
 
   function showError(msg) {
-    hideOverlay();
     const el = document.createElement('div');
-    el.id = 'btv-sync-error';
     el.style.cssText = [
       'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);',
       'z-index:9999;background:#fff3cd;border:1.5px solid #e6a817;',
@@ -121,109 +88,80 @@
       'font-size:12px;color:#7a5a00;line-height:1.5;',
       'box-shadow:0 4px 24px rgba(0,0,0,.12)',
     ].join('');
-    el.innerHTML = '<strong style="display:block;margin-bottom:4px">⚠️ Sync Warning</strong>' + msg +
-      '<br><button onclick="this.parentElement.remove()" style="margin-top:8px;background:none;border:none;color:#7a5a00;cursor:pointer;text-decoration:underline;font-size:12px">Dismiss</button>';
-    const attach = function () { document.body.appendChild(el); };
-    if (document.body) attach();
-    else document.addEventListener('DOMContentLoaded', attach);
+    el.innerHTML = '<strong style="display:block;margin-bottom:4px">⚠ Sync Warning</strong>' + msg +
+      '<br><button onclick="this.parentElement.remove()" style="margin-top:8px;background:none;border:none;' +
+      'color:#7a5a00;cursor:pointer;text-decoration:underline;font-size:12px">Dismiss</button>';
+    document.body.appendChild(el);
   }
 
-  // ── Write interceptor ──────────────────────────────────────────────────────
+  // ── Apply a row received from Supabase into localStorage + re-render ───────
+
+  function applyRow(key, val, fromUserId) {
+    if (localStorage.getItem(key) === val) return; // nothing changed
+    _origSetItem(key, val);
+    if (!RENDER_KEYS.includes(key)) return;
+    try {
+      if (typeof window.render === 'function') window.render();
+    } catch (e) {}
+    if (fromUserId && fromUserId !== _userId) {
+      showToast('Calendar updated by another team member');
+    }
+  }
+
+  // ── Write interceptor — mirrors localStorage writes to Supabase ────────────
 
   function setupWriteInterceptor() {
+    // Guard: don't double-wrap
+    if (localStorage.setItem !== _origSetItem) return;
     localStorage.setItem = function (key, value) {
       _origSetItem(key, value);
-      if (!SYNCED_KEYS.includes(key)) return;
+      if (!SYNCED_KEYS.includes(key) || !_sb) return;
       let parsed;
-      try { parsed = JSON.parse(value); } catch { parsed = value; }
-      sb.from('app_state')
+      try { parsed = JSON.parse(value); } catch (e) { parsed = value; }
+      _sb.from('app_state')
         .upsert(
           { key, value: parsed, updated_at: new Date().toISOString(), updated_by: _userId },
           { onConflict: 'key' }
         )
         .then(function (res) {
-          if (res.error) {
-            console.error('[BTV Sync] Save error for key:', key, res.error);
-          }
+          if (res.error) console.error('[BTV Sync] Write failed:', key, res.error.message);
         });
-      logChange(key);
     };
   }
 
-  // ── Apply remote state to localStorage + re-render ───────────────────────
-
-  const RENDER_KEYS = [
-    'calendar-2026-working-v5',
-    'calendar-2026-markdown-bars-v1',
-    'calendar-2026-marketing-workflow-v1',
-  ];
-
-  function applyRemoteRow(key, val, remoteUserId) {
-    if (localStorage.getItem(key) === val) return; // nothing changed
-    _origSetItem(key, val);
-    // Re-render the calendar UI if a visible key changed
-    if (RENDER_KEYS.includes(key)) {
-      try {
-        if (typeof window.render === 'function') window.render();
-      } catch (e) {}
-      // Toast — only show when change came from someone else
-      if (remoteUserId && remoteUserId !== _userId) {
-        showSyncToast('Calendar updated by another team member');
-      }
-    }
-    // StorageEvent for any other listeners
-    try {
-      window.dispatchEvent(new StorageEvent('storage', { key, newValue: val }));
-    } catch (e) {}
-  }
-
-  function showSyncToast(msg) {
-    let toast = document.getElementById('btv-sync-toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'btv-sync-toast';
-      toast.style.cssText = [
-        'position:fixed;bottom:20px;right:20px;z-index:9998;',
-        'background:#111;color:#fff;border-radius:10px;',
-        'padding:10px 16px;font-size:12px;font-weight:500;letter-spacing:.02em;',
-        "font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;",
-        'box-shadow:0 4px 20px rgba(0,0,0,.25);opacity:0;',
-        'transition:opacity .3s ease;pointer-events:none;',
-      ].join('');
-      if (document.body) document.body.appendChild(toast);
-    }
-    toast.textContent = msg;
-    toast.style.opacity = '1';
-    clearTimeout(toast._hideTimer);
-    toast._hideTimer = setTimeout(function () { toast.style.opacity = '0'; }, 3500);
-  }
-
-  // ── Realtime: receive changes from other users ─────────────────────────────
+  // ── Realtime subscription ─────────────────────────────────────────────────
 
   function setupRealtime() {
-    sb.channel('btv_app_state')
+    _sb.channel('btv_app_state_v3')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'app_state' },
         function (payload) {
-          if (!payload.new || !SYNCED_KEYS.includes(payload.new.key)) return;
+          if (!payload.new) return;
           const key = payload.new.key;
+          if (!SYNCED_KEYS.includes(key)) return;
           const val =
             typeof payload.new.value === 'string'
               ? payload.new.value
               : JSON.stringify(payload.new.value);
-          applyRemoteRow(key, val, payload.new.updated_by);
+          applyRow(key, val, payload.new.updated_by);
         }
       )
-      .subscribe();
+      .subscribe(function (status, err) {
+        console.log('[BTV Sync] Realtime:', status, err || '');
+        if (status === 'SUBSCRIBED') {
+          console.log('[BTV Sync] Realtime connected — live sync active.');
+        }
+      });
   }
 
-  // ── Polling fallback (every 30 s in case Realtime drops) ──────────────────
+  // ── Polling fallback every 15 s (catches missed Realtime events) ───────────
 
   function setupPolling() {
     setInterval(async function () {
+      if (!_sb) return;
       try {
-        const { data } = await sb
+        const { data } = await _sb
           .from('app_state')
           .select('key, value, updated_by')
           .in('key', RENDER_KEYS);
@@ -231,171 +169,142 @@
         data.forEach(function (row) {
           const val =
             typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
-          applyRemoteRow(row.key, val, row.updated_by);
+          applyRow(row.key, val, row.updated_by);
         });
       } catch (e) {}
-    }, 30000);
+    }, 15000); // every 15 s
   }
 
-  // ── Push all local data up to Supabase (one-time migration) ───────────────
-
-  async function pushLocalToSupabase() {
-    const keysWithData = SYNCED_KEYS.filter(function (k) {
-      return localStorage.getItem(k) !== null;
-    });
-    if (!keysWithData.length) return 0;
-
-    const rows = keysWithData.map(function (key) {
-      const raw = localStorage.getItem(key);
-      let parsed;
-      try { parsed = JSON.parse(raw); } catch { parsed = raw; }
-      return { key, value: parsed, updated_at: new Date().toISOString(), updated_by: _userId };
-    });
-
-    const { error } = await sb
-      .from('app_state')
-      .upsert(rows, { onConflict: 'key' });
-
-    if (error) {
-      console.error('[BTV Sync] Migration push error:', error);
-      return -1;
-    }
-    return keysWithData.length;
-  }
-
-  // ── Main init ──────────────────────────────────────────────────────────────
-
-  async function init() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      // Not authenticated yet — wire up interceptor and wait for login.
-      // When the parent frame signs in (SIGNED_IN event propagates via shared
-      // localStorage), reload this iframe so the full sync runs with a session.
-      setupWriteInterceptor();
-      sb.auth.onAuthStateChange(function (event, newSession) {
-        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && newSession) {
-          if (!sessionStorage.getItem(SYNC_FLAG)) {
-            window.location.reload();
-          }
-        }
-      });
+  // ── btvSyncStart — called by index.html right after login ──────────────────
+  //
+  //   session = the Supabase session object from signInWithPassword
+  //
+  window.btvSyncStart = async function (session) {
+    if (_started) {
+      console.log('[BTV Sync] Already started, skipping.');
       return;
     }
-    _userId = session.user.id;
+    _started  = true;
+    _userId   = session.user.id;
     _userEmail = session.user.email || null;
 
-    sb.auth.onAuthStateChange(function (_, s) {
-      _userId = s ? s.user.id : null;
-      _userEmail = s ? (s.user.email || null) : null;
+    console.log('[BTV Sync] Starting for', _userEmail);
+
+    // Create a fresh authenticated Supabase client
+    _sb = window.supabase.createClient(url, anonKey, {
+      auth: { persistSession: true, autoRefreshToken: true },
     });
 
-    if (sessionStorage.getItem(SYNC_FLAG)) {
-      // Already synced this session — just set up live sync.
+    // Restore the session so this client uses the logged-in user's JWT
+    const { error: sessionErr } = await _sb.auth.setSession({
+      access_token:  session.access_token,
+      refresh_token: session.refresh_token,
+    });
+    if (sessionErr) {
+      console.error('[BTV Sync] setSession failed:', sessionErr.message);
+      showError('Sync session error: ' + sessionErr.message + '. Live sync may not work.');
+      // Still set up interceptor so local saves at least work
       setupWriteInterceptor();
-      setupRealtime();
-      setupPolling();
       return;
     }
 
-    // ── First load this session: reconcile Supabase ↔ localStorage ────────
-    showOverlay('Checking for updates…');
-
-    const { data, error } = await sb
+    // Pull latest state from Supabase → write to localStorage → re-render
+    console.log('[BTV Sync] Pulling latest state from cloud…');
+    const { data, error } = await _sb
       .from('app_state')
       .select('key, value')
       .in('key', SYNCED_KEYS);
 
     if (error) {
-      // Table likely doesn't exist yet — show instructions.
-      const isTableMissing = error.message && (
-        error.message.includes('does not exist') ||
-        error.code === '42P01' ||
-        error.code === 'PGRST116'
-      );
-      console.error('[BTV Sync] Init pull error:', error);
-      hideOverlay();
-      setupWriteInterceptor();
-      if (isTableMissing) {
+      console.error('[BTV Sync] Initial pull error:', error.message);
+      const missing = error.message.includes('does not exist') || error.code === '42P01';
+      if (missing) {
         showError(
-          'The Supabase <code>app_state</code> table has not been created yet. ' +
-          'Please run <strong>supabase-setup.sql</strong> in your Supabase SQL Editor ' +
-          'so data can be shared between team members.'
+          'Supabase <strong>app_state</strong> table not found. ' +
+          'Run <strong>supabase-setup.sql</strong> in your Supabase SQL Editor.'
         );
       }
+      setupWriteInterceptor();
       return;
     }
 
-    const remoteRows = data || [];
-
-    let _anyChanged = false;
-
-    if (remoteRows.length > 0) {
-      // ── Case A: Supabase has data → load it into localStorage ─────────
-      updateOverlayMsg('Loading shared data…');
-      remoteRows.forEach(function (row) {
+    if (data && data.length > 0) {
+      let changed = false;
+      data.forEach(function (row) {
         const val =
           typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
-        // Only write — and flag reload needed — if something actually changed
         if (localStorage.getItem(row.key) !== val) {
           _origSetItem(row.key, val);
-          _anyChanged = true;
+          changed = true;
         }
       });
+      if (changed) {
+        console.log('[BTV Sync] Applied remote state — re-rendering.');
+        try { if (typeof window.render === 'function') window.render(); } catch (e) {}
+      } else {
+        console.log('[BTV Sync] Local state already up to date.');
+      }
     } else {
-      // ── Case B: Supabase is empty → push any local data up (migration) ─
-      const localKeyCount = SYNCED_KEYS.filter(function (k) {
-        return localStorage.getItem(k) !== null;
-      }).length;
-
-      if (localKeyCount > 0) {
-        updateOverlayMsg('Uploading your data to the shared store…');
-        const pushed = await pushLocalToSupabase();
-        if (pushed > 0) {
-          console.log('[BTV Sync] Migrated', pushed, 'keys from localStorage to Supabase.');
+      // Supabase is empty — push local data up as the first migration
+      console.log('[BTV Sync] Supabase empty — pushing local data up…');
+      const rows = SYNCED_KEYS
+        .filter(function (k) { return localStorage.getItem(k) !== null; })
+        .map(function (key) {
+          const raw = localStorage.getItem(key);
+          let parsed;
+          try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+          return { key, value: parsed, updated_at: new Date().toISOString(), updated_by: _userId };
+        });
+      if (rows.length) {
+        const { error: pushErr } = await _sb
+          .from('app_state')
+          .upsert(rows, { onConflict: 'key' });
+        if (pushErr) {
+          console.error('[BTV Sync] Initial push error:', pushErr.message);
+        } else {
+          console.log('[BTV Sync] Pushed', rows.length, 'keys to Supabase.');
         }
       }
-      // If both empty, nothing to do — fall through.
     }
 
-    sessionStorage.setItem(SYNC_FLAG, '1');
+    // Wire up live sync
+    setupWriteInterceptor();
+    setupRealtime();
+    setupPolling();
 
-    if (_anyChanged) {
-      // Data changed — reload so the app re-initialises with fresh state
-      window.location.reload();
-    } else {
-      // Nothing changed — skip reload, go straight to live-sync mode
-      hideOverlay();
-      setupWriteInterceptor();
-      setupRealtime();
-      setupPolling();
-    }
-  }
-
-  // Expose force-push utility for emergency use from browser console.
-  window.btvForceSync = async function () {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) { console.warn('[BTV Sync] Not logged in.'); return; }
-    _userId = session.user.id;
-    const n = await pushLocalToSupabase();
-    console.log('[BTV Sync] Force-pushed', n, 'keys to Supabase.');
-    alert('Sync complete — pushed ' + n + ' data keys to Supabase. Reloading…');
-    sessionStorage.removeItem(SYNC_FLAG);
-    window.location.reload();
+    console.log('[BTV Sync] Live sync ready.');
   };
 
-  // Expose current user email so calendar.html can stamp change log entries
-  window.btvGetCurrentEmail = function () { return _userEmail; };
+  // ── Helpers exposed to parent frame / console ──────────────────────────────
 
-  // Expose fetch helper so the admin panel can query change_log
+  window.btvGetCurrentEmail  = function () { return _userEmail; };
+  window.btvSyncIsActive     = function () { return _started; };
+
+  window.btvForceSync = async function () {
+    if (!_sb) { console.warn('[BTV Sync] Not started.'); return; }
+    const rows = SYNCED_KEYS
+      .filter(function (k) { return localStorage.getItem(k) !== null; })
+      .map(function (key) {
+        const raw = localStorage.getItem(key);
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+        return { key, value: parsed, updated_at: new Date().toISOString(), updated_by: _userId };
+      });
+    const { error } = await _sb.from('app_state').upsert(rows, { onConflict: 'key' });
+    if (error) { console.error('[BTV Sync] Force-push error:', error.message); return; }
+    console.log('[BTV Sync] Force-pushed', rows.length, 'keys.');
+    alert('Force sync complete — pushed ' + rows.length + ' keys to Supabase.');
+  };
+
   window.btvFetchChangeLog = async function (limit) {
-    const { data, error } = await sb
+    if (!_sb) return [];
+    const { data, error } = await _sb
       .from('change_log')
       .select('label, email, changed_at')
       .order('changed_at', { ascending: false })
       .limit(limit || 100);
-    if (error) { console.warn('[BTV Sync] Fetch change_log error:', error); return []; }
+    if (error) { console.warn('[BTV Sync] change_log error:', error.message); return []; }
     return data || [];
   };
 
-  init();
 })();
