@@ -11151,7 +11151,7 @@ document.addEventListener('click', function(ev) {
 
 // ─── Export CSV ───────────────────────────────────────────────────────────────
 function btvExportCSV() {
-  var rows = [['Launch Title','Launch Date','Section','Key Level','Status','Category','Product Name','Colour(s)','Size(s)','SGD RRP']];
+  var rows = [['Launch Title','Launch Date','Section','Key Level','Status','Category','Product Name','Colour(s)','Size(s)','SGD RRP','Markets','Promo Start Date','Promo End Date','Till Sold Out','Mechanics','ETA Date']];
   var sections = ['global','nea','sea','restocks'];
   var sectionLabels = {global:'Global',nea:'NEA',sea:'SEA',restocks:'Restocks'};
   var st = {};
@@ -11160,21 +11160,76 @@ function btvExportCSV() {
     if (!st[sec]) return;
     Object.keys(st[sec]).sort().forEach(function(wkId) {
       (st[sec][wkId] || []).forEach(function(entry) {
-        var lines = (entry.lines && entry.lines.length) ? entry.lines : [{}];
-        lines.forEach(function(line) {
+        if (sec === 'nea' || sec === 'sea') {
+          // NEA/SEA entries have a flat structure (not lines[])
+          var mktStr = (entry.allMarkets || false) ? 'All' : (entry.countries || []).join(',');
+          var rawSz = entry.size || (entry.colorSize && entry.colorSize.indexOf(' / ') >= 0 ? entry.colorSize.split(' / ').slice(1).join(' / ') : entry.colorSize || '');
           rows.push([
             entry.launchTitle || '',
-            entry.launchDate || wkId,
+            entry.launchDate || entry.startDateISO || wkId,
             sectionLabels[sec] || sec,
             entry.keyLevel || 'brand',
             entry.workflowStatus || 'draft',
-            (line.category || '').toUpperCase(),
-            line.productName || '',
-            line.colour || '',
-            line.size || '',
-            line.price || ''
+            entry.optionType || '',
+            entry.productTitle || '',
+            entry.colour || '',
+            rawSz,
+            entry.price || '',
+            mktStr,
+            entry.startDateISO || '',
+            entry.tillSoldOut ? '' : (entry.endDateISO || ''),
+            entry.tillSoldOut ? 'YES' : 'NO',
+            entry.mechanics || '',
+            ''
           ]);
-        });
+        } else if (sec === 'restocks') {
+          // Restocks entries have lines[] with productTitle + etaISO + markets
+          var mktStr = (entry.allMarkets || false) ? 'All' : (entry.markets || []).join(',');
+          var lines = (entry.lines && entry.lines.length) ? entry.lines : (entry.productTitle ? [{productTitle: entry.productTitle, colour: entry.colours || '', size: entry.size || '', price: entry.price || ''}] : [{}]);
+          lines.forEach(function(line) {
+            rows.push([
+              entry.launchTitle || entry.productTitle || '',
+              entry.launchDate || entry.etaISO || wkId,
+              sectionLabels[sec] || sec,
+              entry.keyLevel || 'brand',
+              entry.workflowStatus || 'draft',
+              (line.category || '').toUpperCase(),
+              line.productTitle || line.productName || '',
+              line.colour || line.colors || '',
+              line.size || '',
+              line.price || '',
+              mktStr,
+              '',
+              '',
+              '',
+              '',
+              entry.etaISO || ''
+            ]);
+          });
+        } else {
+          // Global entries have lines[] with productName
+          var lines = (entry.lines && entry.lines.length) ? entry.lines : [{}];
+          lines.forEach(function(line) {
+            rows.push([
+              entry.launchTitle || '',
+              entry.launchDate || wkId,
+              sectionLabels[sec] || sec,
+              entry.keyLevel || 'brand',
+              entry.workflowStatus || 'draft',
+              (line.category || '').toUpperCase(),
+              line.productName || '',
+              line.colour || '',
+              line.size || '',
+              line.price || '',
+              '',
+              '',
+              '',
+              '',
+              '',
+              ''
+            ]);
+          });
+        }
       });
     });
   });
@@ -11510,7 +11565,13 @@ function btvImportCSV(input) {
         var prod    = (row[6]||'').trim();
         var colours = (row[7]||'').trim();
         var sizes   = (row[8]||'').trim();
-        var price   = (row[9]||'').trim();
+        var price      = (row[9]||'').trim();
+        var mktCol     = (row[10]||'').trim();
+        var promoStart = btvNormalizeDate((row[11]||'').trim());
+        var promoEnd   = btvNormalizeDate((row[12]||'').trim());
+        var tillSO     = (row[13]||'').trim().toUpperCase() === 'YES';
+        var mechanics  = (row[14]||'').trim();
+        var etaDate    = btvNormalizeDate((row[15]||'').trim());
 
         if (!title || !date) return;
 
@@ -11532,7 +11593,9 @@ function btvImportCSV(input) {
           // Regional entry: each product row → one regional card (optionType/productTitle/colorSize)
           var optMap = {'GWP':'GWP','CE':'Country Exclusive','COUNTRY EXCLUSIVE':'Country Exclusive','LAUNCH':'Launch'};
           var optionType = optMap[cat] || cat || 'Launch';
-          var markets = section === 'nea' ? ["CN","JP"] : ["SG","TH","ID","PH"];
+          var defaultMkts = section === 'nea' ? ["CN","JP"] : ["SG","TH","ID","PH"];
+          var isAllMkts = !mktCol || mktCol.toLowerCase() === 'all';
+          var parsedMkts = isAllMkts ? defaultMkts : mktCol.split(',').map(function(s){ return s.trim().toUpperCase(); }).filter(Boolean);
           var colorSize = colours + (sizes ? ' / ' + sizes : '');
           var entryKey = title + '||' + date + '||' + section + '||' + prod + '||' + cat;
           if (!entryMap[entryKey]) {
@@ -11545,20 +11608,53 @@ function btvImportCSV(input) {
               launchDate: date,
               keyLevel: keyLvl,
               optionType: optionType,
-              allMarkets: true,
-              countries: markets,
+              allMarkets: isAllMkts,
+              countries: parsedMkts,
               stores: [],
               productTitle: prod,
               colour: colours,
               size: sizes,
               colorSize: colorSize,
               price: price,
-              mechanics: ''
+              mechanics: mechanics,
+              startDateISO: promoStart,
+              endDateISO: promoEnd,
+              tillSoldOut: tillSO
             };
             entryOrder.push(entryKey);
           }
+        } else if (section === 'restocks') {
+          // Restocks: create proper restock-format entry with etaISO and markets
+          var isAllMkts = !mktCol || mktCol.toLowerCase() === 'all';
+          var parsedMkts = isAllMkts ? [] : mktCol.split(',').map(function(s){ return s.trim().toUpperCase(); }).filter(Boolean);
+          var entryKey = title + '||' + date + '||' + section;
+          if (!entryMap[entryKey]) {
+            var eta = etaDate || date;
+            entryMap[entryKey] = {
+              id: String(Date.now()) + Math.random().toString(36).slice(2,7),
+              section: section,
+              weekId: etaDate ? (btvMondayOf(etaDate) || wkId) : wkId,
+              workflowStatus: status,
+              launchTitle: title,
+              launchDate: date,
+              keyLevel: keyLvl,
+              etaISO: eta,
+              eta: eta,
+              allMarkets: isAllMkts,
+              markets: parsedMkts,
+              lines: []
+            };
+            entryOrder.push(entryKey);
+          }
+          var entry = entryMap[entryKey];
+          if (prod) {
+            var colors = colours + (sizes ? ' / ' + sizes : '');
+            entry.lines.push({ productTitle: prod, colour: colours, size: sizes, colors: colors, price: price });
+            entry.productTitle = entry.lines[0].productTitle || '';
+            entry.colors = entry.lines[0].colors || '';
+          }
         } else {
-          // Global / restocks: group rows by title+date+section into one entry with lines[]
+          // Global: group rows by title+date+section into one entry with lines[]
           var entryKey = title + '||' + date + '||' + section;
           if (!entryMap[entryKey]) {
             entryMap[entryKey] = {
