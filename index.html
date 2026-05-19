@@ -349,10 +349,12 @@ html, body {
     function tryStart() {
       try {
         if (calFrame.contentWindow && typeof calFrame.contentWindow.btvSyncStart === 'function') {
-          calFrame.contentWindow.btvSyncStart(session);
+          // Pass _sb so the iframe reuses the already-authenticated client
+          // instead of creating a new one and re-doing session management.
+          calFrame.contentWindow.btvSyncStart(session, _sb);
           return true;
         }
-      } catch (e) {}
+      } catch (e) { console.error('[BTV] _startSyncInCalFrame error:', e); }
       return false;
     }
     if (!tryStart()) {

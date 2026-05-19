@@ -101,12 +101,15 @@
     if (localStorage.getItem(key) === val) return; // nothing changed
     _origSetItem(key, val);
     if (!RENDER_KEYS.includes(key)) return;
+    // Only re-render and toast for changes from someone else.
+    // Skipping self-changes avoids spurious re-renders from JSONB key
+    // reordering (PostgreSQL does not preserve object key order).
+    const isOtherUser = fromUserId && fromUserId !== _userId;
+    if (!isOtherUser) return;
     try {
       if (typeof window.render === 'function') window.render();
     } catch (e) {}
-    if (fromUserId && fromUserId !== _userId) {
-      showToast('Calendar updated by another team member');
-    }
+    showToast('Calendar updated by another team member');
   }
 
   // ── Write interceptor — mirrors localStorage writes to Supabase ────────────
@@ -180,31 +183,35 @@
   //
   //   session = the Supabase session object from signInWithPassword
   //
-  window.btvSyncStart = async function (session) {
+  // parentSb = the already-authenticated Supabase client from index.html.
+  // Same-origin frames share object references, so we reuse it directly
+  // instead of creating a new client and wrestling with session management.
+  window.btvSyncStart = async function (session, parentSb) {
     if (_started) {
       console.log('[BTV Sync] Already started, skipping.');
       return;
     }
-    _started  = true;
-    _userId   = session.user.id;
+    _started   = true;
+    _userId    = session.user.id;
     _userEmail = session.user.email || null;
 
     console.log('[BTV Sync] Starting for', _userEmail);
 
-    // Create a Supabase client for this iframe. Because index.html and
-    // calendar.html are same-origin, the parent's signInWithPassword already
-    // wrote the session to localStorage — this client reads it automatically.
-    _sb = window.supabase.createClient(url, anonKey, {
-      auth: { persistSession: true, autoRefreshToken: true },
-    });
-
-    // Confirm the shared session is readable (no setSession call needed).
-    const { data: { session: activeSession } } = await _sb.auth.getSession();
-    if (!activeSession) {
-      console.error('[BTV Sync] No session found in shared localStorage.');
-      showError('Sync could not restore your session. Sign out and sign in again to activate live sync.');
-      setupWriteInterceptor();
-      return;
+    if (parentSb) {
+      _sb = parentSb;
+      console.log('[BTV Sync] Using parent Supabase client — no session re-auth needed.');
+    } else {
+      // Fallback when called without the parent client (e.g. standalone testing).
+      _sb = window.supabase.createClient(url, anonKey, {
+        auth: { persistSession: true, autoRefreshToken: true },
+      });
+      const { data: { session: activeSession } } = await _sb.auth.getSession();
+      if (!activeSession) {
+        console.error('[BTV Sync] No active session found in shared localStorage.');
+        showError('Live sync could not authenticate. Sign out and sign back in.');
+        setupWriteInterceptor();
+        return;
+      }
     }
 
     // Pull latest state from Supabase → write to localStorage → re-render
