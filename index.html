@@ -250,19 +250,27 @@ html, body {
       </div>
     </div>
 
-    <!-- Step 2: Passcode -->
+    <!-- Step 2: Login form -->
     <div id="moduleLoginForm" style="display:none">
       <button type="button" class="login-link-btn" style="margin-bottom:14px" onclick="btvBackToModuleChoice()">&#8592; Back</button>
       <div class="module-login-title" id="moduleLoginTitle">Welcome back</div>
-      <div class="module-login-copy" id="moduleLoginCopy">Enter the team passcode to access the Calendar.</div>
+      <div class="module-login-copy" id="moduleLoginCopy">Sign in to access the Calendar.</div>
       <div class="login-field">
-        <label for="moduleLoginPwd">Passcode</label>
+        <label for="moduleLoginInput">Email address</label>
+        <input type="email" id="moduleLoginInput" class="login-inp" placeholder="you@beyondthevines.com" autocomplete="email" inputmode="email">
+      </div>
+      <div class="login-field">
+        <label for="moduleLoginPwd">Password</label>
         <div class="login-pwd-wrap">
           <input type="password" id="moduleLoginPwd" class="login-inp" placeholder="••••••" autocomplete="current-password">
-          <button type="button" class="pwd-vis-btn" id="loginPwdVisBtn" onclick="btvTogglePwdVis('moduleLoginPwd', this)" aria-label="Show passcode">&#128065;</button>
+          <button type="button" class="pwd-vis-btn" id="loginPwdVisBtn" onclick="btvTogglePwdVis('moduleLoginPwd', this)" aria-label="Show password">&#128065;</button>
         </div>
       </div>
-      <button class="login-submit-btn" id="loginSubmitBtn" style="margin-top:18px" onclick="unlockCurrentModule()">Enter</button>
+      <div class="login-link-row">
+        <button type="button" class="login-link-btn" onclick="btvOpenForgotPwd()">Forgot password?</button>
+        <button type="button" class="login-link-btn" onclick="btvOpenUserMgmt()">Manage Users</button>
+      </div>
+      <button class="login-submit-btn" id="loginSubmitBtn" style="margin-top:18px" onclick="unlockCurrentModule()">Sign in</button>
       <div id="moduleLoginError" class="login-error" style="color:#a23a2f"></div>
     </div>
   </div>
@@ -336,20 +344,25 @@ html, body {
   // ── Session bootstrap ──────────────────────────────────────────────────────
 
   async function boot() {
-    let { data: { session } } = await _sb.auth.getSession();
-    if (!session) {
-      // Auto sign-in anonymously — no credentials needed. Supabase persists the
-      // session in localStorage so subsequent page loads are instant.
-      const { data } = await _sb.auth.signInAnonymously();
-      session = data?.session || null;
-    }
+    const { data: { session } } = await _sb.auth.getSession();
     _session = session;
+    if (session) {
+      await _loadProfile(session.user.id);
+      _updateNavButtons(true);
+    }
 
-    // Still handle password-recovery redirect for named accounts
-    _sb.auth.onAuthStateChange(async function (event, newSession) {
-      _session = newSession;
+    _sb.auth.onAuthStateChange(async function (event, session) {
+      _session = session;
       if (event === 'PASSWORD_RECOVERY') {
         document.getElementById('btvChangePwdModal').classList.add('show');
+        return;
+      }
+      if (session) {
+        await _loadProfile(session.user.id);
+        _updateNavButtons(true);
+      } else {
+        _profile = null;
+        _updateNavButtons(false);
       }
     });
 
@@ -368,9 +381,8 @@ html, body {
   }
 
   function _updateNavButtons(loggedIn) {
-    // Hidden — using anonymous sessions so no sign-in/sign-out UI is needed
-    document.getElementById('navChangePwdBtn').style.display = 'none';
-    document.getElementById('navSignOutBtn').style.display   = 'none';
+    document.getElementById('navChangePwdBtn').style.display = loggedIn ? '' : 'none';
+    document.getElementById('navSignOutBtn').style.display   = loggedIn ? '' : 'none';
   }
 
   // ── Module selection & overlay ─────────────────────────────────────────────
@@ -403,10 +415,10 @@ html, body {
       document.getElementById('moduleChoiceStep').style.display = 'none';
       document.getElementById('moduleLoginForm').style.display  = '';
       document.getElementById('moduleLoginCopy').textContent =
-        'Enter the team passcode to access the ' + MODULE_LABELS[_currentModule] + '.';
+        'Sign in to access the ' + MODULE_LABELS[_currentModule] + '.';
       document.getElementById('moduleLoginTitle').textContent = 'Welcome back';
       setTimeout(function () {
-        const e = document.getElementById('moduleLoginPwd');
+        const e = document.getElementById('moduleLoginInput');
         if (e) e.focus();
       }, 50);
     }
@@ -418,12 +430,13 @@ html, body {
     document.getElementById('moduleChoiceStep').style.display = 'none';
     document.getElementById('moduleLoginForm').style.display  = '';
     document.getElementById('moduleLoginCopy').textContent =
-      'Enter the team passcode to access the ' + MODULE_LABELS[name] + '.';
+      'Sign in to access the ' + MODULE_LABELS[name] + '.';
     document.getElementById('moduleLoginTitle').textContent = 'Welcome back';
     document.getElementById('moduleLoginError').textContent = '';
-    document.getElementById('moduleLoginPwd').value = '';
+    document.getElementById('moduleLoginInput').value = '';
+    document.getElementById('moduleLoginPwd').value   = '';
     if (!_isUnlocked(name)) {
-      setTimeout(function () { document.getElementById('moduleLoginPwd').focus(); }, 50);
+      setTimeout(function () { document.getElementById('moduleLoginInput').focus(); }, 50);
     } else {
       document.getElementById('moduleLoginOverlay').classList.remove('show');
       showFrame(name);
@@ -438,27 +451,47 @@ html, body {
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
-  function unlockCurrentModule() {
-    const pwdInp = document.getElementById('moduleLoginPwd');
-    const err    = document.getElementById('moduleLoginError');
-    const btn    = document.getElementById('loginSubmitBtn');
+  async function unlockCurrentModule() {
+    const emailInp = document.getElementById('moduleLoginInput');
+    const pwdInp   = document.getElementById('moduleLoginPwd');
+    const err      = document.getElementById('moduleLoginError');
+    const btn      = document.getElementById('loginSubmitBtn');
 
-    const input   = (pwdInp.value || '').trim();
-    const correct = (window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026';
+    const email = (emailInp.value || '').trim().toLowerCase();
+    const pwd   = pwdInp.value || '';
 
     err.style.color  = '#a23a2f';
     err.textContent  = '';
+    btn.disabled     = true;
+    btn.textContent  = 'Signing in…';
 
-    if (input !== correct) {
-      err.textContent = 'Incorrect passcode. Please try again.';
-      pwdInp.value    = '';
-      pwdInp.focus();
-      return;
+    try {
+      const { data, error } = await _sb.auth.signInWithPassword({ email, password: pwd });
+      if (error) {
+        err.textContent = error.message.includes('Invalid login credentials')
+          ? 'Incorrect email or password. Please try again.'
+          : error.message;
+        pwdInp.value = '';
+        pwdInp.focus();
+        return;
+      }
+      _session = data.session;
+      await _loadProfile(data.user.id);
+      _updateNavButtons(true);
+
+      if (!_canAccess(_currentModule)) {
+        err.textContent =
+          "You don't have access to the " + MODULE_LABELS[_currentModule] +
+          ' module. Contact your admin.';
+        return;
+      }
+      _setUnlocked(_currentModule);
+      document.getElementById('moduleLoginOverlay').classList.remove('show');
+      showFrame(_currentModule);
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Sign in';
     }
-
-    _setUnlocked(_currentModule);
-    document.getElementById('moduleLoginOverlay').classList.remove('show');
-    showFrame(_currentModule);
   }
 
   // After the frame becomes active, silently unlock its internal passcode
