@@ -50,10 +50,11 @@
   // Capture the real setItem before we intercept it
   const _origSetItem = localStorage.setItem.bind(localStorage);
 
-  let _sb         = null;  // authenticated Supabase client
-  let _userId     = null;
-  let _userEmail  = null;
-  let _started    = false;
+  let _sb                  = null;  // authenticated Supabase client
+  let _userId              = null;
+  let _userEmail           = null;
+  let _started             = false;
+  let _interceptorInstalled = false;
 
   // ── Toast ──────────────────────────────────────────────────────────────────
 
@@ -111,8 +112,8 @@
   // ── Write interceptor — mirrors localStorage writes to Supabase ────────────
 
   function setupWriteInterceptor() {
-    // Guard: don't double-wrap
-    if (localStorage.setItem !== _origSetItem) return;
+    if (_interceptorInstalled) return;
+    _interceptorInstalled = true;
     localStorage.setItem = function (key, value) {
       _origSetItem(key, value);
       if (!SYNCED_KEYS.includes(key) || !_sb) return;
