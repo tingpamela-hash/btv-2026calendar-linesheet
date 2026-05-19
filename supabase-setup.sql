@@ -40,10 +40,15 @@ create policy "Authenticated users can update app_state"
 create table if not exists public.user_profiles (
   id             uuid        primary key references auth.users(id) on delete cascade,
   email          text,
-  can_access_cal boolean     not null default false,
-  can_access_ls  boolean     not null default false,
+  can_access_cal boolean     not null default true,
+  can_access_ls  boolean     not null default true,
   created_at     timestamptz not null default now()
 );
+
+-- If table already existed with default false, update the defaults
+alter table public.user_profiles
+  alter column can_access_cal set default true,
+  alter column can_access_ls  set default true;
 
 alter table public.user_profiles enable row level security;
 
@@ -82,8 +87,8 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.user_profiles (id, email)
-  values (new.id, new.email)
+  insert into public.user_profiles (id, email, can_access_cal, can_access_ls)
+  values (new.id, new.email, true, true)
   on conflict (id) do nothing;
   return new;
 end;

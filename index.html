@@ -344,32 +344,26 @@ html, body {
   // ── Session bootstrap ──────────────────────────────────────────────────────
 
   async function boot() {
-    const { data: { session } } = await _sb.auth.getSession();
-    _session = session;
-    if (session) {
-      await _loadProfile(session.user.id);
-      _updateNavButtons(true);
+    let { data: { session } } = await _sb.auth.getSession();
+    if (!session) {
+      // Auto sign-in anonymously — no credentials needed. Supabase persists the
+      // session in localStorage so subsequent page loads are instant.
+      const { data } = await _sb.auth.signInAnonymously();
+      session = data?.session || null;
     }
+    _session = session;
 
-    // Handle Supabase password-recovery redirect (user clicked reset email link)
-    _sb.auth.onAuthStateChange(async function (event, session) {
-      _session = session;
+    // Still handle password-recovery redirect for named accounts
+    _sb.auth.onAuthStateChange(async function (event, newSession) {
+      _session = newSession;
       if (event === 'PASSWORD_RECOVERY') {
         document.getElementById('btvChangePwdModal').classList.add('show');
-        return;
-      }
-      if (session) {
-        await _loadProfile(session.user.id);
-        _updateNavButtons(true);
-      } else {
-        _profile = null;
-        _updateNavButtons(false);
       }
     });
 
     _refreshOverlay();
-    const boot = document.getElementById('boot');
-    if (boot) boot.remove();
+    const bootEl = document.getElementById('boot');
+    if (bootEl) bootEl.remove();
   }
 
   async function _loadProfile(userId) {
@@ -382,8 +376,9 @@ html, body {
   }
 
   function _updateNavButtons(loggedIn) {
-    document.getElementById('navChangePwdBtn').style.display = loggedIn ? '' : 'none';
-    document.getElementById('navSignOutBtn').style.display   = loggedIn ? '' : 'none';
+    // Hidden — using anonymous sessions so no sign-in/sign-out UI is needed
+    document.getElementById('navChangePwdBtn').style.display = 'none';
+    document.getElementById('navSignOutBtn').style.display   = 'none';
   }
 
   // ── Module selection & overlay ─────────────────────────────────────────────
@@ -405,42 +400,22 @@ html, body {
   function _refreshOverlay() {
     const overlay = document.getElementById('moduleLoginOverlay');
     if (!_moduleChosen) {
+      // Show module-choice step only (Calendar / Linesheet picker)
       document.getElementById('moduleChoiceStep').style.display = '';
       document.getElementById('moduleLoginForm').style.display  = 'none';
       overlay.classList.add('show');
       return;
     }
-    const locked = !_isUnlocked(_currentModule);
-    overlay.classList.toggle('show', locked);
-    if (locked) {
-      document.getElementById('moduleChoiceStep').style.display = 'none';
-      document.getElementById('moduleLoginForm').style.display  = '';
-      document.getElementById('moduleLoginCopy').textContent =
-        'Sign in to access the ' + MODULE_LABELS[_currentModule] + '.';
-      document.getElementById('moduleLoginTitle').textContent = 'Welcome back';
-      setTimeout(function () {
-        const e = document.getElementById('moduleLoginInput');
-        if (e) e.focus();
-      }, 50);
-    }
+    // Module chosen — dismiss overlay immediately, no login step needed
+    overlay.classList.remove('show');
   }
 
   function btvSelectModule(name) {
     _currentModule = name;
     _moduleChosen  = true;
-    document.getElementById('moduleChoiceStep').style.display = 'none';
-    document.getElementById('moduleLoginForm').style.display  = '';
-    document.getElementById('moduleLoginCopy').textContent =
-      'Sign in to access the ' + MODULE_LABELS[name] + '.';
-    document.getElementById('moduleLoginError').textContent = '';
-    document.getElementById('moduleLoginInput').value = '';
-    document.getElementById('moduleLoginPwd').value   = '';
-    if (!_isUnlocked(name)) {
-      setTimeout(function () { document.getElementById('moduleLoginInput').focus(); }, 50);
-    } else {
-      document.getElementById('moduleLoginOverlay').classList.remove('show');
-      showFrame(name);
-    }
+    _setUnlocked(name);
+    document.getElementById('moduleLoginOverlay').classList.remove('show');
+    showFrame(name);
   }
 
   function btvBackToModuleChoice() {
