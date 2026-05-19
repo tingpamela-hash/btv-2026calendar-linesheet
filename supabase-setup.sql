@@ -101,8 +101,17 @@ create trigger on_auth_user_created
   execute function public.handle_new_user();
 
 
--- ── 4. Grant access to your account ──────────────────────────
+-- ── 4. Grant access to all existing accounts ─────────────────
+-- Fixes accounts that were created when the default was false.
+-- Safe to re-run — only updates rows that are currently blocked.
 
+update public.user_profiles
+set can_access_cal = true,
+    can_access_ls  = true
+where can_access_cal = false
+   or can_access_ls  = false;
+
+-- Also ensure your own account has access.
 insert into public.user_profiles (id, email, can_access_cal, can_access_ls)
 select id, email, true, true
 from auth.users
@@ -110,6 +119,14 @@ where email = 'charmaine.lau.btv@gmail.com'
 on conflict (id) do update
   set can_access_cal = true,
       can_access_ls  = true;
+
+-- ── Diagnostic: see all accounts and their access ────────────
+-- Run this separately to check who has access and who doesn't:
+--
+--   select email, can_access_cal, can_access_ls, created_at
+--   from public.user_profiles
+--   order by created_at;
+--
 
 -- ── 5. change_log ────────────────────────────────────────────
 
