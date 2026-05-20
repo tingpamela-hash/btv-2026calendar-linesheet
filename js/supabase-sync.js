@@ -80,6 +80,7 @@
   ].join('');
 
   function _showBar(id, html, bg, color) {
+    if (!document.body) return;
     let el = document.getElementById(id);
     if (!el) {
       el = document.createElement('div');
@@ -130,7 +131,12 @@
 
   window.addEventListener('offline', _onOffline);
   window.addEventListener('online',  _onOnline);
-  if (!navigator.onLine) _onOffline();
+  // Defer the initial offline check until body exists (script may be in <head>)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { if (!navigator.onLine) _onOffline(); });
+  } else {
+    if (!navigator.onLine) _onOffline();
+  }
 
   // ── Write-failure alert ────────────────────────────────────────────────────
 
@@ -152,6 +158,7 @@
   // ── Toast ──────────────────────────────────────────────────────────────────
 
   function showToast(msg) {
+    if (!document.body) return;
     let el = document.getElementById('btv-sync-toast');
     if (!el) {
       el = document.createElement('div');
@@ -173,6 +180,7 @@
   }
 
   function showError(msg) {
+    if (!document.body) return;
     const el = document.createElement('div');
     el.style.cssText = [
       'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);',
@@ -253,6 +261,10 @@
             _lastPullTimes[key] = now; // our own save — update baseline
             _hideBar('btv-write-fail-bar'); // clear any previous failure
           }
+        })
+        .catch(function (err) {
+          console.error('[BTV Sync] Network error on write:', key, err);
+          _showWriteFailure(key, err.message || 'Network error');
         });
     };
   }
