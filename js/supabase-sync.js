@@ -317,7 +317,7 @@
         .on('presence', { event: 'join' },  _dispatchPresence)
         .on('presence', { event: 'leave' }, _dispatchPresence);
       // Announce this iframe's user on the shared channel
-      _presenceChannel.track({ email: _userEmail, item: null, ts: Date.now() });
+      _presenceChannel.track({ email: _userEmail, item: null, field: null, ts: Date.now() });
       // Fire an initial render — the sync event already fired before we attached
       _dispatchPresence();
       console.log('[BTV Sync] Presence: sharing existing channel.');
@@ -335,19 +335,38 @@
       .subscribe(function (status) {
         if (status === 'SUBSCRIBED') {
           console.log('[BTV Sync] Presence channel connected.');
-          _presenceChannel.track({ email: _userEmail, item: null, ts: Date.now() });
+          _presenceChannel.track({ email: _userEmail, item: null, field: null, ts: Date.now() });
         }
       });
   }
 
   window.btvSetEditing = async function (itemId) {
     if (!_presenceChannel) return;
-    await _presenceChannel.track({ email: _userEmail, item: itemId, ts: Date.now() });
+    await _presenceChannel.track({ email: _userEmail, item: itemId, field: null, ts: Date.now() });
   };
 
   window.btvClearEditing = async function () {
     if (!_presenceChannel) return;
-    await _presenceChannel.track({ email: _userEmail, item: null, ts: Date.now() });
+    await _presenceChannel.track({ email: _userEmail, item: null, field: null, ts: Date.now() });
+  };
+
+  // Track which specific field the user is currently focused on within a product form.
+  // groupId is the product's groupId; fieldKey is a stable identifier for the input
+  // (e.g. "f_name", "meas-r0-S-val"). Pass fieldKey=null to clear field focus.
+  window.btvTrackField = async function (groupId, fieldKey) {
+    if (!_presenceChannel) return;
+    var itemId = groupId ? 'ls::group::' + groupId : null;
+    await _presenceChannel.track({ email: _userEmail, item: itemId, field: fieldKey || null, ts: Date.now() });
+  };
+
+  // Returns the email of the teammate currently focused on fieldKey within groupId, or null.
+  window.btvGetFieldHolder = function (groupId, fieldKey) {
+    var itemId = 'ls::group::' + groupId;
+    var users = window.btvGetOnlineUsers();
+    for (var i = 0; i < users.length; i++) {
+      if (users[i].item === itemId && users[i].field === fieldKey) return users[i].email;
+    }
+    return null;
   };
 
   window.btvGetOnlineUsers = function () {
@@ -359,7 +378,7 @@
       const presences = state[key] || [];
       if (presences.length) {
         const p = presences[presences.length - 1];
-        if (p.email) users.push({ email: p.email, item: p.item || null });
+        if (p.email) users.push({ email: p.email, item: p.item || null, field: p.field || null });
       }
     });
     return users;

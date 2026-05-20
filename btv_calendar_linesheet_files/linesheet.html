@@ -2333,7 +2333,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <select id="f_category" onchange="__btvAutoFillHSCode()">
+          <select id="f_category" data-field-key="f_category" onchange="__btvAutoFillHSCode()">
 
 
 
@@ -2483,7 +2483,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="text" id="f_name" placeholder="From master list or typed manually">
+          <input type="text" id="f_name" data-field-key="f_name" placeholder="From master list or typed manually">
 
 
 
@@ -2543,7 +2543,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <textarea id="f_description" rows="3" placeholder="Shared description for this style" oninput="__btvAutoFillHSCode()"></textarea>
+          <textarea id="f_description" data-field-key="f_description" rows="3" placeholder="Shared description for this style" oninput="__btvAutoFillHSCode()"></textarea>
 
 
 
@@ -2583,7 +2583,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <textarea id="f_washcare" rows="3" placeholder="Shared washcare / care instructions"></textarea>
+          <textarea id="f_washcare" data-field-key="f_washcare" rows="3" placeholder="Shared washcare / care instructions"></textarea>
 
 
 
@@ -2643,7 +2643,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <textarea id="f_fabric" rows="3" placeholder="Shared composition / material information" oninput="__btvAutoFillHSCode()"></textarea>
+          <textarea id="f_fabric" data-field-key="f_fabric" rows="3" placeholder="Shared composition / material information" oninput="__btvAutoFillHSCode()"></textarea>
 
 
 
@@ -2683,7 +2683,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="text" id="f_sizing" placeholder="XS, S, M, L, XL" oninput="syncMeasurementTable()">
+          <input type="text" id="f_sizing" data-field-key="f_sizing" placeholder="XS, S, M, L, XL" oninput="syncMeasurementTable()">
 
 
 
@@ -2723,7 +2723,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="number" id="f_weight" min="0" step="1" placeholder="Weight in grams">
+          <input type="number" id="f_weight" data-field-key="f_weight" min="0" step="1" placeholder="Weight in grams">
 
 
 
@@ -2803,7 +2803,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="text" id="f_hscode" placeholder="Auto-suggested from category + description + fabric" oninput="__btvOnHSCodeInput()">
+          <input type="text" id="f_hscode" data-field-key="f_hscode" placeholder="Auto-suggested from category + description + fabric" oninput="__btvOnHSCodeInput()">
 
 
 
@@ -2853,7 +2853,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="text" id="f_hscode10" placeholder="Auto-derived — editable if the suggestion is wrong" oninput="__btvOnHSCode10Input()">
+          <input type="text" id="f_hscode10" data-field-key="f_hscode10" placeholder="Auto-derived — editable if the suggestion is wrong" oninput="__btvOnHSCode10Input()">
 
 
 
@@ -3213,7 +3213,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="number" step="0.01" id="f_sgd" oninput="calcGST(); autoFillOverseasPrices()">
+          <input type="number" step="0.01" id="f_sgd" data-field-key="f_sgd" oninput="calcGST(); autoFillOverseasPrices()">
 
 
 
@@ -3293,7 +3293,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="number" step="0.01" id="f_jp">
+          <input type="number" step="0.01" id="f_jp" data-field-key="f_jp">
 
 
 
@@ -3333,7 +3333,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="number" step="0.01" id="f_id">
+          <input type="number" step="0.01" id="f_id" data-field-key="f_id">
 
 
 
@@ -3373,7 +3373,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="number" step="0.01" id="f_th">
+          <input type="number" step="0.01" id="f_th" data-field-key="f_th">
 
 
 
@@ -3413,7 +3413,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="number" step="0.01" id="f_ph">
+          <input type="number" step="0.01" id="f_ph" data-field-key="f_ph">
 
 
 
@@ -3453,7 +3453,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-          <input type="number" step="0.01" id="f_cn">
+          <input type="number" step="0.01" id="f_cn" data-field-key="f_cn">
 
 
 
@@ -9653,18 +9653,18 @@ function syncMeasurementTable(preserved){
 
   const rows = state.length ? state : [{label:'', values:{}}];
   rows.forEach((row, rowIndex)=>{
-    html += `<tr data-row-index="${rowIndex}"><td><input type="text" class="measure-label" placeholder="e.g. Chest Width" value="${escapeHtml(row.label || '')}"></td>`;
+    html += `<tr data-row-index="${rowIndex}"><td><input type="text" class="measure-label" data-field-key="meas-r${rowIndex}-label" placeholder="e.g. Chest Width" value="${escapeHtml(row.label || '')}"></td>`;
     const renderSizes = sizes.length ? sizes : [''];
     renderSizes.forEach(size=>{
       const key = size || '_default';
       const entry = row.values?.[key] || {inch:'', cm:''};
       if(mode === 'cm'){
-        html += `<td><input type="text" data-size="${escapeHtml(key)}" class="measure-cm" value="${escapeHtml(entry.cm || '')}" oninput="handleMeasurementInput(this,'cm')"><input type="hidden" data-size="${escapeHtml(key)}" class="measure-inch" value="${escapeHtml(entry.inch || '')}"></td>`;
+        html += `<td><input type="text" data-size="${escapeHtml(key)}" data-field-key="meas-r${rowIndex}-${escapeHtml(key)}-val" class="measure-cm" value="${escapeHtml(entry.cm || '')}" oninput="handleMeasurementInput(this,'cm')"><input type="hidden" data-size="${escapeHtml(key)}" class="measure-inch" value="${escapeHtml(entry.inch || '')}"></td>`;
       } else {
-        html += `<td><input type="text" data-size="${escapeHtml(key)}" class="measure-inch" value="${escapeHtml(entry.inch || '')}" oninput="handleMeasurementInput(this,'inch')"><input type="hidden" data-size="${escapeHtml(key)}" class="measure-cm" value="${escapeHtml(entry.cm || '')}"></td>`;
+        html += `<td><input type="text" data-size="${escapeHtml(key)}" data-field-key="meas-r${rowIndex}-${escapeHtml(key)}-val" class="measure-inch" value="${escapeHtml(entry.inch || '')}" oninput="handleMeasurementInput(this,'inch')"><input type="hidden" data-size="${escapeHtml(key)}" class="measure-cm" value="${escapeHtml(entry.cm || '')}"></td>`;
       }
     });
-    html += `<td><input type="text" class="measure-tolerance" value="${escapeHtml(row.tolerance||"")}" placeholder="e.g. ±0.5cm" style="width:100%;border:1px solid #dfd3c2;border-radius:8px;padding:7px 8px;font:inherit;font-size:12px;background:#fff"></td><td><button class="btn" type="button" onclick="removeMeasurementRow(this)">×</button></td></tr>`;
+    html += `<td><input type="text" class="measure-tolerance" data-field-key="meas-r${rowIndex}-tolerance" value="${escapeHtml(row.tolerance||"")}" placeholder="e.g. ±0.5cm" style="width:100%;border:1px solid #dfd3c2;border-radius:8px;padding:7px 8px;font:inherit;font-size:12px;background:#fff"></td><td><button class="btn" type="button" onclick="removeMeasurementRow(this)">×</button></td></tr>`;
   });
   html += '</tbody>';
   table.innerHTML = html;
@@ -13761,47 +13761,11 @@ function editGroup(groupId){
 
   switchView('form');
 
-  // ── Presence locking ──────────────────────────────────────────────────
+  // ── Presence: announce this product is open (drives master-list amber outlines) ──
   var _btvLsKey = 'ls::group::' + groupId;
-  var _btvLsHolder = typeof _btvLsGetLockHolder === 'function' ? _btvLsGetLockHolder(_btvLsKey) : null;
-
-  // Clear any stale lock banner from a previous open
-  var _btvOldBanner = document.getElementById('btv-ls-lock-banner');
-  if (_btvOldBanner) _btvOldBanner.remove();
-
-  if (_btvLsHolder) {
-    // Another user is editing this product — lock the form
-    var _btvLockBanner = document.createElement('div');
-    _btvLockBanner.id = 'btv-ls-lock-banner';
-    _btvLockBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin:0 0 12px;font-size:12px;color:#7a5a00;line-height:1.6;position:sticky;top:0;z-index:200;';
-    _btvLockBanner.innerHTML = '🔒 <strong>' + _btvLsHolder + '</strong> is currently editing this product. Inputs are locked to protect their work.';
-    var _fvEl = document.getElementById('view-form');
-    if (_fvEl) _fvEl.insertBefore(_btvLockBanner, _fvEl.firstChild);
-
-    // Disable all form inputs and save button
-    document.querySelectorAll('#view-form input, #view-form textarea, #view-form select').forEach(function(el) { el.disabled = true; });
-    var _svBtn = document.querySelector('button[onclick="saveProductGroup()"]');
-    if (_svBtn) { _svBtn.disabled = true; _svBtn.style.opacity = '0.35'; }
-
-    // Watch for the lock to release
-    var _btvLsUnlocker = function() {
-      if (typeof _btvLsGetLockHolder !== 'function' || _btvLsGetLockHolder(_btvLsKey)) return;
-      window.removeEventListener('btv-presence-changed', _btvLsUnlocker);
-      window._btvCurrentLsUnlocker = null;
-      // Re-enable all inputs
-      document.querySelectorAll('#view-form input, #view-form textarea, #view-form select').forEach(function(el) { el.disabled = false; });
-      if (_svBtn) { _svBtn.disabled = false; _svBtn.style.opacity = '1'; }
-      // Reload the form with the freshest saved data
-      var _freshItems = products.filter(function(p) { return p.groupId === groupId; });
-      if (_freshItems.length) editGroup(groupId);
-    };
-    if (window._btvCurrentLsUnlocker) window.removeEventListener('btv-presence-changed', window._btvCurrentLsUnlocker);
-    window._btvCurrentLsUnlocker = _btvLsUnlocker;
-    window.addEventListener('btv-presence-changed', _btvLsUnlocker);
-  } else {
-    // No lock — we're free to edit; announce ourselves
-    if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvLsKey);
-  }
+  if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvLsKey);
+  // Apply per-field locks from any teammates currently focused on fields in this product
+  if (typeof _btvLsApplyFieldLocks === 'function') _btvLsApplyFieldLocks(groupId);
 
 
 
@@ -18026,33 +17990,8 @@ function _btvLsGetLockHolder(itemKey) {
 }
 
 function _btvLsRenderPresenceBar() {
-  var users = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
-  var bar = document.getElementById('btv-presence-bar');
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.id = 'btv-presence-bar';
-    bar.style.cssText = 'position:fixed;top:10px;right:14px;z-index:9990;display:flex;gap:5px;align-items:center;pointer-events:none';
-    document.body.appendChild(bar);
-  }
-  bar.innerHTML = '';
-  if (!users.length) return;
-  var lbl = document.createElement('span');
-  lbl.style.cssText = 'font-size:9px;font-weight:700;color:#999;letter-spacing:.08em;font-family:Helvetica,sans-serif;text-transform:uppercase;margin-right:2px';
-  lbl.textContent = 'Online';
-  bar.appendChild(lbl);
-  users.forEach(function(u) {
-    var chip = document.createElement('div');
-    var initials = (u.email || '??').split('@')[0].substring(0, 2).toUpperCase();
-    chip.style.cssText = 'width:26px;height:26px;border-radius:50%;background:' + _btvEmailColor(u.email) + ';color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:Helvetica,sans-serif;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);position:relative;pointer-events:auto;cursor:default;';
-    chip.title = u.email + (u.item ? ' — editing' : ' — online');
-    chip.textContent = initials;
-    if (u.item) {
-      var dot = document.createElement('div');
-      dot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;background:#22c55e;border-radius:50%;border:1.5px solid #fff';
-      chip.appendChild(dot);
-    }
-    bar.appendChild(chip);
-  });
+  // Global online-user floating bar removed — field-level co-edit bar is used instead.
+  // Still update master-list amber outlines.
   _btvLsApplyLockBadges();
 }
 
@@ -18087,7 +18026,108 @@ function _btvLsApplyLockBadges() {
   });
 }
 
-window.addEventListener('btv-presence-changed', _btvLsRenderPresenceBar);
+window.addEventListener('btv-presence-changed', function() {
+  _btvLsApplyLockBadges(); // keep master-list amber outlines
+  if (typeof editingGroupId !== 'undefined' && editingGroupId) {
+    var fv = document.getElementById('view-form');
+    if (fv && fv.classList.contains('active')) _btvLsApplyFieldLocks(editingGroupId);
+  }
+});
+
+// ── Field-level presence: who is in which field on the same product ──────────
+
+function _btvLsFieldLabel(fk) {
+  var map = {
+    f_category:'Category', f_name:'Product Name', f_description:'Description',
+    f_washcare:'Washcare', f_fabric:'Fabric/Composition', f_sizing:'Sizes',
+    f_weight:'Weight', f_hscode:'HS Code 6', f_hscode10:'HS Code 10',
+    f_sgd:'SGD Price', f_jp:'JPY Price', f_id:'IDR Price',
+    f_th:'THB Price', f_ph:'PHP Price', f_cn:'CNY Price',
+  };
+  if (map[fk]) return map[fk];
+  var m1 = fk.match(/^meas-r(\d+)-label$/);
+  if (m1) return 'Meas Row ' + (+m1[1]+1) + ' · Label';
+  var m2 = fk.match(/^meas-r(\d+)-(.+)-val$/);
+  if (m2) return 'Meas Row ' + (+m2[1]+1) + ' · ' + m2[2];
+  var m3 = fk.match(/^meas-r(\d+)-tolerance$/);
+  if (m3) return 'Meas Row ' + (+m3[1]+1) + ' · Tol.';
+  return fk;
+}
+
+// Co-edit bar: shows teammates currently in this product and which field they hold.
+function _btvLsRenderCoEditBar(groupId) {
+  var allUsers = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  var itemId = 'ls::group::' + groupId;
+  var editors = allUsers.filter(function(u) { return u.item === itemId; });
+  var bar = document.getElementById('btv-coedit-bar');
+  if (!editors.length) { if (bar) bar.style.display = 'none'; return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'btv-coedit-bar';
+    bar.style.cssText = 'margin-bottom:12px;padding:8px 12px;background:#fffbeb;border:1.5px solid #e6a817;border-radius:4px;font-size:12px;color:#78350f;display:flex;flex-wrap:wrap;gap:6px;align-items:center;';
+    var fv = document.getElementById('view-form');
+    if (fv) fv.insertBefore(bar, fv.firstChild);
+  }
+  bar.style.display = 'flex';
+  var html = '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-right:4px;flex-shrink:0;">Also here:</span>';
+  editors.forEach(function(u) {
+    var name = u.email.split('@')[0];
+    var fLabel = u.field ? ' · ' + _btvLsFieldLabel(u.field) : '';
+    html += '<span style="background:' + _btvEmailColor(u.email) + ';color:#fff;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;" title="' + u.email + '">' + name + fLabel + '</span>';
+  });
+  bar.innerHTML = html;
+}
+
+// Apply per-field locks: disable each input that a teammate is currently focused on.
+function _btvLsApplyFieldLocks(groupId) {
+  if (!groupId) return;
+  var allUsers = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  var itemId = 'ls::group::' + groupId;
+  var fieldHolders = {};
+  allUsers.forEach(function(u) { if (u.item === itemId && u.field) fieldHolders[u.field] = u.email; });
+  document.querySelectorAll('#view-form [data-field-key]').forEach(function(el) {
+    if (el.type === 'hidden') return;
+    var fk = el.dataset.fieldKey;
+    var holder = fieldHolders[fk];
+    var badge = el.parentElement ? el.parentElement.querySelector('.btv-fl-badge[data-fk="' + fk + '"]') : null;
+    if (holder) {
+      el.disabled = true;
+      el.style.outline = '2px solid #e6a817';
+      el.title = '🔒 ' + holder.split('@')[0] + ' is editing this field';
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'btv-fl-badge';
+        badge.dataset.fk = fk;
+        badge.style.cssText = 'display:inline-block;margin-left:6px;background:#e6a817;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 7px;vertical-align:middle;';
+        badge.title = holder;
+        el.insertAdjacentElement('afterend', badge);
+      }
+      badge.textContent = holder.split('@')[0];
+    } else {
+      if (!el.readOnly) el.disabled = false;
+      el.style.outline = '';
+      el.title = '';
+      if (badge) badge.remove();
+    }
+  });
+  _btvLsRenderCoEditBar(groupId);
+}
+
+// Event delegation: when any tracked field is focused/blurred, update presence.
+(function() {
+  document.addEventListener('focusin', function(e) {
+    var fk = e.target.dataset && e.target.dataset.fieldKey;
+    if (!fk) return;
+    if (typeof editingGroupId === 'undefined' || !editingGroupId) return;
+    if (typeof window.btvTrackField === 'function') window.btvTrackField(editingGroupId, fk);
+  });
+  document.addEventListener('focusout', function(e) {
+    var fk = e.target.dataset && e.target.dataset.fieldKey;
+    if (!fk) return;
+    if (typeof editingGroupId === 'undefined' || !editingGroupId) return;
+    if (typeof window.btvTrackField === 'function') window.btvTrackField(editingGroupId, null);
+  });
+})();
 
 // ── Unsaved changes tracking ──────────────────────────────────────────────
 var _btvFormDirty = false;
