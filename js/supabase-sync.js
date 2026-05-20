@@ -1,19 +1,23 @@
 /**
- * BTV Supabase Sync — v3
- *
- * Architecture change from v2:
- *   The parent frame (index.html) calls window.btvSyncStart(session) directly
- *   after login instead of relying on cross-frame SIGNED_IN event propagation.
- *   This eliminates all iframe-reload chains and timing race conditions.
+ * BTV Supabase Sync — v4
  *
  * Flow:
  *   1. index.html logs the user in with signInWithPassword.
- *   2. index.html calls frame.contentWindow.btvSyncStart(session) on the iframe.
- *   3. btvSyncStart: sets up the authenticated Supabase client, pulls latest
- *      state from cloud into localStorage, re-renders, then subscribes to
- *      Realtime so future changes from other users appear automatically.
- *   4. Write interceptor mirrors every localStorage.setItem (for watched keys)
- *      to Supabase in real time.
+ *   2. index.html calls frame.contentWindow.btvSyncStart(session, parentSb).
+ *   3. btvSyncStart: pulls latest state from cloud into localStorage,
+ *      re-renders, then subscribes to Realtime + Presence.
+ *   4. Write interceptor mirrors every localStorage.setItem to Supabase.
+ *
+ * Safety features (v4):
+ *   • Offline detection — persistent banner when navigator is offline;
+ *     auto force-sync on reconnect.
+ *   • Write-failure alert — visible error bar with Retry button when a
+ *     Supabase write fails (network error, auth expiry, etc.).
+ *   • Version-conflict check — btvCheckVersionConflict(key) does a live
+ *     Supabase query before the caller saves; if a teammate saved the same
+ *     key after the user last pulled, returns true so the caller can prompt.
+ *   • updated_at tracking — every Supabase read stores each key's
+ *     updated_at so version comparisons are accurate.
  */
 (function () {
   'use strict';
@@ -41,8 +45,6 @@
   ];
 
   // Keys that trigger a UI re-render when changed remotely.
-  // Each iframe defines its own btvReloadAndRender — calendar only
-  // refreshes calendar state, linesheet only refreshes linesheet state.
   const RENDER_KEYS = [
     'calendar-2026-working-v5',
     'calendar-2026-markdown-bars-v1',
@@ -56,11 +58,96 @@
   // Capture the real setItem before we intercept it
   const _origSetItem = localStorage.setItem.bind(localStorage);
 
-  let _sb                  = null;  // authenticated Supabase client
-  let _userId              = null;
-  let _userEmail           = null;
-  let _started             = false;
+  let _sb                   = null;  // authenticated Supabase client
+  let _userId               = null;
+  let _userEmail            = null;
+  let _started              = false;
   let _interceptorInstalled = false;
+
+  // Tracks the last-known updated_at from Supabase for each key.
+  // Used for version-conflict detection.
+  const _lastPullTimes = {};
+
+  // ── Status bars ────────────────────────────────────────────────────────────
+  // Persistent banners at the top of the iframe for sync health states.
+
+  const BAR_CSS = [
+    'position:fixed;top:0;left:0;right:0;z-index:10000;',
+    'display:flex;align-items:center;justify-content:center;gap:12px;',
+    'padding:7px 16px;font-size:12px;font-weight:600;line-height:1.4;',
+    "font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;",
+    'box-shadow:0 2px 8px rgba(0,0,0,.18);',
+  ].join('');
+
+  function _showBar(id, html, bg, color) {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      document.body.insertBefore(el, document.body.firstChild);
+    }
+    el.style.cssText = BAR_CSS + 'background:' + bg + ';color:' + color + ';';
+    el.innerHTML = html;
+    el.style.display = 'flex';
+  }
+
+  function _hideBar(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
+
+  // ── Offline / online detection ─────────────────────────────────────────────
+
+  function _onOffline() {
+    _showBar(
+      'btv-offline-bar',
+      '📡 <span>You are <strong>offline</strong> — changes are being saved locally but will not sync to teammates until you reconnect.</span>',
+      '#fef3c7', '#78350f'
+    );
+  }
+
+  function _onOnline() {
+    _hideBar('btv-offline-bar');
+    // Push any local changes that may have been made while offline
+    if (!_sb || !_userId) return;
+    setTimeout(async function () {
+      const rows = SYNCED_KEYS
+        .filter(function (k) { return localStorage.getItem(k) !== null; })
+        .map(function (key) {
+          const raw = localStorage.getItem(key);
+          let parsed; try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+          return { key, value: parsed, updated_at: new Date().toISOString(), updated_by: _userId };
+        });
+      if (!rows.length) return;
+      const { error } = await _sb.from('app_state').upsert(rows, { onConflict: 'key' });
+      if (!error) {
+        rows.forEach(function (r) { _lastPullTimes[r.key] = r.updated_at; });
+        _showBar('btv-online-bar', '✓ Back online — all changes have been synced.', '#dcfce7', '#166534');
+        setTimeout(function () { _hideBar('btv-online-bar'); }, 5000);
+      }
+    }, 800);
+  }
+
+  window.addEventListener('offline', _onOffline);
+  window.addEventListener('online',  _onOnline);
+  if (!navigator.onLine) _onOffline();
+
+  // ── Write-failure alert ────────────────────────────────────────────────────
+
+  function _showWriteFailure(key, errMsg) {
+    _showBar(
+      'btv-write-fail-bar',
+      '⚠ <span><strong>Save failed</strong> for <em>' + key + '</em>: ' + errMsg +
+      '. Your change may not have reached teammates.</span>' +
+      '<button onclick="window.btvForceSync&&window.btvForceSync()" ' +
+      'style="background:#ef4444;color:#fff;border:none;border-radius:5px;' +
+      'padding:3px 10px;font-size:11px;cursor:pointer;font-weight:700">Retry Sync</button>' +
+      '<button onclick="document.getElementById(\'btv-write-fail-bar\').style.display=\'none\'" ' +
+      'style="background:none;border:1px solid #b91c1c;border-radius:5px;' +
+      'padding:3px 8px;font-size:11px;cursor:pointer;color:#7f1d1d">Dismiss</button>',
+      '#fee2e2', '#7f1d1d'
+    );
+  }
 
   // ── Toast ──────────────────────────────────────────────────────────────────
 
@@ -101,15 +188,37 @@
     document.body.appendChild(el);
   }
 
+  // ── Version-conflict check ─────────────────────────────────────────────────
+  //
+  // Call this before saving. Returns true if a teammate saved the same key
+  // after the user last pulled — meaning the user's form is based on stale data.
+
+  window.btvCheckVersionConflict = async function (key) {
+    if (!_sb || !_lastPullTimes[key]) return false;
+    try {
+      const { data } = await _sb
+        .from('app_state')
+        .select('updated_at, updated_by')
+        .eq('key', key)
+        .single();
+      if (!data || !data.updated_at) return false;
+      const dbTime   = new Date(data.updated_at);
+      const pullTime = new Date(_lastPullTimes[key]);
+      // Conflict if DB is newer AND it was written by someone else
+      return dbTime > pullTime && data.updated_by !== _userId;
+    } catch (e) {
+      return false; // network error during check — allow save to proceed
+    }
+  };
+
   // ── Apply a row received from Supabase into localStorage + re-render ───────
 
-  function applyRow(key, val, fromUserId) {
+  function applyRow(key, val, fromUserId, updatedAt) {
+    if (updatedAt) _lastPullTimes[key] = updatedAt;
     if (localStorage.getItem(key) === val) return; // nothing changed
     _origSetItem(key, val);
     if (!RENDER_KEYS.includes(key)) return;
     // Only re-render and toast for changes from someone else.
-    // Skipping self-changes avoids spurious re-renders from JSONB key
-    // reordering (PostgreSQL does not preserve object key order).
     const isOtherUser = fromUserId && fromUserId !== _userId;
     if (!isOtherUser) return;
     try {
@@ -127,15 +236,23 @@
     localStorage.setItem = function (key, value) {
       _origSetItem(key, value);
       if (!SYNCED_KEYS.includes(key) || !_sb) return;
+      if (!navigator.onLine) return; // queued for reconnect sync
       let parsed;
       try { parsed = JSON.parse(value); } catch (e) { parsed = value; }
+      const now = new Date().toISOString();
       _sb.from('app_state')
         .upsert(
-          { key, value: parsed, updated_at: new Date().toISOString(), updated_by: _userId },
+          { key, value: parsed, updated_at: now, updated_by: _userId },
           { onConflict: 'key' }
         )
         .then(function (res) {
-          if (res.error) console.error('[BTV Sync] Write failed:', key, res.error.message);
+          if (res.error) {
+            console.error('[BTV Sync] Write failed:', key, res.error.message);
+            _showWriteFailure(key, res.error.message);
+          } else {
+            _lastPullTimes[key] = now; // our own save — update baseline
+            _hideBar('btv-write-fail-bar'); // clear any previous failure
+          }
         });
     };
   }
@@ -155,7 +272,7 @@
             typeof payload.new.value === 'string'
               ? payload.new.value
               : JSON.stringify(payload.new.value);
-          applyRow(key, val, payload.new.updated_by);
+          applyRow(key, val, payload.new.updated_by, payload.new.updated_at);
         }
       )
       .subscribe(function (status, err) {
@@ -185,25 +302,21 @@
       .subscribe(function (status) {
         if (status === 'SUBSCRIBED') {
           console.log('[BTV Sync] Presence channel connected.');
-          // Announce ourselves as online (item: null = not editing anything yet)
           _presenceChannel.track({ email: _userEmail, item: null, ts: Date.now() });
         }
       });
   }
 
-  // Call when user opens an edit modal/form for itemId.
   window.btvSetEditing = async function (itemId) {
     if (!_presenceChannel) return;
     await _presenceChannel.track({ email: _userEmail, item: itemId, ts: Date.now() });
   };
 
-  // Call when user closes the modal/form — stays "online" but no longer editing.
   window.btvClearEditing = async function () {
     if (!_presenceChannel) return;
     await _presenceChannel.track({ email: _userEmail, item: null, ts: Date.now() });
   };
 
-  // Returns all OTHER online users as [{ email, item }]. item is null if not editing.
   window.btvGetOnlineUsers = function () {
     if (!_presenceChannel) return [];
     const state = _presenceChannel.presenceState();
@@ -219,14 +332,13 @@
     return users;
   };
 
-  // Returns array of email strings of OTHER users currently editing itemId.
   window.btvGetEditingUsers = function (itemId) {
     return window.btvGetOnlineUsers()
       .filter(function (u) { return u.item === itemId; })
       .map(function (u) { return u.email; });
   };
 
-  // ── Polling fallback every 15 s (catches missed Realtime events) ───────────
+  // ── Polling fallback every 15 s ───────────────────────────────────────────
 
   function setupPolling() {
     setInterval(async function () {
@@ -234,25 +346,20 @@
       try {
         const { data } = await _sb
           .from('app_state')
-          .select('key, value, updated_by')
+          .select('key, value, updated_by, updated_at')
           .in('key', RENDER_KEYS);
         if (!data) return;
         data.forEach(function (row) {
           const val =
             typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
-          applyRow(row.key, val, row.updated_by);
+          applyRow(row.key, val, row.updated_by, row.updated_at);
         });
       } catch (e) {}
-    }, 15000); // every 15 s
+    }, 15000);
   }
 
-  // ── btvSyncStart — called by index.html right after login ──────────────────
-  //
-  //   session = the Supabase session object from signInWithPassword
-  //
-  // parentSb = the already-authenticated Supabase client from index.html.
-  // Same-origin frames share object references, so we reuse it directly
-  // instead of creating a new client and wrestling with session management.
+  // ── btvSyncStart ──────────────────────────────────────────────────────────
+
   window.btvSyncStart = async function (session, parentSb) {
     if (_started) {
       console.log('[BTV Sync] Already started, skipping.');
@@ -266,32 +373,30 @@
 
     if (parentSb) {
       _sb = parentSb;
-      console.log('[BTV Sync] Using parent Supabase client — no session re-auth needed.');
+      console.log('[BTV Sync] Using parent Supabase client.');
     } else {
-      // Fallback when called without the parent client (e.g. standalone testing).
       _sb = window.supabase.createClient(url, anonKey, {
         auth: { persistSession: true, autoRefreshToken: true },
       });
       const { data: { session: activeSession } } = await _sb.auth.getSession();
       if (!activeSession) {
-        console.error('[BTV Sync] No active session found in shared localStorage.');
+        console.error('[BTV Sync] No active session found.');
         showError('Live sync could not authenticate. Sign out and sign back in.');
         setupWriteInterceptor();
         return;
       }
     }
 
-    // Pull latest state from Supabase → write to localStorage → re-render
+    // Pull latest state — include updated_at for version tracking
     console.log('[BTV Sync] Pulling latest state from cloud…');
     const { data, error } = await _sb
       .from('app_state')
-      .select('key, value')
+      .select('key, value, updated_at')
       .in('key', SYNCED_KEYS);
 
     if (error) {
       console.error('[BTV Sync] Initial pull error:', error.message);
-      const missing = error.message.includes('does not exist') || error.code === '42P01';
-      if (missing) {
+      if (error.message.includes('does not exist') || error.code === '42P01') {
         showError(
           'Supabase <strong>app_state</strong> table not found. ' +
           'Run <strong>supabase-setup.sql</strong> in your Supabase SQL Editor.'
@@ -304,6 +409,7 @@
     if (data && data.length > 0) {
       let changed = false;
       data.forEach(function (row) {
+        if (row.updated_at) _lastPullTimes[row.key] = row.updated_at;
         const val =
           typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
         if (localStorage.getItem(row.key) !== val) {
@@ -321,15 +427,16 @@
         console.log('[BTV Sync] Local state already up to date.');
       }
     } else {
-      // Supabase is empty — push local data up as the first migration
+      // Supabase is empty — push local data up as first migration
       console.log('[BTV Sync] Supabase empty — pushing local data up…');
       const rows = SYNCED_KEYS
         .filter(function (k) { return localStorage.getItem(k) !== null; })
         .map(function (key) {
           const raw = localStorage.getItem(key);
-          let parsed;
-          try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
-          return { key, value: parsed, updated_at: new Date().toISOString(), updated_by: _userId };
+          let parsed; try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+          const now = new Date().toISOString();
+          _lastPullTimes[key] = now;
+          return { key, value: parsed, updated_at: now, updated_by: _userId };
         });
       if (rows.length) {
         const { error: pushErr } = await _sb
@@ -343,7 +450,7 @@
       }
     }
 
-    // Wire up live sync
+    // Wire up live sync and safety features
     setupWriteInterceptor();
     setupRealtime();
     setupPolling();
@@ -363,14 +470,16 @@
       .filter(function (k) { return localStorage.getItem(k) !== null; })
       .map(function (key) {
         const raw = localStorage.getItem(key);
-        let parsed;
-        try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
-        return { key, value: parsed, updated_at: new Date().toISOString(), updated_by: _userId };
+        let parsed; try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+        const now = new Date().toISOString();
+        return { key, value: parsed, updated_at: now, updated_by: _userId };
       });
     const { error } = await _sb.from('app_state').upsert(rows, { onConflict: 'key' });
     if (error) { console.error('[BTV Sync] Force-push error:', error.message); return; }
+    rows.forEach(function (r) { _lastPullTimes[r.key] = r.updated_at; });
+    _hideBar('btv-write-fail-bar');
     console.log('[BTV Sync] Force-pushed', rows.length, 'keys.');
-    alert('Force sync complete — pushed ' + rows.length + ' keys to Supabase.');
+    showToast('Sync complete — ' + rows.length + ' keys pushed to Supabase.');
   };
 
   window.btvFetchChangeLog = async function (limit) {

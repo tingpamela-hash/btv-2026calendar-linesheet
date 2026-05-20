@@ -11917,7 +11917,19 @@ var BTV_TRACKED_FIELDS = {name:'Product Name',category:'Category',description:'D
 
 
 
-function saveProductGroup(){
+async function saveProductGroup(){
+  // Version-conflict check: warn if a teammate saved product data since we last pulled
+  if (typeof window.btvCheckVersionConflict === 'function') {
+    var _conflict = await window.btvCheckVersionConflict('btv_product_data');
+    if (_conflict) {
+      var _proceed = confirm(
+        '⚠ Product data was updated by a teammate since you opened this form.\n\n' +
+        'Saving now will overwrite their changes.\n\n' +
+        'Click OK to overwrite, or Cancel to close the form and reload first.'
+      );
+      if (!_proceed) return;
+    }
+  }
   if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
   var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
   _btvSetDirty(false);
@@ -15338,7 +15350,7 @@ function renderMaster(){
 
 
 
-  __btvUpdateSelectAllState();
+  __btvUpdateSelectAllState();
   if (typeof _btvLsApplyLockBadges === 'function') _btvLsApplyLockBadges();
 
 
