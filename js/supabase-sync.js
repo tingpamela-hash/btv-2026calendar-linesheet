@@ -302,41 +302,29 @@
   let _presenceChannel = null;
 
   function _dispatchPresence() {
-    console.log('[BTV Sync] Dispatching btv-presence-changed on', window.location.pathname);
     window.dispatchEvent(new CustomEvent('btv-presence-changed'));
   }
 
   function setupPresence() {
-    // Both iframes share the same parentSb client. Joining the same Realtime topic
-    // twice on one WebSocket causes the second subscription to fail silently.
-    // Solution: the first iframe creates the channel and stashes it on the client
-    // object; subsequent iframes reuse it and just add their own event listeners.
-    if (_sb.__btvPresenceChannel) {
-      _presenceChannel = _sb.__btvPresenceChannel;
-      _presenceChannel
-        .on('presence', { event: 'sync' },  _dispatchPresence)
-        .on('presence', { event: 'join' },  _dispatchPresence)
-        .on('presence', { event: 'leave' }, _dispatchPresence);
-      // Announce this iframe's user on the shared channel
-      _presenceChannel.track({ email: _userEmail, item: null, field: null, ts: Date.now() });
-      // Fire an initial render — the sync event already fired before we attached
-      _dispatchPresence();
-      console.log('[BTV Sync] Presence: sharing existing channel.');
-      return;
-    }
-    // First iframe to call setupPresence — create, mark for sharing, then subscribe
-    _presenceChannel = _sb.channel('btv-editing-v1', {
+    // Each page (calendar / linesheet) gets its own dedicated presence channel so
+    // they work independently — no shared-channel fragility, no silent failures.
+    var _isLinesheet = window.location.pathname.indexOf('linesheet') !== -1;
+    var _channelName = _isLinesheet ? 'btv-ls-presence-v1' : 'btv-cal-presence-v1';
+
+    console.log('[BTV Sync] Setting up presence channel:', _channelName);
+    _presenceChannel = _sb.channel(_channelName, {
       config: { presence: { key: _userId } },
     });
-    _sb.__btvPresenceChannel = _presenceChannel;
     _presenceChannel
       .on('presence', { event: 'sync' },  _dispatchPresence)
       .on('presence', { event: 'join' },  _dispatchPresence)
       .on('presence', { event: 'leave' }, _dispatchPresence)
       .subscribe(function (status) {
         if (status === 'SUBSCRIBED') {
-          console.log('[BTV Sync] Presence channel connected.');
+          console.log('[BTV Sync] Presence connected on', _channelName);
           _presenceChannel.track({ email: _userEmail, item: null, field: null, ts: Date.now() });
+        } else {
+          console.log('[BTV Sync] Presence status:', status, 'on', _channelName);
         }
       });
   }
