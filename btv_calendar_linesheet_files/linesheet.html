@@ -7769,6 +7769,7 @@ function switchView(view){
                 _btvSetDirty(false);
               }
               if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+              if (window._btvCurrentLsUnlocker) { window.removeEventListener('btv-presence-changed', window._btvCurrentLsUnlocker); window._btvCurrentLsUnlocker = null; }
               var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
             }
             document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
@@ -13121,6 +13122,7 @@ async function saveProductGroup(){
 
 function clearForm(){
   if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+  if (window._btvCurrentLsUnlocker) { window.removeEventListener('btv-presence-changed', window._btvCurrentLsUnlocker); window._btvCurrentLsUnlocker = null; }
   var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
   _btvSetDirty(false);
 
@@ -13785,6 +13787,7 @@ function editGroup(groupId){
     var _btvLsUnlocker = function() {
       if (typeof _btvLsGetLockHolder !== 'function' || _btvLsGetLockHolder(_btvLsKey)) return;
       window.removeEventListener('btv-presence-changed', _btvLsUnlocker);
+      window._btvCurrentLsUnlocker = null;
       // Re-enable all inputs
       document.querySelectorAll('#view-form input, #view-form textarea, #view-form select').forEach(function(el) { el.disabled = false; });
       if (_svBtn) { _svBtn.disabled = false; _svBtn.style.opacity = '1'; }
@@ -13792,6 +13795,8 @@ function editGroup(groupId){
       var _freshItems = products.filter(function(p) { return p.groupId === groupId; });
       if (_freshItems.length) editGroup(groupId);
     };
+    if (window._btvCurrentLsUnlocker) window.removeEventListener('btv-presence-changed', window._btvCurrentLsUnlocker);
+    window._btvCurrentLsUnlocker = _btvLsUnlocker;
     window.addEventListener('btv-presence-changed', _btvLsUnlocker);
   } else {
     // No lock — we're free to edit; announce ourselves
@@ -18158,7 +18163,7 @@ window.btvReloadAndRender = function() {
   } catch(e) {}
   if (typeof loadFromCalendar === 'function') loadFromCalendar(false);
   if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
-  if (typeof _btvLsApplyLockBadges === 'function') _btvLsApplyLockBadges();
+  if (typeof _btvLsRenderPresenceBar === 'function') _btvLsRenderPresenceBar();
 };
 
 // BTV patch init: keep layout tweaks separate from core save/export logic

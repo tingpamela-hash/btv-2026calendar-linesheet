@@ -9709,6 +9709,7 @@ window.openEditor = function(section, weekId, entryId){
         if (typeof _btvCalGetLockHolder !== 'function') return;
         if (_btvCalGetLockHolder(_btvEditKey)) return; // still locked
         window.removeEventListener('btv-presence-changed', _btvUnlockWatcher);
+        window._btvCurrentUnlockWatcher = null;
         // Refresh the modal content with the latest saved state, then re-enable
         var _freshList = (((state || {})[section] || {})[weekId]) || [];
         var _freshEntry = _freshList.find(function(x) { return x.id === entryId; });
@@ -9732,6 +9733,9 @@ window.openEditor = function(section, weekId, entryId){
         if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvEditKey);
         setTimeout(function() { if (_unlockNote.parentNode) _unlockNote.remove(); }, 5000);
       };
+      // Remove any stale watcher from a previous locked open before registering the new one
+      if (window._btvCurrentUnlockWatcher) window.removeEventListener('btv-presence-changed', window._btvCurrentUnlockWatcher);
+      window._btvCurrentUnlockWatcher = _btvUnlockWatcher;
       window.addEventListener('btv-presence-changed', _btvUnlockWatcher);
     } else {
       // No lock — announce we're editing
@@ -10995,6 +10999,10 @@ window.addEventListener('beforeunload', function(ev) {
     if (m.attributeName === 'class' && !e('modal').classList.contains('show')) {
       if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
       _btvCalSetDirty(false);
+      if (window._btvCurrentUnlockWatcher) {
+        window.removeEventListener('btv-presence-changed', window._btvCurrentUnlockWatcher);
+        window._btvCurrentUnlockWatcher = null;
+      }
     }
   });
 })).observe(e('modal'), { attributes: true, attributeFilter: ['class'] });
