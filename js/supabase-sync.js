@@ -302,6 +302,7 @@
   let _presenceChannel = null;
 
   function _dispatchPresence() {
+    console.log('[BTV Sync] Dispatching btv-presence-changed on', window.location.pathname);
     window.dispatchEvent(new CustomEvent('btv-presence-changed'));
   }
 
@@ -515,6 +516,22 @@
 
   window.btvGetCurrentEmail  = function () { return _userEmail; };
   window.btvSyncIsActive     = function () { return _started; };
+
+  // Call from DevTools console to diagnose presence state:  window.btvDiagnosePresence to see raw data.
+  window.btvDiagnosePresence = function () {
+    console.log('=== BTV Presence Diagnosis ===');
+    console.log('Sync started:', _started);
+    console.log('User ID:', _userId);
+    console.log('User email:', _userEmail);
+    console.log('Presence channel:', _presenceChannel ? 'EXISTS' : 'NULL');
+    console.log('Shared channel on _sb:', _sb && _sb.__btvPresenceChannel ? 'EXISTS' : 'NULL');
+    if (_presenceChannel) {
+      var state = _presenceChannel.presenceState();
+      console.log('Presence state (raw):', JSON.stringify(state));
+      console.log('Online users (filtered):', JSON.stringify(window.btvGetOnlineUsers()));
+    }
+    console.log('==============================');
+  };
 
   window.btvForceSync = async function () {
     if (!_sb) { console.warn('[BTV Sync] Not started.'); return; }

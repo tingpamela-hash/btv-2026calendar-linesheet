@@ -18036,8 +18036,10 @@ function _btvLsApplyLockBadges() {
 }
 
 window.addEventListener('btv-presence-changed', function() {
-  _btvLsApplyLockBadges(); // keep master-list amber outlines
-  // Always apply field locks / co-edit bar when a product is open, regardless of active sub-tab.
+  var _onlineUsers = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  console.log('[BTV LS] btv-presence-changed fired. Online users:', _onlineUsers.length, JSON.stringify(_onlineUsers));
+  console.log('[BTV LS] window._btvCurrentGroupId =', window._btvCurrentGroupId, '| editingGroupId =', editingGroupId);
+  _btvLsApplyLockBadges();
   var _gid = window._btvCurrentGroupId || editingGroupId;
   if (_gid) _btvLsApplyFieldLocks(_gid);
 });
@@ -18090,6 +18092,7 @@ function _btvLsRenderCoEditBar(groupId) {
 function _btvLsApplyFieldLocks(groupId) {
   if (!groupId) return;
   var allUsers = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  console.log('[BTV LS] _btvLsApplyFieldLocks called for', groupId, '| allUsers:', JSON.stringify(allUsers));
   var itemId = 'ls::group::' + groupId;
   var fieldHolders = {};
   allUsers.forEach(function(u) { if (u.item === itemId && u.field) fieldHolders[u.field] = u.email; });
