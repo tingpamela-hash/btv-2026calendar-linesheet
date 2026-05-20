@@ -3613,7 +3613,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <button class="btn btn-primary" onclick="switchView(&#39;form&#39;)">+ Add Product</button>
+        <button class="btn btn-primary" onclick="clearForm();switchView(&#39;form&#39;)">+ Add Product</button>
 
 
 
@@ -11918,21 +11918,8 @@ var BTV_TRACKED_FIELDS = {name:'Product Name',category:'Category',description:'D
 
 
 async function saveProductGroup(){
-  // Version-conflict check: warn if a teammate saved product data since we last pulled
-  if (typeof window.btvCheckVersionConflict === 'function') {
-    var _conflict = await window.btvCheckVersionConflict('btv_product_data');
-    if (_conflict) {
-      var _proceed = confirm(
-        '⚠ Product data was updated by a teammate since you opened this form.\n\n' +
-        'Saving now will overwrite their changes.\n\n' +
-        'Click OK to overwrite, or Cancel to close the form and reload first.'
-      );
-      if (!_proceed) return;
-    }
-  }
   if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
   var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
-  _btvSetDirty(false);
 
 
 
@@ -12945,6 +12932,10 @@ async function saveProductGroup(){
 
 
 
+
+  // Persist enriched product list so it survives page refresh and syncs to teammates
+  localStorage.setItem('btv_linesheet_products', JSON.stringify(products));
+  _btvSetDirty(false);
 
   editingGroupId = __btvResolvedGroupId;
 
@@ -17884,6 +17875,11 @@ function btvCheckMondayReminder(){
 
 
 (function init(){
+  // Restore previously saved enriched product list before merging with calendar data
+  try {
+    var _savedProds = localStorage.getItem('btv_linesheet_products');
+    if (_savedProds) products = JSON.parse(_savedProds);
+  } catch(e) {}
 
 
 
@@ -18142,6 +18138,11 @@ window.btvReloadAndRender = function() {
     }
     return;
   }
+  // Reload saved enriched products before merging with calendar data
+  try {
+    var _rr = localStorage.getItem('btv_linesheet_products');
+    if (_rr) products = JSON.parse(_rr);
+  } catch(e) {}
   if (typeof loadFromCalendar === 'function') loadFromCalendar(false);
   if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
   if (typeof _btvLsApplyLockBadges === 'function') _btvLsApplyLockBadges();

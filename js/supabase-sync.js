@@ -41,6 +41,7 @@
     'launchListMaster',
     'btvLinesheetChangeLog',
     'btv_product_data',
+    'btv_linesheet_products',
     'btv-admin-config-v1',
   ];
 
@@ -53,6 +54,7 @@
     'launchListMaster',
     'btvLinesheetChangeLog',
     'btv_product_data',
+    'btv_linesheet_products',
   ];
 
   // Capture the real setItem before we intercept it
