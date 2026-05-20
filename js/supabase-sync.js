@@ -306,9 +306,28 @@
   }
 
   function setupPresence() {
+    // Both iframes share the same parentSb client. Joining the same Realtime topic
+    // twice on one WebSocket causes the second subscription to fail silently.
+    // Solution: the first iframe creates the channel and stashes it on the client
+    // object; subsequent iframes reuse it and just add their own event listeners.
+    if (_sb.__btvPresenceChannel) {
+      _presenceChannel = _sb.__btvPresenceChannel;
+      _presenceChannel
+        .on('presence', { event: 'sync' },  _dispatchPresence)
+        .on('presence', { event: 'join' },  _dispatchPresence)
+        .on('presence', { event: 'leave' }, _dispatchPresence);
+      // Announce this iframe's user on the shared channel
+      _presenceChannel.track({ email: _userEmail, item: null, ts: Date.now() });
+      // Fire an initial render — the sync event already fired before we attached
+      _dispatchPresence();
+      console.log('[BTV Sync] Presence: sharing existing channel.');
+      return;
+    }
+    // First iframe to call setupPresence — create, mark for sharing, then subscribe
     _presenceChannel = _sb.channel('btv-editing-v1', {
       config: { presence: { key: _userId } },
     });
+    _sb.__btvPresenceChannel = _presenceChannel;
     _presenceChannel
       .on('presence', { event: 'sync' },  _dispatchPresence)
       .on('presence', { event: 'join' },  _dispatchPresence)
