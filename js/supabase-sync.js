@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BTV Supabase Sync — v4
  *
  * Flow:
@@ -300,19 +300,30 @@
   // ── Editing presence — who is online and who is editing which item ──────
 
   let _presenceChannel = null;
+  let _session         = null; // stored so setupPresence can create its own client
 
   function _dispatchPresence() {
     window.dispatchEvent(new CustomEvent('btv-presence-changed'));
   }
 
-  function setupPresence() {
-    // Each page (calendar / linesheet) gets its own dedicated presence channel so
-    // they work independently — no shared-channel fragility, no silent failures.
+  async function setupPresence() {
     var _isLinesheet = window.location.pathname.indexOf('linesheet') !== -1;
     var _channelName = _isLinesheet ? 'btv-ls-presence-v1' : 'btv-cal-presence-v1';
 
+    // Create a dedicated local client so WebSocket + callbacks live entirely in THIS
+    // iframe's JS context. Using parentSb caused cross-frame event-dispatch failures.
+    var _presenceSb = window.supabase.createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    if (_session) {
+      await _presenceSb.auth.setSession({
+        access_token: _session.access_token,
+        refresh_token: _session.refresh_token,
+      });
+    }
+
     console.log('[BTV Sync] Setting up presence channel:', _channelName);
-    _presenceChannel = _sb.channel(_channelName, {
+    _presenceChannel = _presenceSb.channel(_channelName, {
       config: { presence: { key: _userId } },
     });
     _presenceChannel
@@ -409,6 +420,7 @@
     _started   = true;
     _userId    = session.user.id;
     _userEmail = session.user.email || null;
+    _session   = session;
 
     console.log('[BTV Sync] Starting for', _userEmail);
 
@@ -495,7 +507,7 @@
     setupWriteInterceptor();
     setupRealtime();
     setupPolling();
-    setupPresence();
+    await setupPresence();
 
     console.log('[BTV Sync] Live sync ready.');
   };
