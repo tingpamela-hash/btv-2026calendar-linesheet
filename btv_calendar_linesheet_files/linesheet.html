@@ -7721,6 +7721,8 @@ let products = [];
 
 
 let editingGroupId = null;
+// Mirror on window so presence event listeners (and any other closure) can always reach it.
+window._btvCurrentGroupId = null;
 
 
 
@@ -7793,6 +7795,12 @@ function switchView(view){
 
 
   __sv.classList.add('active');
+
+  // Re-apply field locks and co-edit bar when switching back to the product form.
+  var _fvGid = window._btvCurrentGroupId || editingGroupId;
+  if (view === 'form' && _fvGid && typeof _btvLsApplyFieldLocks === 'function') {
+    _btvLsApplyFieldLocks(_fvGid);
+  }
 
 
 
@@ -12938,7 +12946,7 @@ async function saveProductGroup(){
   localStorage.setItem('btv_linesheet_products', JSON.stringify(products));
   _btvSetDirty(false);
 
-  editingGroupId = __btvResolvedGroupId;
+  editingGroupId = __btvResolvedGroupId; window._btvCurrentGroupId = __btvResolvedGroupId;
 
 
 
@@ -13134,7 +13142,7 @@ function clearForm(){
 
 
 
-  editingGroupId = null;
+  editingGroupId = null; window._btvCurrentGroupId = null;
 
 
 
@@ -13763,6 +13771,7 @@ function editGroup(groupId){
 
   // ── Presence: announce this product is open (drives master-list amber outlines) ──
   var _btvLsKey = 'ls::group::' + groupId;
+  window._btvCurrentGroupId = groupId; // keep window-scoped copy for presence listeners
   if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvLsKey);
   // Apply per-field locks from any teammates currently focused on fields in this product
   if (typeof _btvLsApplyFieldLocks === 'function') _btvLsApplyFieldLocks(groupId);
@@ -18028,10 +18037,9 @@ function _btvLsApplyLockBadges() {
 
 window.addEventListener('btv-presence-changed', function() {
   _btvLsApplyLockBadges(); // keep master-list amber outlines
-  if (typeof editingGroupId !== 'undefined' && editingGroupId) {
-    var fv = document.getElementById('view-form');
-    if (fv && fv.classList.contains('active')) _btvLsApplyFieldLocks(editingGroupId);
-  }
+  // Always apply field locks / co-edit bar when a product is open, regardless of active sub-tab.
+  var _gid = window._btvCurrentGroupId || editingGroupId;
+  if (_gid) _btvLsApplyFieldLocks(_gid);
 });
 
 // ── Field-level presence: who is in which field on the same product ──────────
@@ -18114,20 +18122,21 @@ function _btvLsApplyFieldLocks(groupId) {
 }
 
 // Event delegation: when any tracked field is focused/blurred, update presence.
-(function() {
-  document.addEventListener('focusin', function(e) {
-    var fk = e.target.dataset && e.target.dataset.fieldKey;
-    if (!fk) return;
-    if (typeof editingGroupId === 'undefined' || !editingGroupId) return;
-    if (typeof window.btvTrackField === 'function') window.btvTrackField(editingGroupId, fk);
-  });
-  document.addEventListener('focusout', function(e) {
-    var fk = e.target.dataset && e.target.dataset.fieldKey;
-    if (!fk) return;
-    if (typeof editingGroupId === 'undefined' || !editingGroupId) return;
-    if (typeof window.btvTrackField === 'function') window.btvTrackField(editingGroupId, null);
-  });
-})();
+// Uses window._btvCurrentGroupId (window-scoped) as the authoritative product reference.
+document.addEventListener('focusin', function(e) {
+  var fk = e.target.dataset && e.target.dataset.fieldKey;
+  if (!fk) return;
+  var gid = window._btvCurrentGroupId;
+  if (!gid) return;
+  if (typeof window.btvTrackField === 'function') window.btvTrackField(gid, fk);
+});
+document.addEventListener('focusout', function(e) {
+  var fk = e.target.dataset && e.target.dataset.fieldKey;
+  if (!fk) return;
+  var gid = window._btvCurrentGroupId;
+  if (!gid) return;
+  if (typeof window.btvTrackField === 'function') window.btvTrackField(gid, null);
+});
 
 // ── Unsaved changes tracking ──────────────────────────────────────────────
 var _btvFormDirty = false;
