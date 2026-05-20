@@ -407,7 +407,7 @@
           applyRow(row.key, val, row.updated_by, row.updated_at);
         });
       } catch (e) {}
-    }, 15000);
+    }, 5000);
   }
 
   // ── btvSyncStart ──────────────────────────────────────────────────────────
@@ -508,6 +508,11 @@
     setupRealtime();
     setupPolling();
     await setupPresence();
+
+    // Let the linesheet initialize its own presence system if defined
+    if (typeof window.btvLsPresenceInit === 'function') {
+      await window.btvLsPresenceInit(_session);
+    }
 
     console.log('[BTV Sync] Live sync ready.');
   };

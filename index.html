@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -375,6 +375,9 @@ html, body {
       await _loadProfile(session.user.id);
       _updateNavButtons(true);
       _startSyncInCalFrame(session);
+      // Auto-unlock accessible modules — no need to re-enter credentials if session exists
+      if (_canAccess('cal')) _setUnlocked('cal');
+      if (_canAccess('ls'))  _setUnlocked('ls');
     }
 
     _sb.auth.onAuthStateChange(async function (event, session) {
@@ -512,6 +515,9 @@ html, body {
         return;
       }
       _setUnlocked(_currentModule);
+      // Unlock all permitted modules so the user never re-enters credentials when switching tabs
+      if (_canAccess('cal')) _setUnlocked('cal');
+      if (_canAccess('ls'))  _setUnlocked('ls');
       document.getElementById('moduleLoginOverlay').classList.remove('show');
       showFrame(_currentModule);
       _startSyncInCalFrame(data.session);
