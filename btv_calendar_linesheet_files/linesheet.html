@@ -15027,7 +15027,11 @@ function renderMaster(){
 
 
 
-      html += `<tr>
+      const _trLockKey = 'ls::group::' + (p.groupId || '');
+      const _trHolder = (typeof _btvLsGetLockHolder === 'function') ? _btvLsGetLockHolder(_trLockKey) : null;
+      const _trLockStyle = _trHolder ? 'outline:2px solid #e6a817;outline-offset:-2px;' : '';
+      const _trLockTitle = _trHolder ? ' title="🔒 ' + _trHolder.split('@')[0] + ' is editing — click to view"' : ' title="Click to open in Product Form"';
+      html += `<tr data-gid="${escapeHtml(p.groupId||'')}" style="cursor:pointer;${_trLockStyle}" onclick="editGroup('${escapeHtml(p.groupId||'')}')"${_trLockTitle}>
 
 
 
@@ -18054,17 +18058,26 @@ function _btvLsApplyLockBadges() {
     var key = 'ls::group::' + gid;
     var holder = _btvLsGetLockHolder(key);
     var badge = el.querySelector('.btv-lock-badge');
+    var isTr = el.tagName === 'TR';
     if (holder) {
       if (!badge) {
-        badge = document.createElement('span');
+        badge = document.createElement(isTr ? 'td' : 'span');
         badge.className = 'btv-lock-badge';
-        badge.style.cssText = 'display:inline-block;background:rgba(0,0,0,.55);color:#fff;font-size:9px;border-radius:3px;padding:1px 6px;margin-left:6px;white-space:nowrap;vertical-align:middle;';
-        el.appendChild(badge);
+        if (isTr) {
+          badge.colSpan = 1;
+          badge.style.cssText = 'background:#fef3c7;color:#78350f;font-size:9px;border-radius:3px;padding:2px 6px;white-space:nowrap;font-weight:700;';
+          el.insertBefore(badge, el.firstChild);
+        } else {
+          badge.style.cssText = 'display:inline-block;background:rgba(0,0,0,.55);color:#fff;font-size:9px;border-radius:3px;padding:1px 6px;margin-left:6px;white-space:nowrap;vertical-align:middle;';
+          el.appendChild(badge);
+        }
       }
       badge.textContent = '🔒 ' + holder.split('@')[0];
-      badge.title = holder + ' is editing';
+      badge.title = holder + ' is editing — you can view but not edit';
+      if (isTr) el.style.outline = '2px solid #e6a817';
     } else {
       if (badge) badge.remove();
+      if (isTr) el.style.outline = '';
     }
   });
 }
