@@ -9112,19 +9112,33 @@ window.openMarkdownEditor = function(id){
 
   e("modal").classList.add("show");
 
-  // Presence: announce editing and warn if someone else is already in this markdown entry
-  if (id && typeof window.btvSetEditing === 'function') {
+  // ── Presence locking for markdown ────────────────────────────────────
+  if (id) {
     var _btvMdKey = 'cal::markdown::' + id;
-    window.btvSetEditing(_btvMdKey);
-    setTimeout(function() {
-      var _btvEditors = typeof window.btvGetEditingUsers === 'function' ? window.btvGetEditingUsers(_btvMdKey) : [];
-      if (_btvEditors.length) {
-        var _btvWarn = document.getElementById('btv-edit-presence-warn');
-        if (!_btvWarn) { _btvWarn = document.createElement('div'); _btvWarn.id = 'btv-edit-presence-warn'; var _mb = e('modalBody'); if (_mb) _mb.insertBefore(_btvWarn, _mb.firstChild); }
-        _btvWarn.style.cssText = 'background:#fff3cd;border:1px solid #e6a817;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#7a5a00;line-height:1.4';
-        _btvWarn.textContent = _btvEditors.join(', ') + ' is also working on this item/product, please check with the person before overwriting.';
-      }
-    }, 500);
+    var _btvMdHolder = typeof _btvCalGetLockHolder === 'function' ? _btvCalGetLockHolder(_btvMdKey) : null;
+    if (_btvMdHolder) {
+      var _btvMdBanner = document.createElement('div');
+      _btvMdBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7a5a00;line-height:1.6;';
+      _btvMdBanner.innerHTML = '🔒 <strong>' + _btvMdHolder + '</strong> is currently editing this markdown. Inputs are locked.';
+      e('modalBody').insertBefore(_btvMdBanner, e('modalBody').firstChild);
+      e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = true; });
+      var _cfmMd = e('confirmBtn'); if (_cfmMd) { _cfmMd.disabled = true; _cfmMd.style.opacity = '0.35'; }
+      var _btvMdUnlock = function() {
+        if (typeof _btvCalGetLockHolder !== 'function' || _btvCalGetLockHolder(_btvMdKey)) return;
+        window.removeEventListener('btv-presence-changed', _btvMdUnlock);
+        e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = false; });
+        if (_cfmMd) { _cfmMd.disabled = false; _cfmMd.style.opacity = '1'; }
+        _btvMdBanner.textContent = '✓ ' + _btvMdHolder + ' finished editing. You can now edit.';
+        _btvMdBanner.style.background = '#dcfce7';
+        _btvMdBanner.style.borderColor = '#22c55e';
+        _btvMdBanner.style.color = '#166534';
+        if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvMdKey);
+        setTimeout(function() { if (_btvMdBanner.parentNode) _btvMdBanner.remove(); }, 5000);
+      };
+      window.addEventListener('btv-presence-changed', _btvMdUnlock);
+    } else {
+      if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvMdKey);
+    }
   }
 
   bindAllToggle("mdAll", "mdMarkets");
@@ -9662,19 +9676,54 @@ window.openEditor = function(section, weekId, entryId){
 
   e("modal").classList.add("show");
 
-  // Presence: announce we are editing this entry, then warn if someone else is too
-  if (entryId && typeof window.btvSetEditing === 'function') {
+  // ── Presence locking ──────────────────────────────────────────────────
+  if (entryId) {
     var _btvEditKey = 'cal::' + section + '::' + weekId + '::' + entryId;
-    window.btvSetEditing(_btvEditKey);
-    setTimeout(function() {
-      var _btvEditors = typeof window.btvGetEditingUsers === 'function' ? window.btvGetEditingUsers(_btvEditKey) : [];
-      if (_btvEditors.length) {
-        var _btvWarn = document.getElementById('btv-edit-presence-warn');
-        if (!_btvWarn) { _btvWarn = document.createElement('div'); _btvWarn.id = 'btv-edit-presence-warn'; var _mb = e('modalBody'); if (_mb) _mb.insertBefore(_btvWarn, _mb.firstChild); }
-        _btvWarn.style.cssText = 'background:#fff3cd;border:1px solid #e6a817;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#7a5a00;line-height:1.4';
-        _btvWarn.textContent = _btvEditors.join(', ') + ' is also working on this item/product, please check with the person before overwriting.';
-      }
-    }, 500);
+    var _btvLockHolder = typeof _btvCalGetLockHolder === 'function' ? _btvCalGetLockHolder(_btvEditKey) : null;
+
+    if (_btvLockHolder) {
+      // Someone else is editing — show read-only form
+      var _btvLockBanner = document.createElement('div');
+      _btvLockBanner.id = 'btv-cal-lock-banner';
+      _btvLockBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7a5a00;line-height:1.6;display:flex;justify-content:space-between;align-items:center;gap:10px;';
+      _btvLockBanner.innerHTML = '<span>🔒 <strong>' + _btvLockHolder + '</strong> is currently editing this entry. Inputs are locked to protect their work.</span>';
+      e('modalBody').insertBefore(_btvLockBanner, e('modalBody').firstChild);
+      // Disable all form inputs
+      e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = true; });
+      var _cfmBtn = e('confirmBtn'); if (_cfmBtn) { _cfmBtn.disabled = true; _cfmBtn.style.opacity = '0.35'; }
+      // Watch for the lock to be released, then re-enable
+      var _btvUnlockWatcher = function() {
+        if (typeof _btvCalGetLockHolder !== 'function') return;
+        if (_btvCalGetLockHolder(_btvEditKey)) return; // still locked
+        window.removeEventListener('btv-presence-changed', _btvUnlockWatcher);
+        // Refresh the modal content with the latest saved state, then re-enable
+        var _freshList = (((state || {})[section] || {})[weekId]) || [];
+        var _freshEntry = _freshList.find(function(x) { return x.id === entryId; });
+        var _freshInner = '';
+        if (_freshEntry) {
+          if (section === 'global') _freshInner = buildGlobalForm(_freshEntry, weekId) + actions(_freshEntry);
+          else if (section === 'nea' || section === 'sea') _freshInner = buildRegionalForm(section, _freshEntry, weekId) + actions(_freshEntry);
+          else if (section === 'restocks') _freshInner = buildRestockForm(_freshEntry) + actions(_freshEntry);
+          else if (section === 'store_openings') _freshInner = buildStoreOpeningForm(_freshEntry) + actions(_freshEntry);
+          else _freshInner = buildEventForm(_freshEntry) + actions(_freshEntry);
+        }
+        if (_freshInner) {
+          e('modalBody').innerHTML = _freshInner;
+          e('cancelBtn').onclick = () => { e('modal').classList.remove('show'); if (typeof window.btvClearEditing === 'function') window.btvClearEditing(); };
+        }
+        // Show unlock notification
+        var _unlockNote = document.createElement('div');
+        _unlockNote.style.cssText = 'background:#dcfce7;border:1.5px solid #22c55e;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#166534;line-height:1.5;';
+        _unlockNote.textContent = '✓ ' + _btvLockHolder + ' finished editing — form reloaded with latest data. You can now edit.';
+        if (e('modalBody')) e('modalBody').insertBefore(_unlockNote, e('modalBody').firstChild);
+        if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvEditKey);
+        setTimeout(function() { if (_unlockNote.parentNode) _unlockNote.remove(); }, 5000);
+      };
+      window.addEventListener('btv-presence-changed', _btvUnlockWatcher);
+    } else {
+      // No lock — announce we're editing
+      if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvEditKey);
+    }
   }
 
   e("cancelBtn").onclick = () => { e("modal").classList.remove("show"); if (typeof window.btvClearEditing === 'function') window.btvClearEditing(); };
@@ -10924,6 +10973,80 @@ window.addEventListener('beforeunload', function(ev) {
   });
 })).observe(e('modal'), { attributes: true, attributeFilter: ['class'] });
 
+// ── Live presence: who's online + item-level locking ─────────────────────
+
+function _btvEmailColor(email) {
+  var hash = 0;
+  for (var i = 0; i < (email || '').length; i++) hash = (email.charCodeAt(i) + ((hash << 5) - hash)) | 0;
+  var palette = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f97316','#eab308','#22c55e','#14b8a6','#3b82f6','#06b6d4'];
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function _btvCalGetLockHolder(itemKey) {
+  var users = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  for (var i = 0; i < users.length; i++) { if (users[i].item === itemKey) return users[i].email; }
+  return null;
+}
+
+function _btvCalRenderPresenceBar() {
+  var users = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  var bar = document.getElementById('btv-presence-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'btv-presence-bar';
+    bar.style.cssText = 'position:fixed;top:10px;right:14px;z-index:9990;display:flex;gap:5px;align-items:center;pointer-events:none';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = '';
+  if (!users.length) return;
+  var lbl = document.createElement('span');
+  lbl.style.cssText = 'font-size:9px;font-weight:700;color:#999;letter-spacing:.08em;font-family:Helvetica,sans-serif;text-transform:uppercase;margin-right:2px';
+  lbl.textContent = 'Online';
+  bar.appendChild(lbl);
+  users.forEach(function(u) {
+    var chip = document.createElement('div');
+    var initials = (u.email || '??').split('@')[0].substring(0, 2).toUpperCase();
+    chip.style.cssText = 'width:26px;height:26px;border-radius:50%;background:' + _btvEmailColor(u.email) + ';color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:Helvetica,sans-serif;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);position:relative;pointer-events:auto;cursor:default;';
+    chip.title = u.email + (u.item ? ' — editing' : ' — online');
+    chip.textContent = initials;
+    if (u.item) {
+      var dot = document.createElement('div');
+      dot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;background:#22c55e;border-radius:50%;border:1.5px solid #fff';
+      chip.appendChild(dot);
+    }
+    bar.appendChild(chip);
+  });
+  // Update lock badges on rendered entries whenever presence changes
+  _btvCalApplyLockBadges();
+}
+
+function _btvCalApplyLockBadges() {
+  document.querySelectorAll('.entry[data-entry-id]').forEach(function(el) {
+    var section = el.dataset.section;
+    var week    = el.dataset.week;
+    var entryId = el.dataset.entryId;
+    if (!section || !week || !entryId) return;
+    var key = 'cal::' + section + '::' + week + '::' + entryId;
+    var holder = _btvCalGetLockHolder(key);
+    var badge = el.querySelector('.btv-lock-badge');
+    if (holder) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'btv-lock-badge';
+        badge.style.cssText = 'position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;border-radius:3px;padding:1px 5px;pointer-events:none;z-index:2;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;';
+        el.style.position = 'relative';
+        el.appendChild(badge);
+      }
+      badge.textContent = '🔒 ' + holder.split('@')[0];
+      badge.title = holder + ' is editing';
+    } else {
+      if (badge) badge.remove();
+    }
+  });
+}
+
+window.addEventListener('btv-presence-changed', _btvCalRenderPresenceBar);
+
 e("viewMode").addEventListener("change", render);
 
 e("monthSelect").addEventListener("change", render);
@@ -11190,6 +11313,7 @@ window.btvReloadAndRender = function() {
   render();
   if (e("globalMarketingView")) renderGlobalMarketingView();
   if (e("marketMarketingView")) renderMarketMarketingView();
+  if (typeof _btvCalApplyLockBadges === 'function') _btvCalApplyLockBadges();
 };
 window.loadAdminConfig = loadAdminConfig;
 window.saveAdminConfig = saveAdminConfig;

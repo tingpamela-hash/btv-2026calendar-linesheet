@@ -166,19 +166,27 @@
       });
   }
 
-  // ── Editing presence — who is editing which item right now ───────────────
+  // ── Editing presence — who is online and who is editing which item ──────
 
   let _presenceChannel = null;
+
+  function _dispatchPresence() {
+    window.dispatchEvent(new CustomEvent('btv-presence-changed'));
+  }
 
   function setupPresence() {
     _presenceChannel = _sb.channel('btv-editing-v1', {
       config: { presence: { key: _userId } },
     });
     _presenceChannel
-      .on('presence', { event: 'sync' }, function () {})
+      .on('presence', { event: 'sync' },  _dispatchPresence)
+      .on('presence', { event: 'join' },  _dispatchPresence)
+      .on('presence', { event: 'leave' }, _dispatchPresence)
       .subscribe(function (status) {
         if (status === 'SUBSCRIBED') {
           console.log('[BTV Sync] Presence channel connected.');
+          // Announce ourselves as online (item: null = not editing anything yet)
+          _presenceChannel.track({ email: _userEmail, item: null, ts: Date.now() });
         }
       });
   }
@@ -186,29 +194,36 @@
   // Call when user opens an edit modal/form for itemId.
   window.btvSetEditing = async function (itemId) {
     if (!_presenceChannel) return;
-    await _presenceChannel.track({ item: itemId, email: _userEmail, ts: Date.now() });
+    await _presenceChannel.track({ email: _userEmail, item: itemId, ts: Date.now() });
   };
 
-  // Call when user closes the modal/form.
+  // Call when user closes the modal/form — stays "online" but no longer editing.
   window.btvClearEditing = async function () {
     if (!_presenceChannel) return;
-    await _presenceChannel.untrack();
+    await _presenceChannel.track({ email: _userEmail, item: null, ts: Date.now() });
+  };
+
+  // Returns all OTHER online users as [{ email, item }]. item is null if not editing.
+  window.btvGetOnlineUsers = function () {
+    if (!_presenceChannel) return [];
+    const state = _presenceChannel.presenceState();
+    const users = [];
+    Object.keys(state).forEach(function (key) {
+      if (key === _userId) return;
+      const presences = state[key] || [];
+      if (presences.length) {
+        const p = presences[presences.length - 1];
+        if (p.email) users.push({ email: p.email, item: p.item || null });
+      }
+    });
+    return users;
   };
 
   // Returns array of email strings of OTHER users currently editing itemId.
   window.btvGetEditingUsers = function (itemId) {
-    if (!_presenceChannel) return [];
-    const state = _presenceChannel.presenceState();
-    const others = [];
-    Object.keys(state).forEach(function (key) {
-      if (key === _userId) return;
-      (state[key] || []).forEach(function (p) {
-        if (p.item === itemId && p.email && others.indexOf(p.email) === -1) {
-          others.push(p.email);
-        }
-      });
-    });
-    return others;
+    return window.btvGetOnlineUsers()
+      .filter(function (u) { return u.item === itemId; })
+      .map(function (u) { return u.email; });
   };
 
   // ── Polling fallback every 15 s (catches missed Realtime events) ───────────

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 
 
@@ -13756,27 +13756,43 @@ function editGroup(groupId){
 
   switchView('form');
 
-  // Presence: announce editing and warn if someone else is already in this product group
-  if (typeof window.btvSetEditing === 'function') {
-    var _btvLsKey = 'ls::group::' + groupId;
-    window.btvSetEditing(_btvLsKey);
-    setTimeout(function() {
-      var _btvEditors = typeof window.btvGetEditingUsers === 'function' ? window.btvGetEditingUsers(_btvLsKey) : [];
-      var _btvWarn = document.getElementById('btv-ls-presence-warn');
-      if (_btvEditors.length) {
-        if (!_btvWarn) {
-          _btvWarn = document.createElement('div');
-          _btvWarn.id = 'btv-ls-presence-warn';
-          _btvWarn.style.cssText = 'background:#fff3cd;border:1px solid #e6a817;border-radius:8px;padding:10px 14px;margin:0 0 12px;font-size:12px;color:#7a5a00;line-height:1.4;position:sticky;top:0;z-index:100';
-          var _fv = document.getElementById('view-form');
-          if (_fv) _fv.insertBefore(_btvWarn, _fv.firstChild);
-        }
-        _btvWarn.textContent = _btvEditors.join(', ') + ' is also working on this item/product, please check with the person before overwriting.';
-        _btvWarn.style.display = 'block';
-      } else if (_btvWarn) {
-        _btvWarn.style.display = 'none';
-      }
-    }, 500);
+  // ── Presence locking ──────────────────────────────────────────────────
+  var _btvLsKey = 'ls::group::' + groupId;
+  var _btvLsHolder = typeof _btvLsGetLockHolder === 'function' ? _btvLsGetLockHolder(_btvLsKey) : null;
+
+  // Clear any stale lock banner from a previous open
+  var _btvOldBanner = document.getElementById('btv-ls-lock-banner');
+  if (_btvOldBanner) _btvOldBanner.remove();
+
+  if (_btvLsHolder) {
+    // Another user is editing this product — lock the form
+    var _btvLockBanner = document.createElement('div');
+    _btvLockBanner.id = 'btv-ls-lock-banner';
+    _btvLockBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin:0 0 12px;font-size:12px;color:#7a5a00;line-height:1.6;position:sticky;top:0;z-index:200;';
+    _btvLockBanner.innerHTML = '🔒 <strong>' + _btvLsHolder + '</strong> is currently editing this product. Inputs are locked to protect their work.';
+    var _fvEl = document.getElementById('view-form');
+    if (_fvEl) _fvEl.insertBefore(_btvLockBanner, _fvEl.firstChild);
+
+    // Disable all form inputs and save button
+    document.querySelectorAll('#view-form input, #view-form textarea, #view-form select').forEach(function(el) { el.disabled = true; });
+    var _svBtn = document.querySelector('button[onclick="saveProductGroup()"]');
+    if (_svBtn) { _svBtn.disabled = true; _svBtn.style.opacity = '0.35'; }
+
+    // Watch for the lock to release
+    var _btvLsUnlocker = function() {
+      if (typeof _btvLsGetLockHolder !== 'function' || _btvLsGetLockHolder(_btvLsKey)) return;
+      window.removeEventListener('btv-presence-changed', _btvLsUnlocker);
+      // Re-enable all inputs
+      document.querySelectorAll('#view-form input, #view-form textarea, #view-form select').forEach(function(el) { el.disabled = false; });
+      if (_svBtn) { _svBtn.disabled = false; _svBtn.style.opacity = '1'; }
+      // Reload the form with the freshest saved data
+      var _freshItems = products.filter(function(p) { return p.groupId === groupId; });
+      if (_freshItems.length) editGroup(groupId);
+    };
+    window.addEventListener('btv-presence-changed', _btvLsUnlocker);
+  } else {
+    // No lock — we're free to edit; announce ourselves
+    if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvLsKey);
   }
 
 
@@ -13983,6 +13999,7 @@ function toggleLinesheetSelection(id, checked){
 
   renderLinesheet();
   __btvUpdateSelectAllState();
+  if (typeof _btvLsApplyLockBadges === 'function') _btvLsApplyLockBadges();
 
 
 
@@ -15321,7 +15338,8 @@ function renderMaster(){
 
 
 
-  __btvUpdateSelectAllState();
+  __btvUpdateSelectAllState();
+  if (typeof _btvLsApplyLockBadges === 'function') _btvLsApplyLockBadges();
 
 
 
@@ -17975,6 +17993,76 @@ function btvCheckMondayReminder(){
 
 
 
+// ── Live presence: who's online + item-level locking ─────────────────────
+
+function _btvEmailColor(email) {
+  var hash = 0;
+  for (var i = 0; i < (email || '').length; i++) hash = (email.charCodeAt(i) + ((hash << 5) - hash)) | 0;
+  var palette = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f97316','#eab308','#22c55e','#14b8a6','#3b82f6','#06b6d4'];
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function _btvLsGetLockHolder(itemKey) {
+  var users = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  for (var i = 0; i < users.length; i++) { if (users[i].item === itemKey) return users[i].email; }
+  return null;
+}
+
+function _btvLsRenderPresenceBar() {
+  var users = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  var bar = document.getElementById('btv-presence-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'btv-presence-bar';
+    bar.style.cssText = 'position:fixed;top:10px;right:14px;z-index:9990;display:flex;gap:5px;align-items:center;pointer-events:none';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = '';
+  if (!users.length) return;
+  var lbl = document.createElement('span');
+  lbl.style.cssText = 'font-size:9px;font-weight:700;color:#999;letter-spacing:.08em;font-family:Helvetica,sans-serif;text-transform:uppercase;margin-right:2px';
+  lbl.textContent = 'Online';
+  bar.appendChild(lbl);
+  users.forEach(function(u) {
+    var chip = document.createElement('div');
+    var initials = (u.email || '??').split('@')[0].substring(0, 2).toUpperCase();
+    chip.style.cssText = 'width:26px;height:26px;border-radius:50%;background:' + _btvEmailColor(u.email) + ';color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:Helvetica,sans-serif;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);position:relative;pointer-events:auto;cursor:default;';
+    chip.title = u.email + (u.item ? ' — editing' : ' — online');
+    chip.textContent = initials;
+    if (u.item) {
+      var dot = document.createElement('div');
+      dot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;background:#22c55e;border-radius:50%;border:1.5px solid #fff';
+      chip.appendChild(dot);
+    }
+    bar.appendChild(chip);
+  });
+  _btvLsApplyLockBadges();
+}
+
+function _btvLsApplyLockBadges() {
+  document.querySelectorAll('[data-gid]').forEach(function(el) {
+    var gid = el.dataset.gid;
+    if (!gid) return;
+    var key = 'ls::group::' + gid;
+    var holder = _btvLsGetLockHolder(key);
+    var badge = el.querySelector('.btv-lock-badge');
+    if (holder) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'btv-lock-badge';
+        badge.style.cssText = 'display:inline-block;background:rgba(0,0,0,.55);color:#fff;font-size:9px;border-radius:3px;padding:1px 6px;margin-left:6px;white-space:nowrap;vertical-align:middle;';
+        el.appendChild(badge);
+      }
+      badge.textContent = '🔒 ' + holder.split('@')[0];
+      badge.title = holder + ' is editing';
+    } else {
+      if (badge) badge.remove();
+    }
+  });
+}
+
+window.addEventListener('btv-presence-changed', _btvLsRenderPresenceBar);
+
 // ── Unsaved changes tracking ──────────────────────────────────────────────
 var _btvFormDirty = false;
 
@@ -18044,6 +18132,7 @@ window.btvReloadAndRender = function() {
   }
   if (typeof loadFromCalendar === 'function') loadFromCalendar(false);
   if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
+  if (typeof _btvLsApplyLockBadges === 'function') _btvLsApplyLockBadges();
 };
 
 // BTV patch init: keep layout tweaks separate from core save/export logic
