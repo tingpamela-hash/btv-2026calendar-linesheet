@@ -272,8 +272,16 @@
   }
 
   // ── Realtime subscription ─────────────────────────────────────────────────
+  // Both iframes share the same parentSb client. Guard with a flag on _sb so
+  // only the first frame to call setupRealtime() subscribes — the second frame
+  // would otherwise throw "cannot add postgres_changes callbacks after subscribe()".
 
   function setupRealtime() {
+    if (_sb._btvRealtimeSetup) {
+      console.log('[BTV Sync] Realtime already set up on shared client — skipping.');
+      return;
+    }
+    _sb._btvRealtimeSetup = true;
     _sb.channel('btv_app_state_v3')
       .on(
         'postgres_changes',
