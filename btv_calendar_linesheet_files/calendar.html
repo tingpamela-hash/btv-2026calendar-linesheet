@@ -2988,9 +2988,11 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
       <div class="btv-dl-menu" id="btvDlMenu" onclick="this.style.display='none'">
         <button id="pdfBtn">&#128444;&#65039;&nbsp;&nbsp;Current View PDF</button>
         <button id="pdfTodayBtn">&#128444;&#65039;&nbsp;&nbsp;3-Month View from Today</button>
-        <button id="downloadVersionBtn">&#128462;&#65039;&nbsp;&nbsp;Version File (.json)</button>
+        <button id="downloadVersionBtn">&#128462;&#65039;&nbsp;&nbsp;Export Data (.json)</button>
+        <button id="importJsonBtn">&#128229;&nbsp;&nbsp;Import Data (.json)</button>
       </div>
     </div>
+    <input type="file" id="jsonImportInput" accept=".json" style="display:none" onchange="btvImportJSON(this)"/>
 
     <button onclick="btvExportCSV()" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">&#8595;&nbsp;Export CSV</button>
 
@@ -11308,6 +11310,53 @@ e("downloadVersionBtn").addEventListener("click", () => {
   URL.revokeObjectURL(a.href);
 
 });
+
+e("importJsonBtn").addEventListener("click", () => {
+  document.getElementById("jsonImportInput").value = "";
+  document.getElementById("jsonImportInput").click();
+  document.getElementById("btvDlMenu").style.display = "none";
+});
+
+function btvImportJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    let parsed;
+    try { parsed = JSON.parse(ev.target.result); }
+    catch { alert("⚠ Could not read file — make sure it is a valid .json export from this calendar."); return; }
+
+    // Accept both {state: {...}} wrapper format and a raw state object
+    const incoming = (parsed && typeof parsed.state === "object") ? parsed.state : parsed;
+
+    const knownSections = ["global","nea","sea","restocks","store_openings","events"];
+    const hasSection = knownSections.some(function(k){ return typeof incoming[k] === "object"; });
+    if (!hasSection) {
+      alert("⚠ This file doesn't look like a calendar export. No calendar sections found.");
+      return;
+    }
+
+    const entryCount = knownSections.reduce(function(n, sec) {
+      return n + Object.values(incoming[sec] || {}).reduce(function(a, arr){ return a + (Array.isArray(arr) ? arr.length : 0); }, 0);
+    }, 0);
+
+    if (!confirm(
+      "Import this file?\n\n" +
+      "• " + entryCount + " entries found\n" +
+      "• Your current calendar data will be replaced\n\n" +
+      "Click OK to import, or Cancel to abort."
+    )) return;
+
+    pushHistory(state);
+    Object.assign(state, incoming);
+    saveState(state);
+    render();
+    if (e("globalMarketingView")) renderGlobalMarketingView();
+    if (e("marketMarketingView")) renderMarketMarketingView();
+    alert("✓ Import complete — " + entryCount + " entries loaded.");
+  };
+  reader.readAsText(file);
+}
 
 e("copyTeamsBtn").addEventListener("click", async () => {
 
