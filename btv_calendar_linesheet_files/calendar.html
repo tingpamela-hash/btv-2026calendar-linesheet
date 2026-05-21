@@ -6445,7 +6445,10 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
   <div class="card">
 
-    <h2 id="modalTitle">Add Global | 2026-05-24</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <h2 id="modalTitle" style="margin:0">Add Global | 2026-05-24</h2>
+      <button type="button" id="modalCloseBtn" class="small-btn" title="Close">×</button>
+    </div>
 
     <div id="modalBody"></div>
 
@@ -9331,7 +9334,7 @@ window.openMarkdownEditor = function(id){
 
   if(e("publishModeBtn")) e("publishModeBtn").addEventListener("click", function(ev){ ev.preventDefault(); setWorkflow("published"); });
 
-  e("cancelBtn").onclick = () => e("modal").classList.remove("show");
+  e("cancelBtn").onclick = () => btvCloseCalendarModal();
 
   const del = e("deleteBtn");
 
@@ -9916,7 +9919,7 @@ window.openEditor = function(section, weekId, entryId){
     }
   }
 
-  e("cancelBtn").onclick = () => { e("modal").classList.remove("show"); if (typeof window.btvClearEditing === 'function') window.btvClearEditing(); };
+  e("cancelBtn").onclick = () => btvCloseCalendarModal();
 
 
 
@@ -11187,11 +11190,14 @@ e("exportLaunchListBtn").addEventListener("click", ()=>{
 
 
 
-e("modal").addEventListener("click", (ev) => {
+function btvCloseCalendarModal(){
+  if (_btvCalModalDirty && !confirm('You have unsaved changes. Close without saving?')) return false;
+  e("modal").classList.remove("show");
+  if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+  return true;
+}
 
-  if(ev.target === e("modal")) { e("modal").classList.remove("show"); if (typeof window.btvClearEditing === 'function') window.btvClearEditing(); }
-
-});
+e("modalCloseBtn").addEventListener("click", btvCloseCalendarModal);
 
 // Clear presence and dirty state whenever the modal closes
 var _btvCalModalDirty = false;
