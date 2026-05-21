@@ -214,9 +214,42 @@ html, body {
   padding: 10px 12px; background: #f5f4f1; border-radius: 8px;
   margin-top: 12px; margin-bottom: 4px;
 }
+
+/* ── Online presence indicator ── */
+.nav-online-wrap { position: relative; display: flex; align-items: center; }
+.nav-online-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border: 1px solid #2a4a2a; background: transparent;
+  color: #6db86d; font: inherit; font-size: 11px; font-weight: 600;
+  letter-spacing: .04em; cursor: pointer; border-radius: 7px;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.nav-online-btn:hover { border-color: #6db86d; background: rgba(109,184,109,.08); }
+.online-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76,175,80,.3); display: inline-block; flex-shrink: 0;
+}
+.nav-online-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  background: #1c1c1c; border: 1px solid #333; border-radius: 10px;
+  padding: 6px 0; min-width: 190px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.45); z-index: 500;
+}
+.online-user-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 14px; font-size: 12px; color: #aaa;
+}
+.online-user-row.is-you { color: #fff; }
+.online-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body>
+
+<!-- Boot overlay — covers everything while auth check is in flight -->
+<div id="boot">
+  <div class="boot-brand">BTV Planner</div>
+  <div class="boot-spinner"></div>
+</div>
 
 <!-- Top navigation -->
 <nav class="top-nav">
@@ -224,6 +257,15 @@ html, body {
   <button class="top-nav-btn active" data-frame="cal" onclick="showFrame('cal')">Calendar</button>
   <button class="top-nav-btn" data-frame="ls" onclick="showFrame('ls')">Linesheet</button>
   <div class="nav-right">
+    <div class="nav-online-wrap" id="navOnlineWrap" style="display:none">
+      <button class="nav-online-btn" id="navOnlineBtn" onclick="btvToggleOnlineList()">
+        <span class="online-dot"></span>
+        <span id="navOnlineCount">1</span>&nbsp;online
+      </button>
+      <div class="nav-online-dropdown" id="navOnlineDropdown" style="display:none">
+        <div id="navOnlineList"></div>
+      </div>
+    </div>
     <button class="nav-right-btn" id="navChangePwdBtn" onclick="btvOpenChangePwd()" style="display:none">Change Password</button>
     <button class="nav-right-btn" id="navSignOutBtn" onclick="btvSignOut()" style="display:none">Sign Out</button>
   </div>
@@ -231,8 +273,8 @@ html, body {
 
 <!-- Iframe frames -->
 <div class="frame-wrap">
-  <iframe id="frame-cal" class="frame active" title="Calendar" src="./btv_calendar_linesheet_files/calendar.html"></iframe>
-  <iframe id="frame-ls" class="frame" title="Linesheet Manager" src="./btv_calendar_linesheet_files/linesheet.html"></iframe>
+  <iframe id="frame-cal" class="frame active" title="Calendar" data-src="./btv_calendar_linesheet_files/calendar.html"></iframe>
+  <iframe id="frame-ls" class="frame" title="Linesheet Manager" data-src="./btv_calendar_linesheet_files/linesheet.html"></iframe>
 </div>
 
 <!-- Module login overlay -->
@@ -341,6 +383,86 @@ html, body {
   let _session = null;
   let _profile = null;
 
+  // ── Lazy-load iframes (called once after auth check completes) ────────────
+
+  function _loadFrames() {
+    document.querySelectorAll('iframe[data-src]').forEach(function(f) {
+      var dataSrc = f.getAttribute('data-src');
+      if (dataSrc && f.getAttribute('src') !== dataSrc) {
+        f.setAttribute('src', dataSrc);
+      }
+    });
+  }
+
+  // ── Realtime presence (who is online) ─────────────────────────────────────
+
+  let _presenceChannel = null;
+  let _onlineListOpen  = false;
+
+  function _setupPresence(session) {
+    if (_presenceChannel) { _sb.removeChannel(_presenceChannel); _presenceChannel = null; }
+    _presenceChannel = _sb.channel('btv-online', {
+      config: { presence: { key: session.user.id } }
+    });
+    _presenceChannel.on('presence', { event: 'sync' }, function () {
+      var state = _presenceChannel.presenceState();
+      _updateOnlineDisplay(state, session.user.id);
+    });
+    _presenceChannel.subscribe(async function (status) {
+      if (status === 'SUBSCRIBED') {
+        await _presenceChannel.track({
+          user_id: session.user.id,
+          email:   session.user.email,
+          online_at: new Date().toISOString()
+        });
+      }
+    });
+  }
+
+  function _teardownPresence() {
+    if (_presenceChannel) { _sb.removeChannel(_presenceChannel); _presenceChannel = null; }
+    var wrap = document.getElementById('navOnlineWrap');
+    if (wrap) wrap.style.display = 'none';
+    _onlineListOpen = false;
+    var dd = document.getElementById('navOnlineDropdown');
+    if (dd) dd.style.display = 'none';
+  }
+
+  function _updateOnlineDisplay(state, myUserId) {
+    var users   = Object.values(state).map(function (arr) { return arr[0]; });
+    var countEl = document.getElementById('navOnlineCount');
+    var listEl  = document.getElementById('navOnlineList');
+    var wrap    = document.getElementById('navOnlineWrap');
+    if (countEl) countEl.textContent = users.length;
+    if (wrap)    wrap.style.display  = '';
+    if (listEl) {
+      listEl.innerHTML = users.map(function (u) {
+        var email  = u.email || '';
+        var name   = email.split('@')[0].replace(/[._]/g, ' ');
+        var isYou  = u.user_id === myUserId;
+        return '<div class="online-user-row' + (isYou ? ' is-you' : '') + '">'
+          + '<span class="online-dot"></span>'
+          + '<span class="online-user-name">' + (name || email)
+          + (isYou ? ' <span style="color:#666;font-size:10px">(you)</span>' : '') + '</span>'
+          + '</div>';
+      }).join('');
+    }
+  }
+
+  function btvToggleOnlineList() {
+    _onlineListOpen = !_onlineListOpen;
+    var dd = document.getElementById('navOnlineDropdown');
+    if (dd) dd.style.display = _onlineListOpen ? '' : 'none';
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('#navOnlineWrap') && _onlineListOpen) {
+      _onlineListOpen = false;
+      var dd = document.getElementById('navOnlineDropdown');
+      if (dd) dd.style.display = 'none';
+    }
+  });
+
   // ── Session bootstrap ──────────────────────────────────────────────────────
 
   function _startSyncInFrame(frameId, session) {
@@ -371,9 +493,11 @@ html, body {
   async function boot() {
     const { data: { session } } = await _sb.auth.getSession();
     _session = session;
+    _loadFrames(); // safe to load iframes now — auth check is complete
     if (session) {
       await _loadProfile(session.user.id);
       _updateNavButtons(true);
+      _setupPresence(session);
       _startSyncInCalFrame(session);
       // Auto-unlock accessible modules — no need to re-enter credentials if session exists
       if (_canAccess('cal')) _setUnlocked('cal');
@@ -389,9 +513,11 @@ html, body {
       if (session) {
         await _loadProfile(session.user.id);
         _updateNavButtons(true);
+        if (!_presenceChannel) _setupPresence(session);
       } else {
         _profile = null;
         _updateNavButtons(false);
+        _teardownPresence();
       }
     });
 
@@ -507,6 +633,7 @@ html, body {
       _session = data.session;
       await _loadProfile(data.user.id);
       _updateNavButtons(true);
+      _setupPresence(data.session);
 
       if (!_canAccess(_currentModule)) {
         err.textContent =
@@ -554,6 +681,7 @@ html, body {
   // ── Sign out ───────────────────────────────────────────────────────────────
 
   async function btvSignOut() {
+    _teardownPresence();
     await _sb.auth.signOut();
     _session  = null;
     _profile  = null;

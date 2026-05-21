@@ -18270,10 +18270,14 @@ window.btvReloadAndRender = function() {
     var sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
       auth: { persistSession: false, autoRefreshToken: true },
     });
-    await sb.auth.setSession({
-      access_token:  session.access_token,
-      refresh_token: session.refresh_token,
-    });
+    try {
+      await sb.auth.setSession({
+        access_token:  session.access_token,
+        refresh_token: session.refresh_token,
+      });
+    } catch (e) {
+      console.warn('[BTV LS Presence] setSession failed — continuing unauthenticated:', e);
+    }
 
     _ch = sb.channel('btv-ls-presence-v2', {
       config: { presence: { key: _uid } },

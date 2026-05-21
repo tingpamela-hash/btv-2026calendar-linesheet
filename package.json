@@ -1,0 +1,23 @@
+{
+  "name": "btv-2026calendar-linesheet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/charmslau/btv-2026calendar-linesheet.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/charmslau/btv-2026calendar-linesheet/issues"
+  },
+  "homepage": "https://github.com/charmslau/btv-2026calendar-linesheet#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.9.1"
+  }
+}

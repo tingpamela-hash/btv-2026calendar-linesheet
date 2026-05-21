@@ -308,7 +308,9 @@
 
   async function setupPresence() {
     var _isLinesheet = window.location.pathname.indexOf('linesheet') !== -1;
-    var _channelName = _isLinesheet ? 'btv-ls-presence-v1' : 'btv-cal-presence-v1';
+    // Linesheet has its own dedicated presence system (btvLsPresenceInit / btv-ls-presence-v2).
+    // Running a second channel here for linesheet caused a race that cleared all field locks.
+    if (_isLinesheet) return;
 
     // Create a dedicated local client so WebSocket + callbacks live entirely in THIS
     // iframe's JS context. Using parentSb caused cross-frame event-dispatch failures.
@@ -316,14 +318,18 @@
       auth: { persistSession: false, autoRefreshToken: false },
     });
     if (_session) {
-      await _presenceSb.auth.setSession({
-        access_token: _session.access_token,
-        refresh_token: _session.refresh_token,
-      });
+      try {
+        await _presenceSb.auth.setSession({
+          access_token: _session.access_token,
+          refresh_token: _session.refresh_token,
+        });
+      } catch (e) {
+        console.warn('[BTV Sync] setSession failed — presence client continuing unauthenticated:', e);
+      }
     }
 
-    console.log('[BTV Sync] Setting up presence channel:', _channelName);
-    _presenceChannel = _presenceSb.channel(_channelName, {
+    console.log('[BTV Sync] Setting up presence channel: btv-cal-presence-v1');
+    _presenceChannel = _presenceSb.channel('btv-cal-presence-v1', {
       config: { presence: { key: _userId } },
     });
     _presenceChannel
@@ -332,10 +338,11 @@
       .on('presence', { event: 'leave' }, _dispatchPresence)
       .subscribe(function (status) {
         if (status === 'SUBSCRIBED') {
-          console.log('[BTV Sync] Presence connected on', _channelName);
+          console.log('[BTV Sync] Presence connected on btv-cal-presence-v1');
           _presenceChannel.track({ email: _userEmail, item: null, field: null, ts: Date.now() });
+          setInterval(_dispatchPresence, 3000);
         } else {
-          console.log('[BTV Sync] Presence status:', status, 'on', _channelName);
+          console.log('[BTV Sync] Presence status:', status, 'on btv-cal-presence-v1');
         }
       });
   }

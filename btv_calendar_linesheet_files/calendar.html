@@ -7303,7 +7303,7 @@ function renderGlobalProductRow(line, i){
 
             <div class="field-gap">
 
-              <label class="product-label">Colour / Variant<span class="required-star">*</span><span class="team-badge design">Design</span></label>
+              <label class="product-label">Colour / Variant<span class="team-badge design">Design</span></label>
 
               <textarea class="line-colour" data-i="${i}" rows="2">${esc(line.colour || "")}</textarea>
 
@@ -7311,7 +7311,7 @@ function renderGlobalProductRow(line, i){
 
             <div class="field-gap">
 
-              <label class="product-label">Size<span class="required-star">*</span><span class="team-badge design">Design</span></label>
+              <label class="product-label">Size<span class="team-badge design">Design</span></label>
 
               <textarea class="line-size" data-i="${i}" rows="2">${esc(line.size || "")}</textarea>
 
@@ -9640,23 +9640,28 @@ function btvValidateCalendarModal(section){
     if(!val("launchDate")) missing.push("Launch Date");
     if(!anyChecked("noLaunchMarkets")) missing.push("Markets");
     var rows = Array.from(document.querySelectorAll(".line-category"));
-    var touched = 0, complete = 0;
+    var touched = 0, complete = 0, incompleteRows = [];
     rows.forEach(function(sel){
       var i = sel.getAttribute("data-i");
-      var parts = [
-        sel.value,
-        (document.querySelector('.line-product[data-i="'+i+'"]')||{}).value,
-        (document.querySelector('.line-price[data-i="'+i+'"]')||{}).value,
-        (document.querySelector('.line-colour[data-i="'+i+'"]')||{}).value,
-        (document.querySelector('.line-size[data-i="'+i+'"]')||{}).value
-      ].map(function(x){return String(x||'').trim();});
-      if(parts.some(Boolean)){
+      var cat    = String(sel.value||'').trim();
+      var prod   = String((document.querySelector('.line-product[data-i="'+i+'"]')||{}).value||'').trim();
+      var price  = String((document.querySelector('.line-price[data-i="'+i+'"]')||{}).value||'').trim();
+      // Colour and Size are optional — only Category, Product Title, and SGD RRP are required
+      var anyFilled = cat || prod || price ||
+        String((document.querySelector('.line-colour[data-i="'+i+'"]')||{}).value||'').trim() ||
+        String((document.querySelector('.line-size[data-i="'+i+'"]')||{}).value||'').trim();
+      if(anyFilled){
         touched++;
-        if(parts.every(Boolean)) complete++;
+        var rowMissing = [];
+        if(!cat)   rowMissing.push('Category');
+        if(!prod)  rowMissing.push('Product Title');
+        if(!price) rowMissing.push('SGD RRP');
+        if(rowMissing.length) incompleteRows.push('Row '+(touched)+': missing '+rowMissing.join(', '));
+        else complete++;
       }
     });
-    if(!touched) missing.push("At least one complete product line");
-    else if(touched !== complete) missing.push("All required product line fields: Category, Product Title, SGD RRP, Colour / Variant, Size");
+    if(!touched) missing.push("At least one product line (Category, Product Title, SGD RRP)");
+    else if(incompleteRows.length) missing.push("Incomplete product line(s):\n  • " + incompleteRows.join("\n  • "));
   }
   if(missing.length){
     alert("Please complete the mandatory field(s) before saving:\n- " + missing.join("\n- "));
@@ -9710,25 +9715,16 @@ window.openEditor = function(section, weekId, entryId){
         if (_btvCalGetLockHolder(_btvEditKey)) return; // still locked
         window.removeEventListener('btv-presence-changed', _btvUnlockWatcher);
         window._btvCurrentUnlockWatcher = null;
-        // Refresh the modal content with the latest saved state, then re-enable
-        var _freshList = (((state || {})[section] || {})[weekId]) || [];
-        var _freshEntry = _freshList.find(function(x) { return x.id === entryId; });
-        var _freshInner = '';
-        if (_freshEntry) {
-          if (section === 'global') _freshInner = buildGlobalForm(_freshEntry, weekId) + actions(_freshEntry);
-          else if (section === 'nea' || section === 'sea') _freshInner = buildRegionalForm(section, _freshEntry, weekId) + actions(_freshEntry);
-          else if (section === 'restocks') _freshInner = buildRestockForm(_freshEntry) + actions(_freshEntry);
-          else if (section === 'store_openings') _freshInner = buildStoreOpeningForm(_freshEntry) + actions(_freshEntry);
-          else _freshInner = buildEventForm(_freshEntry) + actions(_freshEntry);
-        }
-        if (_freshInner) {
-          e('modalBody').innerHTML = _freshInner;
-          e('cancelBtn').onclick = () => { e('modal').classList.remove('show'); if (typeof window.btvClearEditing === 'function') window.btvClearEditing(); };
-        }
+        // Re-enable inputs and Confirm button in place — do NOT rebuild innerHTML
+        // (rebuilding destroys the confirmBtn element and loses its onclick handler)
+        e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = false; });
+        if (_cfmBtn) { _cfmBtn.disabled = false; _cfmBtn.style.opacity = '1'; }
+        var _banner = document.getElementById('btv-cal-lock-banner');
+        if (_banner) _banner.remove();
         // Show unlock notification
         var _unlockNote = document.createElement('div');
         _unlockNote.style.cssText = 'background:#dcfce7;border:1.5px solid #22c55e;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#166534;line-height:1.5;';
-        _unlockNote.textContent = '✓ ' + _btvLockHolder + ' finished editing — form reloaded with latest data. You can now edit.';
+        _unlockNote.textContent = '✓ ' + _btvLockHolder + ' finished editing. You can now edit.';
         if (e('modalBody')) e('modalBody').insertBefore(_unlockNote, e('modalBody').firstChild);
         if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvEditKey);
         setTimeout(function() { if (_unlockNote.parentNode) _unlockNote.remove(); }, 5000);
