@@ -743,36 +743,6 @@
 
   .card h2{margin:0 0 14px 0;font-weight:600}
 
-  .modal.fullscreen{
-    padding:0;
-    align-items:stretch;
-  }
-
-  .modal.fullscreen .card{
-    width:100%;
-    min-height:100vh;
-    border-radius:0;
-    border:none;
-    overflow:auto;
-  }
-
-  .modal-head{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    margin-bottom:14px;
-  }
-
-  .modal-head h2{margin:0}
-
-  .modal-tools{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    flex-shrink:0;
-  }
-
 
 
   .grid{
@@ -6475,12 +6445,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
   <div class="card">
 
-    <div class="modal-head">
-      <h2 id="modalTitle">Add Global | 2026-05-24</h2>
-      <div class="modal-tools">
-        <button type="button" class="small-btn" id="modalFullscreenBtn" title="Toggle fullscreen">Fullscreen</button>
-      </div>
-    </div>
+    <h2 id="modalTitle">Add Global | 2026-05-24</h2>
 
     <div id="modalBody"></div>
 
@@ -11222,10 +11187,10 @@ e("exportLaunchListBtn").addEventListener("click", ()=>{
 
 
 
-e("modalFullscreenBtn").addEventListener("click", () => {
-  const modal = e("modal");
-  modal.classList.toggle("fullscreen");
-  e("modalFullscreenBtn").textContent = modal.classList.contains("fullscreen") ? "Exit Fullscreen" : "Fullscreen";
+e("modal").addEventListener("click", (ev) => {
+
+  if(ev.target === e("modal")) { e("modal").classList.remove("show"); if (typeof window.btvClearEditing === 'function') window.btvClearEditing(); }
+
 });
 
 // Clear presence and dirty state whenever the modal closes
@@ -11265,8 +11230,6 @@ window.addEventListener('beforeunload', function(ev) {
     if (m.attributeName === 'class' && !e('modal').classList.contains('show')) {
       if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
       _btvCalSetDirty(false);
-      e('modal').classList.remove('fullscreen');
-      if (e('modalFullscreenBtn')) e('modalFullscreenBtn').textContent = 'Fullscreen';
       if (window._btvCurrentUnlockWatcher) {
         window.removeEventListener('btv-presence-changed', window._btvCurrentUnlockWatcher);
         window._btvCurrentUnlockWatcher = null;
