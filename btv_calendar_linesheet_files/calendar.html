@@ -10250,14 +10250,7 @@ window.openEditor = function(section, weekId, entryId){
 
 
   e("confirmBtn").onclick = async () => {
-    const _confirmBtn = e("confirmBtn");
-    if (_confirmBtn && _confirmBtn.dataset.saving === "true") return;
     try {
-    if (_confirmBtn) {
-      _confirmBtn.dataset.saving = "true";
-      _confirmBtn.disabled = true;
-      _confirmBtn.textContent = "Saving...";
-    }
 
     if(!btvValidateCalendarModal(section)) return;
 
@@ -10616,12 +10609,6 @@ window.openEditor = function(section, weekId, entryId){
     } catch (_btvConfirmErr) {
       console.error('[BTV] Confirm error:', _btvConfirmErr);
       alert('⚠ Could not save: ' + (_btvConfirmErr.message || String(_btvConfirmErr)) + '\nPlease try again or refresh.');
-    } finally {
-      if (_confirmBtn) {
-        _confirmBtn.dataset.saving = "false";
-        _confirmBtn.disabled = false;
-        _confirmBtn.textContent = "Confirm";
-      }
     }
   };
 
