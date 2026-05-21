@@ -9664,9 +9664,20 @@ function btvValidateCalendarModal(section){
     else if(incompleteRows.length) missing.push("Incomplete product line(s):\n  • " + incompleteRows.join("\n  • "));
   }
   if(missing.length){
-    alert("Please complete the mandatory field(s) before saving:\n- " + missing.join("\n- "));
+    var errEl = document.getElementById('btv-modal-err');
+    if(!errEl){
+      errEl = document.createElement('div');
+      errEl.id = 'btv-modal-err';
+      errEl.style.cssText = 'background:#fde8e8;border:1.5px solid #e53e3e;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#c53030;line-height:1.6;white-space:pre-wrap;';
+      var mb = document.getElementById('modalBody');
+      if(mb) mb.insertBefore(errEl, mb.firstChild);
+    }
+    errEl.textContent = '⚠ Please complete the mandatory field(s) before saving:\n• ' + missing.join('\n• ');
+    errEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return false;
   }
+  var errEl = document.getElementById('btv-modal-err');
+  if(errEl) errEl.remove();
   return true;
 }
 
@@ -10055,19 +10066,6 @@ window.openEditor = function(section, weekId, entryId){
     try {
 
     if(!btvValidateCalendarModal(section)) return;
-
-    // Version-conflict check: warn if a teammate saved this key since we last pulled
-    if (typeof window.btvCheckVersionConflict === 'function') {
-      const _conflict = await window.btvCheckVersionConflict('calendar-2026-working-v5');
-      if (_conflict) {
-        const _proceed = confirm(
-          '⚠ The calendar was updated by a teammate since you opened this entry.\n\n' +
-          'Saving now will overwrite their changes.\n\n' +
-          'Click OK to overwrite, or Cancel to close and review the latest version first.'
-        );
-        if (!_proceed) return;
-      }
-    }
 
     pushHistory(state);
 

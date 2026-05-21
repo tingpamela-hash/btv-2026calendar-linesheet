@@ -422,7 +422,7 @@
           applyRow(row.key, val, row.updated_by, row.updated_at);
         });
       } catch (e) {}
-    }, 5000);
+    }, 30000);
   }
 
   // ── btvSyncStart ──────────────────────────────────────────────────────────
