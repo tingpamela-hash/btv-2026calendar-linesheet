@@ -1277,6 +1277,65 @@
 
   }
 
+  .product-line-summary{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    cursor:pointer;
+    font-weight:700;
+    font-size:13px;
+    margin-bottom:12px;
+    list-style:none;
+  }
+
+  .product-line-summary::-webkit-details-marker{display:none}
+
+  .product-line-summary-main{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+  }
+
+  .product-line-summary-text{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .product-line-summary-text::before{
+    content:'Summary';
+    display:inline-flex;
+    margin-right:8px;
+    padding:2px 8px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    font-size:10px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    background:#fffdfa;
+  }
+
+  .product-line-actions{
+    display:flex;
+    gap:6px;
+    flex-shrink:0;
+  }
+
+  .product-line-actions button{
+    border:1px solid var(--border);
+    background:#fffdfa;
+    color:var(--text);
+    font:inherit;
+    font-size:11px;
+    font-weight:700;
+    padding:4px 8px;
+    cursor:pointer;
+  }
+
   @media (max-width:900px){
 
     .product-editor.line-wrap .inline-four{
@@ -7245,7 +7304,18 @@ function loadChangeLog(){ try { return JSON.parse(localStorage.getItem(CHANGELOG
 
 function pushChangeLog(msg){ const logs = loadChangeLog(); logs.unshift({msg, ts:new Date().toISOString()}); localStorage.setItem(CHANGELOG_KEY, JSON.stringify(logs.slice(0,50))); }
 
-function countItems(str){ return str.split(/[,;]/).map(s => s.trim()).filter(Boolean).length; }
+function countItems(str){ return String(str || "").split(/[,;]/).map(s => s.trim()).filter(Boolean).length; }
+
+function countLineSkus(line){
+  const colours = countItems(line && line.colour);
+  const sizes = countItems(line && line.size);
+  return colours * sizes;
+}
+
+function countEntrySkus(entry){
+  const lines = (entry && entry.lines) || [];
+  return lines.reduce((sum, line) => sum + countLineSkus(line), 0);
+}
 
 
 
@@ -7264,10 +7334,25 @@ function ensureMinProductLines(lines, minCount=5){
 }
 
 function renderGlobalProductRow(line, i){
+  const summaryName = (line.productName || "").trim() || "Product " + (i + 1);
+  const summaryBits = [summaryName, line.category, line.price ? "SGD " + line.price : ""].filter(Boolean);
+  const summaryText = summaryBits.join(" | ");
+  const lineSkuCount = countLineSkus(line);
 
   return `
 
-          <div class="product-editor line-wrap">
+          <details class="product-editor line-wrap" open data-line-wrap data-i="${i}">
+
+            <summary class="product-line-summary">
+              <span class="product-line-summary-main">
+                <span class="product-line-summary-text">${esc(summaryText)}</span>
+                <span class="small">${lineSkuCount ? lineSkuCount + " SKU" + (lineSkuCount === 1 ? "" : "s") : "0 SKUs"}</span>
+              </span>
+              <span class="product-line-actions">
+                <button type="button" data-move-line="up" data-i="${i}">Up</button>
+                <button type="button" data-move-line="down" data-i="${i}">Down</button>
+              </span>
+            </summary>
 
             <div class="inline-four">
 
@@ -7297,7 +7382,7 @@ function renderGlobalProductRow(line, i){
 
                 <label class="product-label">SGD RRP<span class="required-star">*</span><span class="team-badge merch">Merch</span></label>
 
-                <input class="line-price" data-i="${i}" type="number" step="0.01" value="${esc(line.price || "")}">
+                <input class="line-price" data-i="${i}" type="text" inputmode="decimal" value="${esc(line.price || "")}">
 
               </div>
 
@@ -7325,7 +7410,7 @@ function renderGlobalProductRow(line, i){
 
             </div>
 
-          </div>
+          </details>
 
   `;
 
@@ -8008,7 +8093,7 @@ function renderGlobal(entry){
 
         ${groups}
 
-        <div class="entry-info"><span class="label">No. of styles:</span> ${(entry.lines||[]).reduce((a,l)=>a+(l.colour?l.colour.split(/[,;]/).map(s=>s.trim()).filter(Boolean).length:0),0)||(entry.skuCount??0)}</div>
+        <div class="entry-info"><span class="label">No. of SKUs:</span> ${countEntrySkus(entry) || (entry.skuCount??0)}</div>
 
         <div class="entry-info"><span class="label">Launch (Mkt):</span> ${(entry.noLaunchMarkets || []).length ? esc(entry.noLaunchMarkets.join(", ")) : "—"}</div>
 
@@ -10034,19 +10119,7 @@ window.openEditor = function(section, weekId, entryId){
 
       if(!manual) return;
 
-      let auto = 0;
-
-      document.querySelectorAll(".line-colour, .line-size").forEach(el => {
-
-        const i = el.getAttribute("data-i");
-
-        const colourEl = document.querySelector(`.line-colour[data-i="${i}"]`);
-
-        const sizeEl = document.querySelector(`.line-size[data-i="${i}"]`);
-
-        if(colourEl && sizeEl) auto += countItems(colourEl.value) * countItems(sizeEl.value);
-
-      });
+      let auto = getCurrentProductLines().reduce((sum, line) => sum + countLineSkus(line), 0);
 
       if(!manual.dataset.touched) manual.value = auto || "";
 
@@ -10101,25 +10174,7 @@ window.openEditor = function(section, weekId, entryId){
 
       targetWeekId = findWeekIdForDate(payload.launchDate) || targetWeekId;
 
-      payload.lines = Array.from(document.querySelectorAll(".line-category")).map(sel => {
-
-        const i = sel.getAttribute("data-i");
-
-        return {
-
-          category: sel.value,
-
-          productName: (document.querySelector(`.line-product[data-i="${i}"]`)?.value || "").trim(),
-
-          colour: (document.querySelector(`.line-colour[data-i="${i}"]`)?.value || "").trim(),
-
-          size: (document.querySelector(`.line-size[data-i="${i}"]`)?.value || "").trim(),
-
-          price: (document.querySelector(`.line-price[data-i="${i}"]`)?.value || "").trim()
-
-        };
-
-      }).filter(x => x.category || x.productName || x.colour || x.size || x.price);
+      payload.lines = getCurrentProductLines().filter(x => x.category || x.productName || x.colour || x.size || x.price);
 
       payload.noLaunchMarkets = checkedByName("noLaunchMarkets");
 
@@ -10583,7 +10638,7 @@ function bindGlobalDynamicRows(){
 
     addBtn.onclick = () => {
 
-      const nextIndex = container.querySelectorAll(".product-editor.line-wrap").length;
+      const nextIndex = container.querySelectorAll("[data-line-wrap]").length;
 
       const wrapper = document.createElement("div");
 
@@ -10593,19 +10648,31 @@ function bindGlobalDynamicRows(){
 
       bindGlobalDynamicRows();
 
-      document.querySelectorAll(".line-colour, .line-size").forEach(el => {
-
-        el.removeEventListener("input", updateSkuAuto);
-
-        el.addEventListener("input", updateSkuAuto);
-
-      });
+      bindGlobalProductInputs();
 
       updateSkuAuto();
+      refreshGlobalProductSummaries();
 
     };
 
   }
+
+  document.querySelectorAll("[data-move-line]").forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const wrap = btn.closest("[data-line-wrap]");
+      if(!wrap) return;
+      if(btn.dataset.moveLine === "up" && wrap.previousElementSibling){
+        container.insertBefore(wrap, wrap.previousElementSibling);
+      }
+      if(btn.dataset.moveLine === "down" && wrap.nextElementSibling){
+        container.insertBefore(wrap.nextElementSibling, wrap);
+      }
+      reindexGlobalProductRows();
+      updateSkuAuto();
+    };
+  });
 
   document.querySelectorAll("[data-clear-line]").forEach(btn => {
 
@@ -10634,11 +10701,66 @@ function bindGlobalDynamicRows(){
       if(cat) cat.value = "";
 
       updateSkuAuto();
+      refreshGlobalProductSummaries();
 
     };
 
   });
 
+  bindGlobalProductInputs();
+
+}
+
+function bindGlobalProductInputs(){
+  document.querySelectorAll("#globalProductRows .line-category, #globalProductRows .line-product, #globalProductRows .line-price, #globalProductRows .line-colour, #globalProductRows .line-size").forEach(el => {
+    el.removeEventListener("input", handleGlobalProductInput);
+    el.removeEventListener("change", handleGlobalProductInput);
+    el.addEventListener("input", handleGlobalProductInput);
+    el.addEventListener("change", handleGlobalProductInput);
+  });
+}
+
+function handleGlobalProductInput(){
+  updateSkuAuto();
+  refreshGlobalProductSummaries();
+}
+
+function getCurrentProductLines(){
+  return Array.from(document.querySelectorAll("#globalProductRows [data-line-wrap]")).map(wrap => {
+    const i = wrap.dataset.i;
+    return {
+      category: (wrap.querySelector(`.line-category[data-i="${i}"]`)?.value || "").trim(),
+      productName: (wrap.querySelector(`.line-product[data-i="${i}"]`)?.value || "").trim(),
+      colour: (wrap.querySelector(`.line-colour[data-i="${i}"]`)?.value || "").trim(),
+      size: (wrap.querySelector(`.line-size[data-i="${i}"]`)?.value || "").trim(),
+      price: (wrap.querySelector(`.line-price[data-i="${i}"]`)?.value || "").trim()
+    };
+  });
+}
+
+function reindexGlobalProductRows(){
+  const rows = Array.from(document.querySelectorAll("#globalProductRows [data-line-wrap]"));
+  const openState = rows.map(row => row.open);
+  const lines = getCurrentProductLines();
+  const container = e("globalProductRows");
+  if(!container) return;
+  container.innerHTML = lines.map((line, i) => renderGlobalProductRow(line, i)).join("");
+  Array.from(container.querySelectorAll("[data-line-wrap]")).forEach((row, i) => { row.open = openState[i] !== false; });
+  bindGlobalDynamicRows();
+  bindGlobalProductInputs();
+}
+
+function refreshGlobalProductSummaries(){
+  Array.from(document.querySelectorAll("#globalProductRows [data-line-wrap]")).forEach((wrap, idx) => {
+    const line = getCurrentProductLines()[idx] || {};
+    const textEl = wrap.querySelector(".product-line-summary-text");
+    const countEl = wrap.querySelector(".product-line-summary-main .small");
+    const summaryName = line.productName || "Product " + (idx + 1);
+    const summaryText = [summaryName, line.category, line.price ? "SGD " + line.price : ""].filter(Boolean).join(" | ");
+    const lineSkuCount = countLineSkus(line);
+    if(textEl) textEl.textContent = summaryText;
+    if(countEl) countEl.textContent = lineSkuCount ? lineSkuCount + " SKU" + (lineSkuCount === 1 ? "" : "s") : "0 SKUs";
+  });
 }
 
 function updateSkuAuto(){
@@ -10647,19 +10769,7 @@ function updateSkuAuto(){
 
   if(!manual) return;
 
-  let auto = 0;
-
-  document.querySelectorAll(".line-colour, .line-size").forEach(el => {
-
-    const i = el.getAttribute("data-i");
-
-    const colourEl = document.querySelector(`.line-colour[data-i="${i}"]`);
-
-    const sizeEl = document.querySelector(`.line-size[data-i="${i}"]`);
-
-    if(colourEl && sizeEl) auto += countItems(colourEl.value) * countItems(sizeEl.value);
-
-  });
+  let auto = getCurrentProductLines().reduce((sum, line) => sum + countLineSkus(line), 0);
 
   if(!manual.dataset.touched) manual.value = auto || "";
 
@@ -11004,6 +11114,9 @@ function _btvCalSetDirty(isDirty) {
 // Track any input/change inside the modal as a dirty signal
 e('modal').addEventListener('input',  function() { if (e('modal').classList.contains('show')) _btvCalSetDirty(true); });
 e('modal').addEventListener('change', function() { if (e('modal').classList.contains('show')) _btvCalSetDirty(true); });
+e('modal').addEventListener('wheel', function(ev) {
+  if (ev.target && ev.target.matches && ev.target.matches('input[type="number"]')) ev.preventDefault();
+}, { passive:false });
 
 // Warn before page close/refresh when the modal has unsaved changes
 window.addEventListener('beforeunload', function(ev) {
