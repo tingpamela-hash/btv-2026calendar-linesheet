@@ -7773,6 +7773,7 @@ function switchView(view){
                 _btvSetDirty(false);
               }
               if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+              _btvLsClearSharedLaunchLock(window._btvCurrentLaunchItem);
               window._btvCurrentLaunchItem = null;
               if (window._btvCurrentLsUnlocker) { window.removeEventListener('btv-presence-changed', window._btvCurrentLsUnlocker); window._btvCurrentLsUnlocker = null; }
               var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
@@ -13797,6 +13798,7 @@ function editGroup(groupId){
   var _btvLsKey = 'ls::group::' + groupId;
   window._btvCurrentGroupId = groupId; // keep window-scoped copy for presence listeners
   window._btvCurrentLaunchItem = _btvLsGetCalendarLaunchItem(groupId);
+  _btvLsSetSharedLaunchLock(window._btvCurrentLaunchItem);
   if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvLsKey);
   // Apply per-field locks from any teammates currently focused on fields in this product
   if (typeof _btvLsApplyFieldLocks === 'function') _btvLsApplyFieldLocks(groupId);
@@ -18108,6 +18110,28 @@ function _btvLsMondayOf(dateStr) {
   return d.toISOString().slice(0, 10);
 }
 
+function _btvLsReadSharedLocks() {
+  try { return JSON.parse(localStorage.getItem('btv-edit-locks-v1') || '{}'); }
+  catch(e) { return {}; }
+}
+
+function _btvLsSetSharedLaunchLock(itemKey) {
+  if (!itemKey) return;
+  var locks = _btvLsReadSharedLocks();
+  var email = (typeof window.btvGetCurrentEmail === 'function' ? window.btvGetCurrentEmail() : '') || '';
+  locks[itemKey] = { email: email, ts: Date.now() };
+  localStorage.setItem('btv-edit-locks-v1', JSON.stringify(locks));
+}
+
+function _btvLsClearSharedLaunchLock(itemKey) {
+  if (!itemKey) return;
+  var locks = _btvLsReadSharedLocks();
+  if (locks[itemKey]) {
+    delete locks[itemKey];
+    localStorage.setItem('btv-edit-locks-v1', JSON.stringify(locks));
+  }
+}
+
 function _btvLsRenderPresenceBar() {
   // Global online-user floating bar removed — field-level co-edit bar is used instead.
   // Still update master-list amber outlines.
@@ -18404,6 +18428,7 @@ window.btvReloadAndRender = function() {
           _ch.track({ email: _email, item: null, field: null, launchItem: null, ts: Date.now() });
           setInterval(_dispatch, 2000);           // heartbeat: refresh UI every 2 s
           setInterval(function () {               // re-track every 30 s to keep alive
+            if (typeof _btvLsSetSharedLaunchLock === 'function') _btvLsSetSharedLaunchLock(window._btvCurrentLaunchItem);
             if (_ch) _ch.track({ email: _email, item: _item, field: _field, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now() });
           }, 30000);
         } else {
@@ -18450,6 +18475,7 @@ window.btvReloadAndRender = function() {
   window.btvClearEditing = async function () {
     if (!_ch) return;
     _item  = null; _field = null;
+    if (typeof _btvLsClearSharedLaunchLock === 'function') _btvLsClearSharedLaunchLock(window._btvCurrentLaunchItem);
     window._btvCurrentLaunchItem = null;
     await _ch.track({ email: _email, item: null, field: null, launchItem: null, ts: Date.now() });
   };
@@ -18459,6 +18485,7 @@ window.btvReloadAndRender = function() {
     _item  = groupId ? 'ls::group::' + groupId : null;
     _field = fieldKey || null;
     if (groupId) window._btvCurrentLaunchItem = _btvLsGetCalendarLaunchItem(groupId);
+    if (typeof _btvLsSetSharedLaunchLock === 'function') _btvLsSetSharedLaunchLock(window._btvCurrentLaunchItem);
     await _ch.track({ email: _email, item: _item, field: _field, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now() });
   };
 

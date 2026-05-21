@@ -3106,19 +3106,22 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
       <div class="btv-dl-menu" id="btvDlMenu" onclick="this.style.display='none'">
         <button id="pdfBtn">&#128444;&#65039;&nbsp;&nbsp;Current View PDF</button>
         <button id="pdfTodayBtn">&#128444;&#65039;&nbsp;&nbsp;3-Month View from Today</button>
-        <button id="downloadVersionBtn">&#128462;&#65039;&nbsp;&nbsp;Export Data (.json)</button>
-        <button id="importJsonBtn">&#128229;&nbsp;&nbsp;Import Data (.json)</button>
       </div>
     </div>
     <input type="file" id="jsonImportInput" accept=".json" style="display:none" onchange="btvImportJSON(this)"/>
 
-    <button onclick="btvExportCSV()" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">&#8595;&nbsp;Export CSV</button>
-
     <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="btvImportCSV(this)"/>
-    <button onclick="document.getElementById('csvImportInput').click()" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">&#8593;&nbsp;Import CSV</button>
+    <div style="position:relative;align-self:flex-end" id="btvExportDropWrap">
+      <button onclick="btvToggleExportDrop(event)" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer">&#8595;&nbsp;Export / Import</button>
+      <div class="btv-dl-menu" id="btvExportMenu" onclick="this.style.display='none'">
+        <button onclick="btvExportCSV()">Export .csv</button>
+        <button id="downloadVersionBtn">Export .json</button>
+        <button onclick="document.getElementById('csvImportInput').click()">Import .csv</button>
+        <button id="importJsonBtn">Import .json</button>
+      </div>
+    </div>
 
     <button id="markdownBtn" style="display:none">Markdown</button>
-    <button id="copyTeamsBtn" class="hidden">Copy Teams Summary</button>
     <button class="btn" type="button" style="font-size:11px;padding:4px 8px;background:#fff;border:1px solid #c8bfb0;align-self:flex-end" onclick="btvConfigCalWebhook()">&#9881; Cal Webhook</button>
 
     <button id="saveVersionBtn" style="margin-left:auto;background:#111;color:#fff;border:none;padding:10px 20px;font-size:13px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">Save Version</button>
@@ -9592,8 +9595,6 @@ if(versionsOnLoad.length){
 
   if(e("teamsSummaryText")) e("teamsSummaryText").value = buildTeamsSummary(versionsOnLoad[0].label, versionsOnLoad[0].grouped || {Global:[],NEA:[],SEA:[],Restock:[],"Events/Activations":[]});
 
-  e("copyTeamsBtn").classList.remove("hidden");
-
 }
 
 render();
@@ -11251,6 +11252,11 @@ function _btvCalGetLockHolder(itemKey) {
   for (var i = 0; i < users.length; i++) {
     if (users[i].item === itemKey || users[i].launchItem === itemKey) return users[i].email;
   }
+  var locks = {};
+  try { locks = JSON.parse(localStorage.getItem('btv-edit-locks-v1') || '{}'); } catch(e) { locks = {}; }
+  var lock = locks[itemKey];
+  var myEmail = (typeof window.btvGetCurrentEmail === 'function' ? window.btvGetCurrentEmail() : null);
+  if (lock && lock.email && lock.email !== myEmail && (Date.now() - Number(lock.ts || 0)) < 90000) return lock.email;
   return null;
 }
 
@@ -11419,10 +11425,6 @@ e("saveVersionBtn").addEventListener("click", () => {
   if(e("teamsSummaryTitle")) e("teamsSummaryTitle").textContent = label;
 
   if(e("teamsSummaryText")) e("teamsSummaryText").value = teamsText;
-
-  e("copyTeamsBtn").classList.remove("hidden");
-
-
 
   renderDashboard();
 
@@ -11597,7 +11599,8 @@ e("downloadVersionBtn").addEventListener("click", () => {
 e("importJsonBtn").addEventListener("click", () => {
   document.getElementById("jsonImportInput").value = "";
   document.getElementById("jsonImportInput").click();
-  document.getElementById("btvDlMenu").style.display = "none";
+  var menu = document.getElementById("btvExportMenu");
+  if(menu) menu.style.display = "none";
 });
 
 function btvImportJSON(input) {
@@ -11640,20 +11643,6 @@ function btvImportJSON(input) {
   };
   reader.readAsText(file);
 }
-
-e("copyTeamsBtn").addEventListener("click", async () => {
-
-  const txt = e("teamsSummaryText")?.value || "";
-
-  if(!txt) return;
-
-  try { await navigator.clipboard.writeText(txt); alert("Teams summary copied."); }
-
-  catch { alert("Copy failed. Please copy manually from the KPI Dashboard."); }
-
-});
-
-
 
 migrateLegacyGlobalEntries();
 
@@ -11712,6 +11701,16 @@ window._btvCalImportEntries = function(entries) {
 function btvToggleDlDrop(event) {
   event.stopPropagation();
   var menu = document.getElementById('btvDlMenu');
+  var other = document.getElementById('btvExportMenu');
+  if (other) other.style.display = 'none';
+  if (!menu) return;
+  menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
+}
+function btvToggleExportDrop(event) {
+  event.stopPropagation();
+  var menu = document.getElementById('btvExportMenu');
+  var other = document.getElementById('btvDlMenu');
+  if (other) other.style.display = 'none';
   if (!menu) return;
   menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
 }
@@ -11719,13 +11718,16 @@ document.addEventListener('click', function(ev) {
   var wrap = document.getElementById('btvDlDropWrap');
   var menu = document.getElementById('btvDlMenu');
   if (menu && wrap && !wrap.contains(ev.target)) menu.style.display = 'none';
+  var exportWrap = document.getElementById('btvExportDropWrap');
+  var exportMenu = document.getElementById('btvExportMenu');
+  if (exportMenu && exportWrap && !exportWrap.contains(ev.target)) exportMenu.style.display = 'none';
 });
 
 // ─── Export CSV ───────────────────────────────────────────────────────────────
 function btvExportCSV() {
-  var rows = [['Launch Title','Launch Date','Section','Key Level','Status','Category','Product Name','Colour(s)','Size(s)','SGD RRP','Markets','Promo Start Date','Promo End Date','Till Sold Out','Mechanics','ETA Date']];
-  var sections = ['global','nea','sea','restocks'];
-  var sectionLabels = {global:'Global',nea:'NEA',sea:'SEA',restocks:'Restocks'};
+  var rows = [['Launch Title','Launch Date','Section','Key Level','Status','Category','Product Name','Colour(s)','Size(s)','SGD RRP','Markets','Promo Start Date','Promo End Date','Till Sold Out','Mechanics','ETA Date','Raw Entry JSON']];
+  var sections = ['global','nea','sea','restocks','store_openings','events'];
+  var sectionLabels = {global:'Global',nea:'NEA',sea:'SEA',restocks:'Restocks',store_openings:'Store Openings',events:'Events/Activations'};
   var st = {};
   try { st = JSON.parse(localStorage.getItem('calendar-2026-working-v5') || '{}'); } catch(e) { st = {}; }
   sections.forEach(function(sec) {
@@ -11752,7 +11754,8 @@ function btvExportCSV() {
             entry.tillSoldOut ? '' : (entry.endDateISO || ''),
             entry.tillSoldOut ? 'YES' : 'NO',
             entry.mechanics || '',
-            ''
+            '',
+            JSON.stringify(entry)
           ]);
         } else if (sec === 'restocks') {
           // Restocks entries have lines[] with productTitle + etaISO + markets
@@ -11775,9 +11778,51 @@ function btvExportCSV() {
               '',
               '',
               '',
-              entry.etaISO || ''
+              entry.etaISO || '',
+              JSON.stringify(entry)
             ]);
           });
+        } else if (sec === 'store_openings') {
+          rows.push([
+            entry.storeName || '',
+            entry.targetOpenDate || wkId,
+            sectionLabels[sec] || sec,
+            entry.keyLevel || '',
+            entry.workflowStatus || 'draft',
+            '',
+            entry.storeName || '',
+            '',
+            entry.storeSize || '',
+            '',
+            entry.market || '',
+            entry.targetOpenDate || '',
+            '',
+            '',
+            entry.storeAddress || '',
+            '',
+            JSON.stringify(entry)
+          ]);
+        } else if (sec === 'events') {
+          var mktStr = (entry.allMarkets || false) ? 'All' : (entry.markets || []).join(',');
+          rows.push([
+            entry.title || '',
+            entry.startDateISO || wkId,
+            sectionLabels[sec] || sec,
+            entry.keyLevel || '',
+            entry.workflowStatus || 'draft',
+            '',
+            entry.title || '',
+            '',
+            '',
+            '',
+            mktStr,
+            entry.startDateISO || '',
+            entry.tillSoldOut ? '' : (entry.endDateISO || ''),
+            entry.tillSoldOut ? 'YES' : 'NO',
+            entry.notes || '',
+            '',
+            JSON.stringify(entry)
+          ]);
         } else {
           // Global entries have lines[] with productName
           var lines = (entry.lines && entry.lines.length) ? entry.lines : [{}];
@@ -11798,7 +11843,8 @@ function btvExportCSV() {
               '',
               '',
               '',
-              ''
+              '',
+              JSON.stringify(entry)
             ]);
           });
         }

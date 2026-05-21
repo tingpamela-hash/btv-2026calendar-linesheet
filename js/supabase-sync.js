@@ -43,6 +43,7 @@
     'btv_product_data',
     'btv_linesheet_products',
     'btv-admin-config-v1',
+    'btv-edit-locks-v1',
   ];
 
   // Keys that trigger a UI re-render when changed remotely.
@@ -55,6 +56,7 @@
     'btvLinesheetChangeLog',
     'btv_product_data',
     'btv_linesheet_products',
+    'btv-edit-locks-v1',
   ];
 
   // Capture the real setItem before we intercept it
