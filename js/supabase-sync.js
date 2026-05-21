@@ -56,7 +56,6 @@
     'btvLinesheetChangeLog',
     'btv_product_data',
     'btv_linesheet_products',
-    'btv-edit-locks-v1',
   ];
 
   // Capture the real setItem before we intercept it
@@ -209,11 +208,15 @@
   window.btvCheckVersionConflict = async function (key) {
     if (!_sb || !_lastPullTimes[key]) return false;
     try {
-      const { data } = await _sb
-        .from('app_state')
-        .select('updated_at, updated_by')
-        .eq('key', key)
-        .single();
+      const query = _sb
+          .from('app_state')
+          .select('updated_at, updated_by')
+          .eq('key', key)
+          .single();
+      const timeout = new Promise(function (resolve) {
+        setTimeout(function () { resolve({ data: null, error: { message: 'Version check timed out' } }); }, 3500);
+      });
+      const { data } = await Promise.race([query, timeout]);
       if (!data || !data.updated_at) return false;
       const dbTime   = new Date(data.updated_at);
       const pullTime = new Date(_lastPullTimes[key]);
@@ -230,6 +233,10 @@
     if (updatedAt) _lastPullTimes[key] = updatedAt;
     if (localStorage.getItem(key) === val) return; // nothing changed
     _origSetItem(key, val);
+    if (key === 'btv-edit-locks-v1') {
+      window.dispatchEvent(new CustomEvent('btv-presence-changed'));
+      return;
+    }
     if (!RENDER_KEYS.includes(key)) return;
     // Only re-render and toast for changes from someone else.
     const isOtherUser = fromUserId && fromUserId !== _userId;
