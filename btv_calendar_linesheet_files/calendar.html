@@ -10069,6 +10069,18 @@ window.openEditor = function(section, weekId, entryId){
 
     if(!btvValidateCalendarModal(section)) return;
 
+    if (typeof window.btvCheckVersionConflict === 'function') {
+      const _calConflict = await window.btvCheckVersionConflict('calendar-2026-working-v5');
+      if (_calConflict) {
+        const _proceed = confirm(
+          'Calendar data was updated by a teammate since this editor opened.\n\n' +
+          'Saving now will apply your form on top of the latest calendar data.\n\n' +
+          'Click OK to save, or Cancel to review first.'
+        );
+        if (!_proceed) return;
+      }
+    }
+
     pushHistory(state);
 
     if(!state[section]) state[section] = {};

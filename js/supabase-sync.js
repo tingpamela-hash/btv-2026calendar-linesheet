@@ -65,6 +65,7 @@
   let _userEmail            = null;
   let _started              = false;
   let _interceptorInstalled = false;
+  let _realtimeChannel      = null;
 
   // Tracks the last-known updated_at from Supabase for each key.
   // Used for version-conflict detection.
@@ -272,17 +273,26 @@
   }
 
   // ── Realtime subscription ─────────────────────────────────────────────────
-  // Both iframes share the same parentSb client. Guard with a flag on _sb so
-  // only the first frame to call setupRealtime() subscribes — the second frame
-  // would otherwise throw "cannot add postgres_changes callbacks after subscribe()".
+  // Each iframe uses its own Realtime client. The authenticated query client is
+  // shared by the parent, but sharing a Realtime channel across iframes means
+  // only one iframe receives immediate callbacks; the other can lag until polling.
 
-  function setupRealtime() {
-    if (_sb._btvRealtimeSetup) {
-      console.log('[BTV Sync] Realtime already set up on shared client — skipping.');
-      return;
+  async function setupRealtime() {
+    if (_realtimeChannel) return;
+    var rtSb = window.supabase.createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    if (_session) {
+      try {
+        await rtSb.auth.setSession({
+          access_token: _session.access_token,
+          refresh_token: _session.refresh_token,
+        });
+      } catch (e) {
+        console.warn('[BTV Sync] Realtime setSession failed:', e);
+      }
     }
-    _sb._btvRealtimeSetup = true;
-    _sb.channel('btv_app_state_v3')
+    _realtimeChannel = rtSb.channel('btv_app_state_v3')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'app_state' },
@@ -520,7 +530,7 @@
 
     // Wire up live sync and safety features
     setupWriteInterceptor();
-    setupRealtime();
+    await setupRealtime();
     setupPolling();
     await setupPresence();
 

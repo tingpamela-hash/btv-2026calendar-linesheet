@@ -3604,6 +3604,8 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
         <button class="btn" onclick="exportCSV()">Export CSV</button>
+        <button class="btn" onclick="exportLinesheetJSON()">Export JSON</button>
+        <label class="btn" style="cursor:pointer">Import JSON<input id="linesheetJsonImportInput" type="file" accept=".json,application/json" style="display:none" onchange="importLinesheetJSON(this)"></label>
 
 
 
@@ -11927,8 +11929,6 @@ var BTV_TRACKED_FIELDS = {name:'Product Name',category:'Category',description:'D
 
 
 async function saveProductGroup(){
-  if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
-  var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
 
 
 
@@ -12087,6 +12087,25 @@ async function saveProductGroup(){
 
 
 
+
+  var __btvRemoteWhileEditing = !!window._btvLsSkippedRemoteWhileDirty;
+  var __btvVersionConflict = false;
+  if (typeof window.btvCheckVersionConflict === 'function') {
+    __btvVersionConflict = await window.btvCheckVersionConflict('btv_linesheet_products');
+  }
+  if (__btvRemoteWhileEditing || __btvVersionConflict) {
+    var __btvProceed = confirm(
+      'Linesheet data was updated by a teammate while this form was open.\n\n' +
+      'Saving now will reload the latest master list first, then apply this product form so other products are preserved.\n\n' +
+      'Click OK to save, or Cancel to review first.'
+    );
+    if (!__btvProceed) return;
+    try {
+      var __btvLatestProducts = localStorage.getItem('btv_linesheet_products');
+      if (__btvLatestProducts) products = JSON.parse(__btvLatestProducts);
+    } catch(e) {}
+    window._btvLsSkippedRemoteWhileDirty = false;
+  }
 
   const shared = {
 
@@ -12945,6 +12964,8 @@ async function saveProductGroup(){
   // Persist enriched product list so it survives page refresh and syncs to teammates
   localStorage.setItem('btv_linesheet_products', JSON.stringify(products));
   _btvSetDirty(false);
+  if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+  var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
 
   editingGroupId = __btvResolvedGroupId; window._btvCurrentGroupId = __btvResolvedGroupId;
 
@@ -16220,6 +16241,73 @@ function exportCSV(){
 
 
 
+function exportLinesheetJSON(){
+  const payload = {
+    type: 'btv-linesheet-export',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    products: products,
+    changeLog: getChangeLog()
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'btv_linesheet_export.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importLinesheetJSON(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    let parsed;
+    try { parsed = JSON.parse(ev.target.result); }
+    catch(e){ alert('Could not read file. Please choose a valid .json linesheet export.'); input.value=''; return; }
+
+    const incomingProducts = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.products) ? parsed.products : null);
+    if(!incomingProducts){
+      alert('This file does not look like a linesheet JSON export.');
+      input.value = '';
+      return;
+    }
+
+    if(!confirm(
+      'Import this linesheet JSON?\n\n' +
+      incomingProducts.length + ' variant row(s) found.\n' +
+      'Your current linesheet master data will be replaced and synced to teammates.'
+    )){
+      input.value = '';
+      return;
+    }
+
+    products = incomingProducts.map(function(p){
+      p = p || {};
+      if(!p.id) p.id = uid('product');
+      if(!p.groupId) p.groupId = uid('group');
+      if(!p.variantLocalId) p.variantLocalId = uid('variant');
+      return p;
+    });
+    localStorage.setItem('btv_linesheet_products', JSON.stringify(products));
+
+    if(Array.isArray(parsed.changeLog)){
+      localStorage.setItem(BTV_CHANGE_LOG_KEY, JSON.stringify(parsed.changeLog.slice(0,300)));
+    }
+
+    window.__btvPrevProducts = JSON.parse(JSON.stringify(products));
+    updateCount();
+    populateCategoryFilter();
+    renderMaster();
+    renderLinesheet();
+    if(document.getElementById('changeLogList')) renderDashboard();
+    _btvSetDirty(false);
+    alert('Import complete - ' + products.length + ' variant row(s) loaded.');
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
 function exportLinesheetExcel(){
   const list = selectedProducts();
   if(!list.length){ alert('No linesheet items picked.'); return; }
@@ -18191,6 +18279,7 @@ window.btvReloadAndRender = function() {
     _btvProductData = raw ? JSON.parse(raw) : [];
   } catch(e) {}
   if (_btvFormDirty) {
+    window._btvLsSkippedRemoteWhileDirty = true;
     // Don't blow away the user's in-progress edits — just refresh dashboard
     if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
     // Show a toast so the user knows a sync happened but their edits are safe
