@@ -9706,19 +9706,21 @@ window.openEditor = function(section, weekId, entryId){
       _btvLockBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7a5a00;line-height:1.6;display:flex;justify-content:space-between;align-items:center;gap:10px;';
       _btvLockBanner.innerHTML = '<span>🔒 <strong>' + _btvLockHolder + '</strong> is currently editing this entry. Inputs are locked to protect their work.</span>';
       e('modalBody').insertBefore(_btvLockBanner, e('modalBody').firstChild);
-      // Disable all form inputs
+      // Disable all form inputs and action buttons
       e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = true; });
       var _cfmBtn = e('confirmBtn'); if (_cfmBtn) { _cfmBtn.disabled = true; _cfmBtn.style.opacity = '0.35'; }
+      var _addRowBtn = e('addProductRowBtn'); if (_addRowBtn) { _addRowBtn.disabled = true; _addRowBtn.style.opacity = '0.35'; }
       // Watch for the lock to be released, then re-enable
       var _btvUnlockWatcher = function() {
         if (typeof _btvCalGetLockHolder !== 'function') return;
         if (_btvCalGetLockHolder(_btvEditKey)) return; // still locked
         window.removeEventListener('btv-presence-changed', _btvUnlockWatcher);
         window._btvCurrentUnlockWatcher = null;
-        // Re-enable inputs and Confirm button in place — do NOT rebuild innerHTML
+        // Re-enable inputs and action buttons in place — do NOT rebuild innerHTML
         // (rebuilding destroys the confirmBtn element and loses its onclick handler)
         e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = false; });
         if (_cfmBtn) { _cfmBtn.disabled = false; _cfmBtn.style.opacity = '1'; }
+        var _addRowBtnU = e('addProductRowBtn'); if (_addRowBtnU) { _addRowBtnU.disabled = false; _addRowBtnU.style.opacity = '1'; }
         var _banner = document.getElementById('btv-cal-lock-banner');
         if (_banner) _banner.remove();
         // Show unlock notification
@@ -10050,6 +10052,7 @@ window.openEditor = function(section, weekId, entryId){
 
 
   e("confirmBtn").onclick = async () => {
+    try {
 
     if(!btvValidateCalendarModal(section)) return;
 
@@ -10415,6 +10418,7 @@ window.openEditor = function(section, weekId, entryId){
 
     } catch(__btvErr) { console.warn('BTV change log error:', __btvErr); }
 
+    if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
     e("modal").classList.remove("show");
 
     render();
@@ -10423,6 +10427,10 @@ window.openEditor = function(section, weekId, entryId){
 
     if(e("marketMarketingView")) renderMarketMarketingView();
 
+    } catch (_btvConfirmErr) {
+      console.error('[BTV] Confirm error:', _btvConfirmErr);
+      alert('⚠ Could not save: ' + (_btvConfirmErr.message || String(_btvConfirmErr)) + '\nPlease try again or refresh.');
+    }
   };
 
 };
