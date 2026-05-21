@@ -402,8 +402,14 @@
       if (key === _userId) return;
       const presences = state[key] || [];
       if (presences.length) {
-        const p = presences[presences.length - 1];
-        if (p.email) users.push({ email: p.email, item: p.item || null, field: p.field || null });
+        const merged = { email: null, item: null, field: null, launchItem: null };
+        presences.forEach(function (p) {
+          if (p.email) merged.email = p.email;
+          if (p.item) merged.item = p.item;
+          if (p.field) merged.field = p.field;
+          if (p.launchItem) merged.launchItem = p.launchItem;
+        });
+        if (merged.email) users.push(merged);
       }
     });
     return users;

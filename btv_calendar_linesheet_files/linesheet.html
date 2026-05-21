@@ -7773,6 +7773,7 @@ function switchView(view){
                 _btvSetDirty(false);
               }
               if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
+              window._btvCurrentLaunchItem = null;
               if (window._btvCurrentLsUnlocker) { window.removeEventListener('btv-presence-changed', window._btvCurrentLsUnlocker); window._btvCurrentLsUnlocker = null; }
               var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
             }
@@ -8368,6 +8369,8 @@ function loadFromCalendar(notifyNew){
 
 
           calEntryId: row.calEntryId || "",
+          calSection: row.calSection || "global",
+          calWeekId: row.calWeekId || "",
 
 
 
@@ -13793,6 +13796,7 @@ function editGroup(groupId){
   // ── Presence: announce this product is open (drives master-list amber outlines) ──
   var _btvLsKey = 'ls::group::' + groupId;
   window._btvCurrentGroupId = groupId; // keep window-scoped copy for presence listeners
+  window._btvCurrentLaunchItem = _btvLsGetCalendarLaunchItem(groupId);
   if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvLsKey);
   // Apply per-field locks from any teammates currently focused on fields in this product
   if (typeof _btvLsApplyFieldLocks === 'function') _btvLsApplyFieldLocks(groupId);
@@ -18086,6 +18090,24 @@ function _btvLsGetLockHolder(itemKey) {
   return null;
 }
 
+function _btvLsGetCalendarLaunchItem(groupId) {
+  var item = (products || []).find(function(p) { return p.groupId === groupId && p.calEntryId; });
+  if (!item || !item.calEntryId) return null;
+  var section = item.calSection || 'global';
+  var weekId = item.calWeekId || _btvLsMondayOf(item.launchDate || '') || '';
+  if (!weekId) return null;
+  return 'cal::' + section + '::' + weekId + '::' + item.calEntryId;
+}
+
+function _btvLsMondayOf(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return '';
+  var day = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - day);
+  return d.toISOString().slice(0, 10);
+}
+
 function _btvLsRenderPresenceBar() {
   // Global online-user floating bar removed — field-level co-edit bar is used instead.
   // Still update master-list amber outlines.
@@ -18368,7 +18390,7 @@ window.btvReloadAndRender = function() {
       console.warn('[BTV LS Presence] setSession failed — continuing unauthenticated:', e);
     }
 
-    _ch = sb.channel('btv-ls-presence-v2', {
+    _ch = sb.channel('btv-cal-presence-v1', {
       config: { presence: { key: _uid } },
     });
 
@@ -18378,11 +18400,11 @@ window.btvReloadAndRender = function() {
       .on('presence', { event: 'leave' }, _dispatch)
       .subscribe(function (status) {
         if (status === 'SUBSCRIBED') {
-          console.log('[BTV LS Presence] Connected to btv-ls-presence-v2');
-          _ch.track({ email: _email, item: null, field: null, ts: Date.now() });
+          console.log('[BTV LS Presence] Connected to shared calendar presence channel');
+          _ch.track({ email: _email, item: null, field: null, launchItem: null, ts: Date.now() });
           setInterval(_dispatch, 2000);           // heartbeat: refresh UI every 2 s
           setInterval(function () {               // re-track every 30 s to keep alive
-            if (_ch) _ch.track({ email: _email, item: _item, field: _field, ts: Date.now() });
+            if (_ch) _ch.track({ email: _email, item: _item, field: _field, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now() });
           }, 30000);
         } else {
           console.log('[BTV LS Presence] Status:', status);
@@ -18406,8 +18428,14 @@ window.btvReloadAndRender = function() {
       if (k === _uid) return;
       var arr = state[k] || [];
       if (arr.length) {
-        var p = arr[arr.length - 1];
-        if (p.email) users.push({ email: p.email, item: p.item || null, field: p.field || null });
+        var merged = { email: null, item: null, field: null, launchItem: null };
+        arr.forEach(function(p) {
+          if (p.email) merged.email = p.email;
+          if (p.item) merged.item = p.item;
+          if (p.field) merged.field = p.field;
+          if (p.launchItem) merged.launchItem = p.launchItem;
+        });
+        if (merged.email) users.push(merged);
       }
     });
     return users;
@@ -18416,20 +18444,22 @@ window.btvReloadAndRender = function() {
   window.btvSetEditing = async function (itemId) {
     if (!_ch) return;
     _item  = itemId; _field = null;
-    await _ch.track({ email: _email, item: itemId, field: null, ts: Date.now() });
+    await _ch.track({ email: _email, item: itemId, field: null, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now() });
   };
 
   window.btvClearEditing = async function () {
     if (!_ch) return;
     _item  = null; _field = null;
-    await _ch.track({ email: _email, item: null, field: null, ts: Date.now() });
+    window._btvCurrentLaunchItem = null;
+    await _ch.track({ email: _email, item: null, field: null, launchItem: null, ts: Date.now() });
   };
 
   window.btvTrackField = async function (groupId, fieldKey) {
     if (!_ch) return;
     _item  = groupId ? 'ls::group::' + groupId : null;
     _field = fieldKey || null;
-    await _ch.track({ email: _email, item: _item, field: _field, ts: Date.now() });
+    if (groupId) window._btvCurrentLaunchItem = _btvLsGetCalendarLaunchItem(groupId);
+    await _ch.track({ email: _email, item: _item, field: _field, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now() });
   };
 
   // ── Online bar: avatars of who else is in this tab ────────────────────────

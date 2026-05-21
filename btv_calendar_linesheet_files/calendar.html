@@ -1305,19 +1305,23 @@
   }
 
   .product-line-summary-text::before{
-    content:'Summary';
+    content:'›';
     display:inline-flex;
+    align-items:center;
+    justify-content:center;
     margin-right:8px;
-    padding:2px 8px;
+    width:24px;
+    height:24px;
     border:1px solid var(--border);
-    border-radius:999px;
-    font-size:10px;
+    border-radius:6px;
+    font-size:18px;
     font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:.06em;
-    color:var(--muted);
+    line-height:1;
+    color:var(--text);
     background:#fffdfa;
   }
+
+  details[open] > .product-line-summary .product-line-summary-text::before{content:'⌄'}
 
   .product-line-actions{
     display:flex;
@@ -1334,6 +1338,59 @@
     font-weight:700;
     padding:4px 8px;
     cursor:pointer;
+    border-radius:6px;
+    min-width:34px;
+    min-height:28px;
+  }
+
+  .product-line-actions button:hover{background:#f3eee6}
+
+  .product-line-delete{color:#9f2d20!important;border-color:#d8a29b!important}
+
+  .version-history-grid{
+    display:grid;
+    grid-template-columns:minmax(220px,.8fr) minmax(0,1.2fr);
+    gap:14px;
+    min-height:360px;
+  }
+
+  .version-history-list{
+    border:1px solid var(--border);
+    background:#fffdfa;
+    overflow:auto;
+    max-height:440px;
+  }
+
+  .version-history-item{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+    padding:10px 12px;
+    border-bottom:1px solid var(--grid);
+  }
+
+  .version-history-actions{display:flex;gap:6px;flex-shrink:0}
+
+  .version-history-actions button{
+    border:1px solid var(--border);
+    background:#fff;
+    font:inherit;
+    font-size:11px;
+    font-weight:700;
+    padding:5px 8px;
+    cursor:pointer;
+  }
+
+  #versionHistoryDetail{
+    width:100%;
+    min-height:360px;
+    border:1px solid var(--border);
+    background:#fffdfa;
+    padding:12px;
+    font:inherit;
+    font-size:12px;
+    line-height:1.55;
   }
 
   @media (max-width:900px){
@@ -1343,6 +1400,8 @@
       grid-template-columns:1fr !important;
 
     }
+
+    .version-history-grid{grid-template-columns:1fr}
 
   }
 
@@ -3063,6 +3122,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <button class="btn" type="button" style="font-size:11px;padding:4px 8px;background:#fff;border:1px solid #c8bfb0;align-self:flex-end" onclick="btvConfigCalWebhook()">&#9881; Cal Webhook</button>
 
     <button id="saveVersionBtn" style="margin-left:auto;background:#111;color:#fff;border:none;padding:10px 20px;font-size:13px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">Save Version</button>
+    <button id="versionHistoryBtn" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:10px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer;align-self:flex-end">Version History</button>
 
   </div>
 
@@ -6390,6 +6450,19 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 
 </div>
 
+<div class="modal" id="versionHistoryModal">
+  <div class="card" style="max-width:860px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <h2 style="margin:0">Version History</h2>
+      <button type="button" class="small-btn" onclick="document.getElementById('versionHistoryModal').classList.remove('show')">Close</button>
+    </div>
+    <div class="version-history-grid">
+      <div id="versionHistoryList" class="version-history-list"></div>
+      <textarea id="versionHistoryDetail" readonly placeholder="Select a version to view its update summary."></textarea>
+    </div>
+  </div>
+</div>
+
   <div id="adminView" class="view-panel hidden">
     <div class="admin-wrap" id="adminViewContent">
       <p class="muted" style="margin-top:40px;text-align:center">Loading admin…</p>
@@ -7132,6 +7205,8 @@ function saveState(state){
             linesheetRows.push({
 
               calEntryId: entry.id,
+              calSection: "global",
+              calWeekId: entry.weekId || findWeekIdForDate(entry.launchDate || "") || "",
 
               launchDate: entry.launchDate || "",
 
@@ -7349,8 +7424,9 @@ function renderGlobalProductRow(line, i){
                 <span class="small">${lineSkuCount ? lineSkuCount + " SKU" + (lineSkuCount === 1 ? "" : "s") : "0 SKUs"}</span>
               </span>
               <span class="product-line-actions">
-                <button type="button" data-move-line="up" data-i="${i}">Up</button>
-                <button type="button" data-move-line="down" data-i="${i}">Down</button>
+                <button type="button" data-move-line="up" data-i="${i}" title="Move up">↑</button>
+                <button type="button" data-move-line="down" data-i="${i}" title="Move down">↓</button>
+                <button type="button" class="product-line-delete" data-delete-line="${i}" title="Delete empty product">×</button>
               </span>
             </summary>
 
@@ -10674,6 +10750,27 @@ function bindGlobalDynamicRows(){
     };
   });
 
+  document.querySelectorAll("[data-delete-line]").forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const wrap = btn.closest("[data-line-wrap]");
+      if(!wrap) return;
+      const line = getLineFromWrap(wrap);
+      const hasContent = line.category || line.productName || line.colour || line.size || line.price;
+      if(hasContent && !confirm("Delete this product section?")) return;
+      const rows = container.querySelectorAll("[data-line-wrap]");
+      if(rows.length <= 1){
+        wrap.querySelectorAll("input, textarea, select").forEach(el => el.value = "");
+      } else {
+        wrap.remove();
+      }
+      reindexGlobalProductRows();
+      updateSkuAuto();
+      refreshGlobalProductSummaries();
+    };
+  });
+
   document.querySelectorAll("[data-clear-line]").forEach(btn => {
 
     btn.onclick = () => {
@@ -10711,6 +10808,17 @@ function bindGlobalDynamicRows(){
 
 }
 
+function getLineFromWrap(wrap){
+  const i = wrap ? wrap.dataset.i : "";
+  return {
+    category: (wrap && wrap.querySelector(`.line-category[data-i="${i}"]`)?.value || "").trim(),
+    productName: (wrap && wrap.querySelector(`.line-product[data-i="${i}"]`)?.value || "").trim(),
+    colour: (wrap && wrap.querySelector(`.line-colour[data-i="${i}"]`)?.value || "").trim(),
+    size: (wrap && wrap.querySelector(`.line-size[data-i="${i}"]`)?.value || "").trim(),
+    price: (wrap && wrap.querySelector(`.line-price[data-i="${i}"]`)?.value || "").trim()
+  };
+}
+
 function bindGlobalProductInputs(){
   document.querySelectorAll("#globalProductRows .line-category, #globalProductRows .line-product, #globalProductRows .line-price, #globalProductRows .line-colour, #globalProductRows .line-size").forEach(el => {
     el.removeEventListener("input", handleGlobalProductInput);
@@ -10727,14 +10835,7 @@ function handleGlobalProductInput(){
 
 function getCurrentProductLines(){
   return Array.from(document.querySelectorAll("#globalProductRows [data-line-wrap]")).map(wrap => {
-    const i = wrap.dataset.i;
-    return {
-      category: (wrap.querySelector(`.line-category[data-i="${i}"]`)?.value || "").trim(),
-      productName: (wrap.querySelector(`.line-product[data-i="${i}"]`)?.value || "").trim(),
-      colour: (wrap.querySelector(`.line-colour[data-i="${i}"]`)?.value || "").trim(),
-      size: (wrap.querySelector(`.line-size[data-i="${i}"]`)?.value || "").trim(),
-      price: (wrap.querySelector(`.line-price[data-i="${i}"]`)?.value || "").trim()
-    };
+    return getLineFromWrap(wrap);
   });
 }
 
@@ -11147,7 +11248,9 @@ function _btvEmailColor(email) {
 
 function _btvCalGetLockHolder(itemKey) {
   var users = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
-  for (var i = 0; i < users.length; i++) { if (users[i].item === itemKey) return users[i].email; }
+  for (var i = 0; i < users.length; i++) {
+    if (users[i].item === itemKey || users[i].launchItem === itemKey) return users[i].email;
+  }
   return null;
 }
 
@@ -11331,6 +11434,61 @@ e("saveVersionBtn").addEventListener("click", () => {
   alert(`Saved ${label}`);
 
 });
+
+e("versionHistoryBtn").addEventListener("click", () => {
+  renderVersionHistory();
+  e("versionHistoryModal").classList.add("show");
+});
+
+function versionDiffCount(v){
+  var grouped = v && v.grouped ? v.grouped : {};
+  return Object.values(grouped).reduce(function(n, arr){ return n + (Array.isArray(arr) ? arr.length : 0); }, 0);
+}
+
+function renderVersionHistory(){
+  var list = e("versionHistoryList");
+  if(!list) return;
+  var versions = loadVersions();
+  if(!versions.length){
+    list.innerHTML = '<div class="muted" style="padding:18px;text-align:center">No saved versions yet.</div>';
+    return;
+  }
+  list.innerHTML = versions.map(function(v, i){
+    var count = versionDiffCount(v);
+    return '<div class="version-history-item" data-version-index="'+i+'">'
+      + '<div><strong>'+esc(v.label || ('Version '+(i+1)))+'</strong><div class="small">'+count+' calendar update'+(count===1?'':'s')+'</div></div>'
+      + '<div class="version-history-actions">'
+      + '<button type="button" data-view-version="'+i+'">View</button>'
+      + '<button type="button" data-restore-version="'+i+'">Restore</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+  list.querySelectorAll('[data-view-version]').forEach(function(btn){
+    btn.onclick = function(){
+      var v = versions[Number(btn.dataset.viewVersion)];
+      var text = buildTeamsSummary(v.label || 'Version', v.grouped || {});
+      e("versionHistoryDetail").value = text || 'No changes recorded for this version.';
+    };
+  });
+  list.querySelectorAll('[data-restore-version]').forEach(function(btn){
+    btn.onclick = function(){
+      var v = versions[Number(btn.dataset.restoreVersion)];
+      if(!v || !v.state) return;
+      if(!confirm('Restore "'+(v.label || 'this version')+'"? Current calendar data will be replaced.')) return;
+      pushHistory(state);
+      Object.keys(state).forEach(function(k){ delete state[k]; });
+      Object.assign(state, deepClone(v.state));
+      saveState(state);
+      render();
+      if(e("globalMarketingView")) renderGlobalMarketingView();
+      if(e("marketMarketingView")) renderMarketMarketingView();
+      e("versionNote").textContent = 'Current version: ' + (v.label || 'Restored');
+      alert('Restored ' + (v.label || 'version'));
+    };
+  });
+  var latest = versions[0];
+  e("versionHistoryDetail").value = latest ? buildTeamsSummary(latest.label || 'Version', latest.grouped || {}) : '';
+}
 
 e("markdownBtn").addEventListener("click", () => window.openMarkdownEditor());
 
