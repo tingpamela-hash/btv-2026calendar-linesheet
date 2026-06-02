@@ -47,6 +47,20 @@ html, body {
 }
 .nav-right-btn:hover { border-color: #999; color: #fff; }
 
+/* ── Calendar year picker ── */
+.cal-year-picker {
+  display: flex; align-items: center; gap: 2px;
+  background: rgba(255,255,255,.07); border-radius: 8px; padding: 2px;
+}
+.year-btn {
+  padding: 4px 12px; border: none; background: transparent;
+  color: #666; font: inherit; font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; cursor: pointer; border-radius: 6px;
+  transition: background .12s, color .12s;
+}
+.year-btn.active-year { background: rgba(255,255,255,.18); color: #fff; }
+.year-btn:hover:not(.active-year) { color: #ccc; }
+
 /* ── Frames ── */
 .frame-wrap {
   position: fixed; top: 48px; left: 0; right: 0; bottom: 0;
@@ -255,6 +269,10 @@ html, body {
 <nav class="top-nav">
   <span class="top-nav-brand">BTV Planner</span>
   <button class="top-nav-btn active" data-frame="cal" onclick="showFrame('cal')">Calendar</button>
+  <div id="calYearPicker" class="cal-year-picker">
+    <button id="yearBtn2026" class="year-btn active-year" onclick="setCalYear('2026')">2026</button>
+    <button id="yearBtn2027" class="year-btn" onclick="setCalYear('2027')">2027</button>
+  </div>
   <button class="top-nav-btn" data-frame="ls" onclick="showFrame('ls')">Linesheet</button>
   <div class="nav-right">
     <div class="nav-online-wrap" id="navOnlineWrap" style="display:none">
@@ -273,7 +291,8 @@ html, body {
 
 <!-- Iframe frames -->
 <div class="frame-wrap">
-  <iframe id="frame-cal" class="frame active" title="Calendar" data-src="./btv_calendar_linesheet_files/calendar.html"></iframe>
+  <iframe id="frame-cal-2026" class="frame active" title="Calendar 2026" data-src="./btv_calendar_linesheet_files/calendar.html"></iframe>
+  <iframe id="frame-cal-2027" class="frame" title="Calendar 2027" data-src="./btv_calendar_linesheet_files/calendar-2027.html"></iframe>
   <iframe id="frame-ls" class="frame" title="Linesheet Manager" data-src="./btv_calendar_linesheet_files/linesheet.html"></iframe>
 </div>
 
@@ -383,6 +402,52 @@ html, body {
   let _session = null;
   let _profile = null;
 
+  // ── Calendar year selection ────────────────────────────────────────────────
+  var _calYear = (function() {
+    try { return localStorage.getItem('btv-cal-year') || '2026'; } catch(e) { return '2026'; }
+  })();
+
+  function _getCalFrameId() { return 'frame-cal-' + _calYear; }
+
+  function _calPasscode(year) {
+    return year === '2027' ? 'BTV2027' : ((window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026');
+  }
+
+  function setCalYear(year) {
+    if (year === _calYear) return;
+    _calYear = year;
+    try { localStorage.setItem('btv-cal-year', year); } catch(e) {}
+    document.querySelectorAll('.year-btn').forEach(function(b) {
+      b.classList.toggle('active-year', b.id === 'yearBtn' + year);
+    });
+    var calActive = document.querySelector('.top-nav-btn[data-frame="cal"]').classList.contains('active');
+    if (calActive) {
+      document.querySelectorAll('.frame').forEach(function(el) { el.classList.remove('active'); });
+      var frame = document.getElementById(_getCalFrameId());
+      if (frame) {
+        frame.classList.add('active');
+        if (_isUnlocked('cal')) {
+          _bypassFramePasscode(frame, _calPasscode(year));
+          if (_session) _startSyncInFrame(_getCalFrameId(), _session);
+        }
+      }
+    }
+  }
+
+  // Sync year picker button + active frame to _calYear on page load
+  (function _initCalYear() {
+    var btn26 = document.getElementById('yearBtn2026');
+    var btn27 = document.getElementById('yearBtn2027');
+    var f26   = document.getElementById('frame-cal-2026');
+    var f27   = document.getElementById('frame-cal-2027');
+    if (_calYear === '2027') {
+      if (btn26) btn26.classList.remove('active-year');
+      if (btn27) btn27.classList.add('active-year');
+      if (f26)   f26.classList.remove('active');
+      if (f27)   f27.classList.add('active');
+    }
+  })();
+
   // ── Lazy-load iframes (called once after auth check completes) ────────────
 
   function _loadFrames() {
@@ -486,7 +551,8 @@ html, body {
   }
 
   function _startSyncInCalFrame(session) {
-    _startSyncInFrame('frame-cal', session);
+    _startSyncInFrame('frame-cal-2026', session);
+    _startSyncInFrame('frame-cal-2027', session);
     _startSyncInFrame('frame-ls', session);
   }
 
@@ -698,7 +764,13 @@ html, body {
     _currentModule = name;
     document.querySelectorAll('.frame').forEach(function (el) { el.classList.remove('active'); });
     document.querySelectorAll('.top-nav-btn').forEach(function (el) { el.classList.remove('active'); });
-    var frame = document.getElementById('frame-' + name);
+
+    // Show year picker only when Calendar tab is active
+    var picker = document.getElementById('calYearPicker');
+    if (picker) picker.style.display = name === 'cal' ? 'flex' : 'none';
+
+    var frameId = name === 'cal' ? _getCalFrameId() : 'frame-' + name;
+    var frame = document.getElementById(frameId);
     var btn   = document.querySelector('.top-nav-btn[data-frame="' + name + '"]');
     if (frame) frame.classList.add('active');
     if (btn)   btn.classList.add('active');
@@ -706,10 +778,8 @@ html, body {
       var lf = document.getElementById('frame-ls');
       try { lf.contentWindow.loadFromCalendar && lf.contentWindow.loadFromCalendar(); } catch (e) {}
     }
-    // If module is unlocked, also unlock the iframe's internal passcode
-    // so users don't see a second passcode prompt inside the frame.
     if (_isUnlocked(name) && frame) {
-      var pc = (window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026';
+      var pc = name === 'cal' ? _calPasscode(_calYear) : ((window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026');
       _bypassFramePasscode(frame, pc);
     }
     if (!_isUnlocked(name)) {
