@@ -9086,7 +9086,7 @@ function render(){
       if(!_visibleMds.length){
         html += `<td class="wk ${i%2?"alt":""}"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td>`;
       } else {
-        // Always render one slot per visible markdown so tracks stay aligned across cells
+        // Only render tracks that have a bubble — no empty placeholders
         html += `<td class="wk ${i%2?"alt":""} markdown-span-cell">`;
         _visibleMds.forEach(function(md, idx){
           if(_mdWeekIdx[w.id].has(idx)){
@@ -9097,8 +9097,6 @@ function render(){
             html += `<div class="markdown-track"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
               (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${fmtDDMMM(md.startDate)}→${fmtDDMMM(md.endDate)}</div>` : '') +
               `</div></div>`;
-          } else {
-            html += `<div class="markdown-track"></div>`;
           }
         });
         html += `</td>`;

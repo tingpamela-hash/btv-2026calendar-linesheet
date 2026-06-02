@@ -2753,19 +2753,6 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-      <div class="grid2" style="margin-top:12px">
-
-        <div class="field">
-          <label>Product Measurement (inch)</label>
-          <textarea id="f_measurement_inch" data-field-key="f_measurement_inch" rows="2" placeholder="e.g. Length: 28&quot;, Chest: 18&quot;"></textarea>
-        </div>
-
-        <div class="field">
-          <label>Product Measurement (cm)</label>
-          <textarea id="f_measurement_cm" data-field-key="f_measurement_cm" rows="2" placeholder="e.g. Length: 71cm, Chest: 46cm"></textarea>
-        </div>
-
-      </div>
       <div class="small-note">Measurements will build a matrix from the sizes you type. Toggle between CM and IN. Inches may be entered as fractions (e.g. 1/2, 1 1/4), and ranges are accepted (e.g. 12-13 or 12 1/2 - 13).</div>
 
 
@@ -3017,6 +3004,17 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
       <div class="measurement-wrap">
+
+        <div style="display:flex;gap:12px;padding:10px 12px 0;flex-wrap:wrap">
+          <div class="field" style="flex:1;min-width:200px">
+            <label>Product Measurement (inch) <span class="team-badge sc">Product Designers</span></label>
+            <textarea id="f_measurement_inch" data-field-key="f_measurement_inch" rows="2" placeholder="All measurements are taken across garment and are subject to +/- difference."></textarea>
+          </div>
+          <div class="field" style="flex:1;min-width:200px">
+            <label>Product Measurement (cm) <span class="team-badge sc">Product Designers</span></label>
+            <textarea id="f_measurement_cm" data-field-key="f_measurement_cm" rows="2" placeholder="All measurements are taken across garment and are subject to +/- difference."></textarea>
+          </div>
+        </div>
 
 
 
