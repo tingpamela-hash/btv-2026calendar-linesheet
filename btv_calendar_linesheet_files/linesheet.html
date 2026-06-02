@@ -2753,6 +2753,19 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
+      <div class="grid2" style="margin-top:12px">
+
+        <div class="field">
+          <label>Product Measurement (inch)</label>
+          <textarea id="f_measurement_inch" data-field-key="f_measurement_inch" rows="2" placeholder="e.g. Length: 28&quot;, Chest: 18&quot;"></textarea>
+        </div>
+
+        <div class="field">
+          <label>Product Measurement (cm)</label>
+          <textarea id="f_measurement_cm" data-field-key="f_measurement_cm" rows="2" placeholder="e.g. Length: 71cm, Chest: 46cm"></textarea>
+        </div>
+
+      </div>
       <div class="small-note">Measurements will build a matrix from the sizes you type. Toggle between CM and IN. Inches may be entered as fractions (e.g. 1/2, 1 1/4), and ranges are accepted (e.g. 12-13 or 12 1/2 - 13).</div>
 
 
@@ -11972,7 +11985,7 @@ async function saveProductGroup(){
 
 
 
-  if(!variants.some(v => v.variant || v.sku || v.barcode || v.productImg || v.lookbookImg)){ alert('Please add at least one variant / colour row.'); return; }
+  // Variants can be empty — at least one card is always present via addVariantCard()
 
 
 
@@ -12295,6 +12308,10 @@ async function saveProductGroup(){
 
 
 
+    measurementInch: (document.getElementById('f_measurement_inch') ? document.getElementById('f_measurement_inch').value.trim() : ''),
+
+    measurementCm: (document.getElementById('f_measurement_cm') ? document.getElementById('f_measurement_cm').value.trim() : ''),
+
     hscode10: (document.getElementById('f_hscode10').value.trim() || ((document.getElementById('f_hscode').value.trim()) ? (document.getElementById('f_hscode').value.trim() + '.00') : ''))
 
 
@@ -12361,7 +12378,7 @@ async function saveProductGroup(){
 
 
 
-    var __btvSharedFields = ['name','category','description','washcare','fabric','sizing','weightGrams','sgd','sgdNoGST','jp','idRrp','th','ph','cn','hscode','hscode10'];
+    var __btvSharedFields = ['name','category','description','washcare','fabric','sizing','weightGrams','measurementInch','measurementCm','sgd','sgdNoGST','jp','idRrp','th','ph','cn','hscode','hscode10'];
 
 
 
@@ -12724,6 +12741,10 @@ async function saveProductGroup(){
 
 
 
+
+      measurementInch: shared.measurementInch,
+
+      measurementCm: shared.measurementCm,
 
       hscode10: shared.hscode10,
 
@@ -13108,7 +13129,7 @@ async function saveProductGroup(){
 
   // Log all fields for brand-new products
   if(__btvIsNewProduct){
-    var __btvNewFields = ['name','category','fabric','sizing','weightGrams','description','washcare','sgd','sgdNoGST','jp','idRrp','th','ph','cn','hscode10'];
+    var __btvNewFields = ['name','category','fabric','sizing','weightGrams','measurementInch','measurementCm','description','washcare','sgd','sgdNoGST','jp','idRrp','th','ph','cn','hscode10'];
     __btvNewFields.forEach(function(field){
       var val = String(shared[field]||'');
       if(val) addChangeEntry({ts:Date.now(),productName:shared.name,variant:'(shared)',field:BTV_TRACKED_FIELDS[field]||field,from:'—',to:val,action:'new'});
@@ -13247,7 +13268,7 @@ function clearForm(){
 
 
 
-  ['f_category','f_name','f_description','f_washcare','f_fabric','f_sizing','f_weight','f_sgd','f_sgdNoGST','f_jp','f_id','f_th','f_ph','f_cn','f_hscode','f_hscode10','productSearch'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
+  ['f_category','f_name','f_description','f_washcare','f_fabric','f_sizing','f_weight','f_measurement_inch','f_measurement_cm','f_sgd','f_sgdNoGST','f_jp','f_id','f_th','f_ph','f_cn','f_hscode','f_hscode10','productSearch'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
 
 
 
@@ -13453,6 +13474,9 @@ function editGroup(groupId){
 
 
   if(document.getElementById('f_weight')) document.getElementById('f_weight').value = base.weightGrams || '';
+
+  if(document.getElementById('f_measurement_inch')) document.getElementById('f_measurement_inch').value = base.measurementInch || '';
+  if(document.getElementById('f_measurement_cm')) document.getElementById('f_measurement_cm').value = base.measurementCm || '';
 
 
 
