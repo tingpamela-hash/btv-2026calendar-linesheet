@@ -2578,9 +2578,9 @@
 
   .required-star{color:#b63b2b;font-weight:700;margin-left:3px}
 
-  .markdown-span-cell{padding:0!important;background:transparent!important;vertical-align:top!important}
+  .markdown-span-cell{padding:0!important;background:transparent!important;vertical-align:top!important;position:relative!important}
 
-  .markdown-track{position:relative;min-height:44px}
+  .markdown-track{min-height:44px}
 
   .markdown-bubble-span{position:relative;margin:8px;border:2px dashed #8f7f67;border-radius:12px;background:rgba(255,247,223,.9);padding:8px 10px;font-size:12px;line-height:1.15}
 
@@ -9082,19 +9082,37 @@ function render(){
   try {
     html += `<tr><th class="rowhead bg-global" style="white-space:nowrap">Markdown&nbsp;<button onclick="window.openMarkdownEditor()" title="Add markdown" style="background:none;border:1px solid #bbb;color:#666;font-size:10px;padding:1px 6px;border-radius:4px;cursor:pointer;font-weight:700;line-height:1.4;vertical-align:middle">+</button></th>`;
 
+    // Pre-compute the minimum vertical lane for each markdown so that
+    // non-overlapping markdowns share lane 0 (slim row) while overlapping
+    // ones stack, and multi-week pills stay connected across cells.
+    const _trackH = 44;
+    const _laneOf = _visibleMds.map(function(md, idx){
+      const mdWeeks = weekIdsInRange(md.startDate, md.endDate).filter(function(id){ return _mdWeekIdx[id] !== undefined; });
+      let maxAbove = 0;
+      mdWeeks.forEach(function(weekId){
+        let above = 0;
+        for (let j = 0; j < idx; j++) { if (_mdWeekIdx[weekId] && _mdWeekIdx[weekId].has(j)) above++; }
+        if (above > maxAbove) maxAbove = above;
+      });
+      return maxAbove;
+    });
+    const _cellH = (_laneOf.length ? Math.max.apply(null, _laneOf) + 1 : 1) * _trackH;
+
     weeks.forEach(function(w, i){
       if(!_visibleMds.length){
         html += `<td class="wk ${i%2?"alt":""}"><div class="cell" onclick="window.openMarkdownEditor()" title="Add markdown" style="cursor:pointer;min-height:inherit"></div></td>`;
       } else {
-        // Only render tracks that have a bubble — no empty placeholders
-        html += `<td class="wk ${i%2?"alt":""} markdown-span-cell">`;
+        // Absolutely position each bubble at its lane offset — keeps pills
+        // connected across cells while row height = deepest overlap only.
+        html += `<td class="wk ${i%2?"alt":""} markdown-span-cell" style="height:${_cellH}px">`;
         _visibleMds.forEach(function(md, idx){
           if(_mdWeekIdx[w.id].has(idx)){
             const cov = weekIdsInRange(md.startDate, md.endDate).filter(id => visibleWeekIds.includes(id));
             const isStart = cov[0] === w.id;
             const isEnd   = cov[cov.length-1] === w.id;
             const spanCls = (isStart && isEnd) ? '' : (isStart ? 'md-start' : (isEnd ? 'md-end' : 'md-mid'));
-            html += `<div class="markdown-track"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
+            const topPx   = _laneOf[idx] * _trackH;
+            html += `<div class="markdown-track" style="position:absolute;top:${topPx}px;left:0;right:0"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
               (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${fmtDDMMM(md.startDate)}→${fmtDDMMM(md.endDate)}</div>` : '') +
               `</div></div>`;
           }
