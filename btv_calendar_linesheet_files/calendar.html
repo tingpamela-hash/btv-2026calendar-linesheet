@@ -12456,95 +12456,138 @@ function btvExportCSV() {
 }
 window.btvExportCSV = btvExportCSV;
 
-// ─── Export XLS (calendar grid view — mirrors on-screen visual layout) ────────
+// ─── Export XLS (calendar grid — built from data, not DOM clone) ─────────────
 function btvExportCalendarXLS() {
-  var table = document.getElementById('calendar');
-  if (!table) { alert('Calendar not found. Make sure the Calendar view is visible.'); return; }
-
-  var clone = table.cloneNode(true);
-  var liveEls  = Array.from(table.querySelectorAll('th,td'));
-  var cloneEls = Array.from(clone.querySelectorAll('th,td'));
-
-  liveEls.forEach(function(liveEl, idx) {
-    var cloneEl = cloneEls[idx];
-    if (!cloneEl) return;
-    var cs  = window.getComputedStyle(liveEl);
-    var bg  = cs.backgroundColor;
-    var fg  = cs.color;
-    var fw  = (parseInt(cs.fontWeight) || 400) >= 600 ? '600' : '400';
-    var tag = liveEl.tagName.toLowerCase();
-    var style = 'background-color:' + bg + ';color:' + fg + ';font-weight:' + fw +
-                ';border:1px solid #d5d0c9;padding:3px 5px;font-size:8pt;' +
-                'vertical-align:top;font-family:Arial,Helvetica,sans-serif;';
-
-    function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    if (tag === 'th') {
-      cloneEl.querySelectorAll('button').forEach(function(b){ b.remove(); });
-      var txt = liveEl.innerText.replace(/[+×✎⚙↩]/g, '').trim();
-      style += 'text-align:center;white-space:nowrap;font-weight:600;';
-      cloneEl.innerHTML = esc2(txt);
-    } else {
-      var entries = liveEl.querySelectorAll('.entry');
-      if (entries.length) {
-        var texts = [];
-        entries.forEach(function(entry) {
-          var lines = [];
-          var dateEl  = entry.querySelector('.entry-date');
-          var titleEl = entry.querySelector('.entry-title');
-          if (dateEl  && dateEl.textContent.trim())  lines.push(dateEl.textContent.trim());
-          if (titleEl && titleEl.textContent.trim()) lines.push(titleEl.textContent.trim());
-          entry.querySelectorAll('.prod').forEach(function(prod) {
-            var name  = prod.querySelector('.prod-name');
-            var price = prod.querySelector('.prod-price');
-            var metas = prod.querySelectorAll('.prod-meta');
-            var parts = [];
-            if (name  && name.textContent.trim())  parts.push(name.textContent.trim());
-            if (price && price.textContent.trim()) parts.push(price.textContent.trim());
-            metas.forEach(function(m){ if(m.textContent.trim()) parts.push(m.textContent.trim()); });
-            if (parts.length) lines.push('  ' + parts.join(' | '));
-          });
-          entry.querySelectorAll('.entry-info').forEach(function(info) {
-            var t = info.textContent.trim();
-            if (t && t.indexOf('Published') < 0 && t.indexOf('Draft') < 0) lines.push(t);
-          });
-          if (lines.length) texts.push(lines.join('\n'));
-        });
-        style += 'white-space:pre-wrap;min-width:80px;';
-        cloneEl.innerHTML = texts.length ? '<pre style="margin:0;white-space:pre-wrap;font-size:7pt;font-family:Arial">' + esc2(texts.join('\n─\n')) + '</pre>' : '';
-      } else {
-        var mdBubbles = liveEl.querySelectorAll('.markdown-title');
-        if (mdBubbles.length) {
-          style += 'white-space:pre-wrap;';
-          cloneEl.innerHTML = esc2(Array.from(mdBubbles).map(function(b){ return b.textContent.trim(); }).filter(Boolean).join(', '));
-        } else {
-          cloneEl.innerHTML = '';
-        }
-      }
-    }
-    cloneEl.setAttribute('style', style);
-    cloneEl.removeAttribute('class');
-  });
+  var st = {};
+  try { st = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) {}
 
   var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
-  var year    = yearTag ? yearTag[1] : 'BTV';
+  var year = yearTag ? yearTag[1] : 'BTV';
+  var weeks = currentWeeks();
+
+  // Section header colours (match CSS variables)
+  var SEC_BG  = { global:'#d4d4d4', china:'#c47800', sea:'#c43030', nea:'#4a8eb5', restocks:'#7a5a35', events:'#edecea', store_openings:'#d4d4d4' };
+  var SEC_FG  = { global:'#2d2d2d', china:'#ffffff', sea:'#ffffff', nea:'#ffffff', restocks:'#ffffff', events:'#2d2d2d', store_openings:'#2d2d2d' };
+  var HDR_BG  = '#e8e2d8';
+  var WK_A    = '#ffffff';
+  var WK_B    = '#f3f2f0';
+
+  function x(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function fd(iso) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T00:00:00');
+    return d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  }
+
+  // Format one entry as plain text lines joined with <br>
+  function fmtEntry(sec, entry) {
+    var lines = [];
+    var status = entry.workflowStatus === 'published' ? '' : ' [Draft]';
+    if (sec === 'global' || sec === 'china') {
+      if (entry.launchTitle) lines.push('<b>' + x(entry.launchTitle) + '</b>' + (entry.launchDate ? '  ' + x(fd(entry.launchDate)) : '') + x(status));
+      (entry.lines || []).forEach(function(ln) {
+        if (!ln.productName && !ln.category) return;
+        var parts = [ln.category ? x(ln.category) : '', ln.productName ? x(ln.productName) : '', ln.price ? x('$'+ln.price) : ''].filter(Boolean);
+        if (parts.length) lines.push(parts.join(' | ') + (ln.colour ? '<br>&nbsp;&nbsp;' + x(ln.colour) : '') + (ln.size ? '<br>&nbsp;&nbsp;' + x(ln.size) : ''));
+      });
+    } else if (sec === 'nea' || sec === 'sea') {
+      var title = (entry.optionType ? entry.optionType + ': ' : '') + (entry.productTitle || entry.launchTitle || '');
+      lines.push('<b>' + x(title) + '</b>' + x(status));
+      if (entry.colour) lines.push(x(entry.colour));
+      var mkts = entry.allMarkets ? (sec==='nea'?'CN, JP':'SG, TH, ID, PH') : (entry.countries||[]).join(', ');
+      if (mkts) lines.push('Mkt: ' + x(mkts));
+    } else if (sec === 'restocks') {
+      var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
+      lines.push('<b>Restock' + (entry.etaISO ? ' – ETA ' + x(fd(entry.etaISO)) : '') + '</b>' + x(status));
+      (entry.lines||[]).forEach(function(ln){ if(ln.productTitle||ln.productName) lines.push(x(ln.productTitle||ln.productName)); });
+      if (mkts) lines.push('Mkt: ' + x(mkts));
+    } else if (sec === 'events') {
+      var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
+      lines.push('<b>' + x(entry.title||'Event') + '</b>' + x(status));
+      if (entry.startDateISO) lines.push(x(fd(entry.startDateISO)) + (entry.endDateISO && entry.endDateISO !== entry.startDateISO ? ' – ' + x(fd(entry.endDateISO)) : ''));
+      if (mkts) lines.push('Mkt: ' + x(mkts));
+    } else if (sec === 'store_openings') {
+      lines.push('<b>' + x(entry.storeName||'Store Opening') + '</b>' + x(status));
+      if (entry.market) lines.push('Mkt: ' + x(entry.market));
+      if (entry.targetOpenDate) lines.push(x(fd(entry.targetOpenDate)));
+    }
+    return lines.join('<br>');
+  }
+
+  // Build quarter / month runs for header
+  var qRuns = [], mRuns = [];
+  weeks.forEach(function(w) {
+    var q = qRuns[qRuns.length-1];
+    if (!q || q.label !== w.quarter) qRuns.push({label: w.quarter, n: 1}); else q.n++;
+    var m = mRuns[mRuns.length-1];
+    if (!m || m.label !== w.month) mRuns.push({label: w.month, n: 1}); else m.n++;
+  });
+
+  var BASE  = 'font-family:Arial,sans-serif;font-size:9pt;border:1px solid #c8c4be;padding:3px 5px;';
+  var CORNER = 'background-color:' + HDR_BG + ';font-weight:bold;text-align:left;white-space:nowrap;vertical-align:middle;width:130px;';
+  var HDR   = 'background-color:' + HDR_BG + ';font-weight:bold;text-align:center;white-space:nowrap;vertical-align:middle;';
+
+  function cornerTh(txt) { return '<th style="' + BASE + CORNER + '">' + x(txt) + '</th>'; }
+  function hdrTh(txt, bg, n) {
+    var sp = n > 1 ? ' colspan="' + n + '"' : '';
+    return '<th' + sp + ' style="' + BASE + 'background-color:' + (bg||HDR_BG) + ';font-weight:bold;text-align:center;white-space:nowrap;min-width:120px;">' + x(txt) + '</th>';
+  }
+  function dataTd(html, bg) {
+    return '<td style="' + BASE + 'background-color:' + bg + ';vertical-align:top;min-width:120px;">' + (html||'') + '</td>';
+  }
+  function rowTh(txt, bg, fg) {
+    return '<th style="' + BASE + 'background-color:' + bg + ';color:' + fg + ';font-weight:bold;text-align:left;vertical-align:top;white-space:normal;width:130px;">' + x(txt) + '</th>';
+  }
+
+  var rows = '';
+
+  // ── Header rows ──
+  rows += '<tr>' + cornerTh('Quarter');
+  qRuns.forEach(function(r){ rows += hdrTh(r.label, HDR_BG, r.n); });
+  rows += '</tr>\n';
+
+  rows += '<tr>' + cornerTh('Month');
+  mRuns.forEach(function(r){ rows += hdrTh(r.label + ' ' + year, HDR_BG, r.n); });
+  rows += '</tr>\n';
+
+  rows += '<tr>' + cornerTh('Week');
+  weeks.forEach(function(w,i){ rows += hdrTh('Wk ' + w.weekOfYear, i%2?WK_B:WK_A, 1); });
+  rows += '</tr>\n';
+
+  rows += '<tr>' + cornerTh('Dates');
+  weeks.forEach(function(w,i){ rows += hdrTh(weekRangeLabel(w.start,w.end), i%2?WK_B:WK_A, 1); });
+  rows += '</tr>\n';
+
+  // ── Section rows ──
+  SECTIONS.forEach(function(sec) {
+    var bg = SEC_BG[sec.key] || HDR_BG;
+    var fg = SEC_FG[sec.key] || '#2d2d2d';
+    rows += '<tr>' + rowTh(sec.label, bg, fg);
+    weeks.forEach(function(w,i) {
+      var entries = (st[sec.key]||{})[w.id] || [];
+      var cellBg = i%2 ? WK_B : WK_A;
+      var content = entries.map(function(en){ return fmtEntry(sec.key, en); }).filter(Boolean).join('<br><hr style="border:none;border-top:1px solid #ddd;margin:3px 0">');
+      rows += dataTd(content, cellBg);
+    });
+    rows += '</tr>\n';
+  });
+
   var html =
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
     'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
     'xmlns="http://www.w3.org/TR/REC-html40">\n' +
-    '<head><meta charset="UTF-8">\n' +
+    '<head><meta charset="UTF-8">' +
     '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>' +
     '<x:Name>BTV Calendar ' + year + '</x:Name>' +
-    '<x:WorksheetOptions><x:DisplayGridlines/><x:FreezePanes/><x:FrozenNoSplit/>' +
-    '<x:SplitHorizontal>5</x:SplitHorizontal><x:TopRowBottomPane>5</x:TopRowBottomPane>' +
-    '<x:SplitVertical>1</x:SplitVertical><x:LeftColumnRightPane>1</x:LeftColumnRightPane>' +
-    '<x:ActivePane>0</x:ActivePane></x:WorksheetOptions>' +
-    '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->\n' +
-    '<style>table{border-collapse:collapse}td,th{mso-number-format:"@"}</style>\n' +
-    '</head>\n<body>\n' + clone.outerHTML + '\n</body>\n</html>';
+    '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>' +
+    '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->' +
+    '<style>table{border-collapse:collapse}br{mso-data-placement:same-cell}</style>' +
+    '</head>\n<body>\n' +
+    '<table cellspacing="0" cellpadding="0">\n' + rows + '</table>\n' +
+    '</body>\n</html>';
 
-  _btvDownload(year + '_Calendar_View_' + new Date().toISOString().slice(0, 10) + '.xls', html, 'application/vnd.ms-excel');
+  _btvDownload(year + '_Calendar_' + new Date().toISOString().slice(0,10) + '.xls', html, 'application/vnd.ms-excel');
 }
 window.btvExportCalendarXLS = btvExportCalendarXLS;
 
