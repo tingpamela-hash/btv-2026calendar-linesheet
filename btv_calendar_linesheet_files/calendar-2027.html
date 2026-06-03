@@ -7039,11 +7039,11 @@ const SECTIONS = [
 
   {key:"global", label:"Global", cls:"bg-global"},
 
+  {key:"china", label:"China", cls:"bg-china"},
+
   {key:"sea", label:"SEA", cls:"bg-sea"},
 
   {key:"nea", label:"NEA", cls:"bg-nea"},
-
-  {key:"china", label:"China", cls:"bg-china"},
 
   {key:"restocks", label:"Restocks", cls:"bg-restocks"},
 
@@ -7300,7 +7300,7 @@ function entryMarkets(section, entry){
   if(section === "nea") return entry.allMarkets ? ["CN","JP"] : (entry.countries || []);
 
   if(section === "sea") return entry.allMarkets ? ["SG","TH","ID","PH"] : (entry.countries || []);
-  if(section === "china") return entry.allMarkets ? CHINA_MARKETS.slice() : (entry.countries || []);
+  if(section === "china") return ["CN"];
 
   if(section === "events") return entry.allMarkets ? EVENT_MARKETS.slice() : (entry.markets || []);
 
@@ -7443,6 +7443,14 @@ function renderGlobalMarketingView(){
         published.filter(x => x.section === "sea" && x.weekId === w.id).forEach(x => {
 
           items.push({title:x.entry.productTitle || x.entry.optionType || "SEA", meta:(x.entry.allMarkets ? "SG, TH, ID, PH" : (x.entry.countries || []).join(", ")) || "SG, TH, ID, PH", status:getEntryStatus(x.entry)});
+
+        });
+
+      } else if(row === "China"){
+
+        published.filter(x => x.section === "china" && x.weekId === w.id).forEach(x => {
+
+          items.push({title:x.entry.launchTitle || "", date:x.entry.launchDate || "", products:(x.entry.lines || []).map(y => y.productName).filter(Boolean), status:getEntryStatus(x.entry)});
 
         });
 
@@ -7871,6 +7879,53 @@ function saveState(state){
 
     });
 
+    // China entries (global-format: uses lines[] like Global row)
+    Object.values(state.china || {}).flat().forEach(entry => {
+
+      (entry.lines || []).forEach(line => {
+
+        if(!(line.category || line.productName || line.colour || line.size || line.price)) return;
+
+        const colours = line.colour ? line.colour.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [""];
+
+        const sizes = line.size ? line.size.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [""];
+
+        colours.forEach(col => {
+
+          sizes.forEach(siz => {
+
+            linesheetRows.push({
+
+              calEntryId: entry.id,
+              calSection: "china",
+              calWeekId: entry.weekId || findWeekIdForDate(entry.launchDate || "") || "",
+
+              launchDate: entry.launchDate || "",
+
+              launchTitle: entry.launchTitle || "",
+
+              category: line.category || "",
+
+              productName: line.productName || "",
+
+              colour: col,
+
+              size: siz,
+
+              sgdRrp: line.price || "",
+
+              workflowStatus: entry.workflowStatus || "draft"
+
+            });
+
+          });
+
+        });
+
+      });
+
+    });
+
     // Restock entries
     Object.values(state.restocks || {}).flat().forEach(entry => {
 
@@ -8157,7 +8212,7 @@ function computeSmartDiff(previousState, currentState){
 
 
 
-    if(section === "global"){
+    if(section === "global" || section === "china"){
 
       const title = after.launchTitle || before.launchTitle || "Launch";
 
@@ -8982,9 +9037,9 @@ function renderCell(section, weekId){
 
       ${entries.map(entry => {
 
-        if(section === "global") return renderGlobal(entry);
+        if(section === "global" || section === "china") return renderGlobal(entry);
 
-        if(section === "nea" || section === "sea" || section === "china") return (entry.lines ? renderGlobal(entry) : renderRegional(entry));
+        if(section === "nea" || section === "sea") return (entry.lines ? renderGlobal(entry) : renderRegional(entry));
 
         if(section === "restocks") return renderRestock(entry);
 
@@ -9412,7 +9467,7 @@ function buildGlobalForm(existing, weekId){
 
 function buildRegionalForm(section, existing, weekId){
 
-  const markets = section === "nea" ? ["CN","JP"] : section === "china" ? ["CN"] : ["SG","ID","TH","PH"];
+  const markets = section === "nea" ? ["CN","JP"] : ["SG","ID","TH","PH"];
 
   const refDate = existing?.startDateISO || existing?.launchDate || weekId || "";
 
@@ -10344,7 +10399,7 @@ function btvValidateCalendarModal(section){
   var missing = [];
   function val(id){ var el=e(id); return el ? String(el.value || '').trim() : ''; }
   function anyChecked(name){ return Array.from(document.querySelectorAll('input[name="'+name+'"]')).some(function(x){ return x.checked; }); }
-  if(section === "global"){
+  if(section === "global" || section === "china"){
     if(!val("launchDate")) missing.push("Launch Date");
     if(!anyChecked("noLaunchMarkets")) missing.push("Markets");
     var rows = Array.from(document.querySelectorAll(".line-category"));
@@ -10399,9 +10454,9 @@ window.openEditor = function(section, weekId, entryId){
 
   let inner = "";
 
-  if(section === "global") inner = buildGlobalForm(existing, weekId) + actions(existing);
+  if(section === "global" || section === "china") inner = buildGlobalForm(existing, weekId) + actions(existing);
 
-  else if(section === "nea" || section === "sea" || section === "china") inner = buildRegionalForm(section, existing, weekId) + actions(existing);
+  else if(section === "nea" || section === "sea") inner = buildRegionalForm(section, existing, weekId) + actions(existing);
 
   else if(section === "restocks") inner = buildRestockForm(existing) + actions(existing);
 
@@ -10550,7 +10605,7 @@ window.openEditor = function(section, weekId, entryId){
 
 
 
-  if(section === "global"){
+  if(section === "global" || section === "china"){
 
     bindAllToggle("noLaunchAll", "noLaunchMarkets");
 
@@ -10604,7 +10659,7 @@ window.openEditor = function(section, weekId, entryId){
 
   }
 
-  if(section === "nea" || section === "sea" || section === "china"){
+  if(section === "nea" || section === "sea"){
 
     bindAllToggle(section + "AllMarkets", "countries");
 
@@ -10732,7 +10787,7 @@ window.openEditor = function(section, weekId, entryId){
 
   }
 
-  if(section === "global"){
+  if(section === "global" || section === "china"){
 
     const updateSku = () => {
 
@@ -10785,7 +10840,7 @@ window.openEditor = function(section, weekId, entryId){
 
 
 
-    if(section === "global"){
+    if(section === "global" || section === "china"){
 
       payload.launchTitle = e("launchTitle").value.trim();
 
@@ -10817,7 +10872,7 @@ window.openEditor = function(section, weekId, entryId){
 
         : [];
 
-    } else if(section === "nea" || section === "sea" || section === "china"){
+    } else if(section === "nea" || section === "sea"){
 
       payload.launchTitle = e("launchTitle").value.trim();
 
@@ -10839,7 +10894,7 @@ window.openEditor = function(section, weekId, entryId){
 
       const selectedMarkets = checkedByName("countries");
 
-      payload.allMarkets = selectedMarkets.length === (section === "nea" ? NEA_MARKETS.length : section === "china" ? CHINA_MARKETS.length : SEA_MARKETS.length);
+      payload.allMarkets = selectedMarkets.length === (section === "nea" ? NEA_MARKETS.length : SEA_MARKETS.length);
 
       payload.countries = payload.allMarkets ? [] : selectedMarkets;
 
@@ -11465,7 +11520,7 @@ function renderDashboard(){
 
       (entries || []).forEach(entry=>{
 
-        if(section === "global"){
+        if(section === "global" || section === "china"){
 
           const seen = new Set();
 
@@ -11509,11 +11564,11 @@ function renderDashboard(){
 
         }
 
-        if(section === "nea" || section === "sea" || section === "china"){
+        if(section === "nea" || section === "sea"){
 
           if(entry.optionType === "Country Exclusive"){
 
-            const mkts = entry.allMarkets ? (section === "nea" ? NEA_MARKETS : section === "china" ? CHINA_MARKETS : SEA_MARKETS) : (entry.countries || []);
+            const mkts = entry.allMarkets ? (section === "nea" ? NEA_MARKETS : SEA_MARKETS) : (entry.countries || []);
 
             mkts.forEach(m=>countryExclusives[m] = (countryExclusives[m] || 0) + 1);
 
@@ -12281,7 +12336,7 @@ function btvExportCSV() {
     if (!st[sec]) return;
     Object.keys(st[sec]).sort().forEach(function(wkId) {
       (st[sec][wkId] || []).forEach(function(entry) {
-        if (sec === 'nea' || sec === 'sea' || sec === 'china') {
+        if (sec === 'nea' || sec === 'sea') {
           // NEA/SEA entries have a flat structure (not lines[])
           var mktStr = (entry.allMarkets || false) ? 'All' : (entry.countries || []).join(',');
           var rawSz = entry.size || (entry.colorSize && entry.colorSize.indexOf(' / ') >= 0 ? entry.colorSize.split(' / ').slice(1).join(' / ') : entry.colorSize || '');
@@ -12754,11 +12809,11 @@ function btvImportCSV(input) {
         var wkId = btvMondayOf(date);
         if (!wkId) { console.warn('BTV Import: invalid date —', date, '(', title, ')'); return; }
 
-        if (section === 'nea' || section === 'sea' || section === 'china') {
+        if (section === 'nea' || section === 'sea') {
           // Regional entry: each product row → one regional card (optionType/productTitle/colorSize)
           var optMap = {'GWP':'GWP','CE':'Country Exclusive','COUNTRY EXCLUSIVE':'Country Exclusive','LAUNCH':'Launch'};
           var optionType = optMap[cat] || cat || 'Launch';
-          var defaultMkts = section === 'nea' ? ["CN","JP"] : section === 'china' ? ["CN"] : ["SG","TH","ID","PH"];
+          var defaultMkts = section === 'nea' ? ["CN","JP"] : ["SG","TH","ID","PH"];
           var isAllMkts = !mktCol || mktCol.toLowerCase() === 'all';
           var parsedMkts = isAllMkts ? defaultMkts : mktCol.split(',').map(function(s){ return s.trim().toUpperCase(); }).filter(Boolean);
           var colorSize = colours + (sizes ? ' / ' + sizes : '');
