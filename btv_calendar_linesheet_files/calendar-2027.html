@@ -7091,7 +7091,7 @@ function getDefaultAdminConfig(){
 
   const defaults = {CN:["JAKC","Online","TKH"],ID:["Online"],JP:["Marui","Online"],PH:["Anthem","Online"],SG:["CAGT2","CAGT3","Funan","Ion","MBS","NAC","NB","Online"],TH:["CW","MB","Online"]};
 
-  Object.entries(defaults).forEach(([mkt,names]) => names.forEach(name => stores.push({id:'store_'+(sid++),name,market:mkt,openFrom:'2026-12-31',openTo:'2027-12-30'})));
+  Object.entries(defaults).forEach(([mkt,names]) => names.forEach(name => stores.push({id:'store_'+(sid++),name,market:mkt,openFrom:'2027-01-01',openTo:'2027-12-31'})));
 
   return {categories:["ACC","BAGS","EYEWEAR","FOOTWEAR","KRTW","LF","MRTW","PETS","WRTW"], stores};
 
@@ -8522,9 +8522,9 @@ function popHistory(){
 
 function buildWeeks(){
 
-  const start = new Date("2026-12-31T00:00:00");
+  const start = new Date("2027-01-01T00:00:00");
 
-  const end = new Date("2027-12-30T00:00:00");
+  const end = new Date("2027-12-31T00:00:00");
 
   let cur = mondayOnOrBefore(start);
 
@@ -8534,7 +8534,7 @@ function buildWeeks(){
 
     const wkEnd = addDays(cur, 6);
 
-    const anchor = addDays(cur, 3);
+    const anchor = addDays(cur, 3);  // Thursday anchor (standard)
 
     if(wkEnd >= start && cur <= end){
 
@@ -8560,11 +8560,13 @@ function buildWeeks(){
 
   }
 
-  out.forEach((w, idx) => {
+  out.forEach((w, idx) => { w.weekOfYear = idx + 1; });
 
-    w.weekOfYear = idx + 1;
-
-  });
+  // Fix boundary week: week 1 spans Dec 2026–Jan 2027; Thursday anchor lands in Dec,
+  // but the week is the first of the 2027 calendar so assign it to Jan.
+  if(out.length && out[0].monthIndex === 11 && out[0].end.getMonth() === 0){
+    out[0].month = MONTHS[0]; out[0].monthIndex = 0; out[0].quarter = "Q1";
+  }
 
   return out;
 
@@ -9101,7 +9103,8 @@ function render(){
 
   html += `<tr><th class="corner">Quarter</th>${quarterRuns.map(r => `<th colspan="${r.count}">${r.label.replace("Q","Quarter ")}</th>`).join("")}</tr>`;
 
-  html += `<tr><th class="corner">Month</th>${monthRuns.map(r => `<th colspan="${r.count}">${r.label} 2026</th>`).join("")}</tr>`;
+  const _calYear = weeks.length > 4 ? new Date(weeks[Math.floor(weeks.length/2)].id+"T00:00:00").getFullYear() : 2027;
+  html += `<tr><th class="corner">Month</th>${monthRuns.map(r => `<th colspan="${r.count}">${r.label} ${_calYear}</th>`).join("")}</tr>`;
 
   html += `<tr><th class="corner">Week</th>${weeks.map((w,i) => `<th class="wk ${i%2?"alt":""}">Wk ${w.weekOfYear}</th>`).join("")}</tr>`;
 
@@ -12188,7 +12191,7 @@ e("downloadVersionBtn").addEventListener("click", () => {
 
   a.href = URL.createObjectURL(blob);
 
-  a.download = "2026_product_calendar_version.json";
+  a.download = "2027_product_calendar_version.json";
 
   a.click();
 
@@ -12452,7 +12455,7 @@ function btvNormalizeDate(str) {
   var MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
   var m2 = str.match(/^(\d{1,2})-([A-Za-z]{3})$/);
   if (m2 && MONTHS[m2[2].toLowerCase()]) {
-    return '2026-' + String(MONTHS[m2[2].toLowerCase()]).padStart(2,'0') + '-' + m2[1].padStart(2,'0');
+    return '2027-' + String(MONTHS[m2[2].toLowerCase()]).padStart(2,'0') + '-' + m2[1].padStart(2,'0');
   }
   // DD-MM-YYYY
   var m3 = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
