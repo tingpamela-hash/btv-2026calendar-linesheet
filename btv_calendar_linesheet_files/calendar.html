@@ -7781,7 +7781,19 @@ function saveState(state){
               workflowStatus: entry.workflowStatus || "draft",
 
               calMarkets: MARKETS_ALL.filter(function(m){ return !(entry.noLaunchMarkets||[]).includes(m); }),
-              calStores: []
+              calStores: (function(){
+                const noMap = {};
+                (entry.noLaunchChannelsCollapsed || []).forEach(function(item){ noMap[item.market] = new Set(item.stores || []); });
+                const mks = MARKETS_ALL.filter(function(m){ return !(entry.noLaunchMarkets||[]).includes(m); });
+                const out = [];
+                mks.forEach(function(mkt){
+                  const allS = getActiveStores(mkt, entry.launchDate || "");
+                  const noS  = noMap[mkt] || new Set();
+                  const launching = allS.filter(function(s){ return !noS.has(s); });
+                  if (launching.length) out.push(mkt + ': ' + launching.join(', '));
+                });
+                return out;
+              })()
 
             });
 
@@ -12260,16 +12272,7 @@ e("downloadVersionBtn").addEventListener("click", () => {
   const jsonData = JSON.stringify({state, versions:loadVersions(), changes:loadChangeLog()}, null, 2);
   const yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
   const fileName = (yearTag ? yearTag[1] : 'BTV') + '_product_calendar_version.json';
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: 'btv-download', filename: fileName, data: jsonData, mime: 'application/json' }, '*');
-  } else {
-    const blob = new Blob([jsonData], {type: 'application/json'});
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = blobUrl; a.download = fileName;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 2000);
-  }
+  _btvDownload(fileName, jsonData, 'application/json');
 });
 
 e("importJsonBtn").addEventListener("click", () => {
@@ -12370,6 +12373,202 @@ window._btvCalImportEntries = function(entries) {
   if (added > 0) { saveState(state); render(); }
   return { added: added, skipped: skipped };
 };
+
+// ─── Export CSV (flat list — one row per product line / entry) ────────────────
+// Must live inside this IIFE to access STORAGE_KEY, ALL_WEEKS, SECTIONS, etc.
+function btvExportCSV() {
+  var st = {};
+  try { st = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) { st = {}; }
+
+  var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
+  var year = yearTag ? yearTag[1] : '';
+
+  function fd(iso) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T00:00:00');
+    var mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+    return d.getDate() + '-' + mon + '-' + d.getFullYear();
+  }
+  function csvQ(v) {
+    v = String(v == null ? '' : v);
+    v = v.replace(/"/g, '""');
+    return (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0) ? '"' + v + '"' : v;
+  }
+
+  var rows = [];
+  rows.push(['Year','Section','Week No.','Week Dates','Launch Title','Launch Date',
+             'Category','Product Name','Colour','Size / SKUs','Price (USD)','Markets','Status'].map(csvQ).join(','));
+
+  var secOrder = SECTIONS.map(function(s){ return s.key; });
+  var secLabels = {};
+  SECTIONS.forEach(function(s){ secLabels[s.key] = s.label; });
+
+  secOrder.forEach(function(sec) {
+    if (!st[sec]) return;
+    var secLabel = secLabels[sec] || sec;
+    ALL_WEEKS.forEach(function(w) {
+      var entries = st[sec][w.id] || [];
+      var weekDates = weekRangeLabel(w.start, w.end);
+      entries.forEach(function(entry) {
+        var status = entry.workflowStatus === 'published' ? 'Published' : 'Draft';
+        if (sec === 'global' || sec === 'china') {
+          var plines = entry.lines && entry.lines.length ? entry.lines : [{}];
+          plines.forEach(function(ln) {
+            if (!ln.productName && !ln.category && !entry.launchTitle) return;
+            rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
+              entry.launchTitle || '', entry.launchDate ? fd(entry.launchDate) : '',
+              (ln.category || '').toUpperCase(), ln.productName || '',
+              ln.colour || '', ln.size || '', ln.price ? '$' + ln.price : '', '', status].map(csvQ).join(','));
+          });
+        } else if (sec === 'nea' || sec === 'sea') {
+          var mkts = entry.allMarkets ? (sec === 'nea' ? 'CN, JP' : 'SG, TH, ID, PH') : (entry.countries || []).join(', ');
+          rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
+            entry.launchTitle || entry.optionType || '',
+            entry.startDateISO ? fd(entry.startDateISO) : (entry.launchDate ? fd(entry.launchDate) : ''),
+            entry.optionType || '', entry.productTitle || '',
+            entry.colour || '', entry.size || '', entry.price ? '$' + entry.price : '', mkts, status].map(csvQ).join(','));
+        } else if (sec === 'restocks') {
+          var mkts = entry.allMarkets ? 'All Markets' : (entry.markets || []).join(', ');
+          var plines = entry.lines && entry.lines.length ? entry.lines : [{}];
+          plines.forEach(function(ln) {
+            rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
+              entry.launchTitle || entry.productTitle || '', entry.etaISO ? fd(entry.etaISO) : '',
+              '', ln.productTitle || ln.productName || '',
+              ln.colour || '', ln.size || '', ln.price ? '$' + ln.price : '', mkts, status].map(csvQ).join(','));
+          });
+        } else if (sec === 'events') {
+          var mkts = entry.allMarkets ? 'All Markets' : (entry.markets || []).join(', ');
+          rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
+            entry.title || '', entry.startDateISO ? fd(entry.startDateISO) : '',
+            '', entry.title || '', '', '', '', mkts, status].map(csvQ).join(','));
+        } else if (sec === 'store_openings') {
+          rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
+            entry.storeName || '', entry.targetOpenDate ? fd(entry.targetOpenDate) : '',
+            '', entry.storeName || '', '', '', '', entry.market || '', status].map(csvQ).join(','));
+        }
+      });
+    });
+  });
+
+  var csvData = '﻿' + rows.join('\r\n');
+  var fileName = (year || 'BTV') + '_Calendar_List_' + new Date().toISOString().slice(0, 10) + '.csv';
+  _btvDownload(fileName, csvData, 'text/csv;charset=utf-8');
+}
+window.btvExportCSV = btvExportCSV;
+
+// ─── Export XLS (calendar grid view — mirrors on-screen visual layout) ────────
+function btvExportCalendarXLS() {
+  var table = document.getElementById('calendar');
+  if (!table) { alert('Calendar not found. Make sure the Calendar view is visible.'); return; }
+
+  var clone = table.cloneNode(true);
+  var liveEls  = Array.from(table.querySelectorAll('th,td'));
+  var cloneEls = Array.from(clone.querySelectorAll('th,td'));
+
+  liveEls.forEach(function(liveEl, idx) {
+    var cloneEl = cloneEls[idx];
+    if (!cloneEl) return;
+    var cs  = window.getComputedStyle(liveEl);
+    var bg  = cs.backgroundColor;
+    var fg  = cs.color;
+    var fw  = (parseInt(cs.fontWeight) || 400) >= 600 ? '600' : '400';
+    var tag = liveEl.tagName.toLowerCase();
+    var style = 'background-color:' + bg + ';color:' + fg + ';font-weight:' + fw +
+                ';border:1px solid #d5d0c9;padding:3px 5px;font-size:8pt;' +
+                'vertical-align:top;font-family:Arial,Helvetica,sans-serif;';
+
+    function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    if (tag === 'th') {
+      cloneEl.querySelectorAll('button').forEach(function(b){ b.remove(); });
+      var txt = liveEl.innerText.replace(/[+×✎⚙↩]/g, '').trim();
+      style += 'text-align:center;white-space:nowrap;font-weight:600;';
+      cloneEl.innerHTML = esc2(txt);
+    } else {
+      var entries = liveEl.querySelectorAll('.entry');
+      if (entries.length) {
+        var texts = [];
+        entries.forEach(function(entry) {
+          var lines = [];
+          var dateEl  = entry.querySelector('.entry-date');
+          var titleEl = entry.querySelector('.entry-title');
+          if (dateEl  && dateEl.textContent.trim())  lines.push(dateEl.textContent.trim());
+          if (titleEl && titleEl.textContent.trim()) lines.push(titleEl.textContent.trim());
+          entry.querySelectorAll('.prod').forEach(function(prod) {
+            var name  = prod.querySelector('.prod-name');
+            var price = prod.querySelector('.prod-price');
+            var metas = prod.querySelectorAll('.prod-meta');
+            var parts = [];
+            if (name  && name.textContent.trim())  parts.push(name.textContent.trim());
+            if (price && price.textContent.trim()) parts.push(price.textContent.trim());
+            metas.forEach(function(m){ if(m.textContent.trim()) parts.push(m.textContent.trim()); });
+            if (parts.length) lines.push('  ' + parts.join(' | '));
+          });
+          entry.querySelectorAll('.entry-info').forEach(function(info) {
+            var t = info.textContent.trim();
+            if (t && t.indexOf('Published') < 0 && t.indexOf('Draft') < 0) lines.push(t);
+          });
+          if (lines.length) texts.push(lines.join('\n'));
+        });
+        style += 'white-space:pre-wrap;min-width:80px;';
+        cloneEl.innerHTML = texts.length ? '<pre style="margin:0;white-space:pre-wrap;font-size:7pt;font-family:Arial">' + esc2(texts.join('\n─\n')) + '</pre>' : '';
+      } else {
+        var mdBubbles = liveEl.querySelectorAll('.markdown-title');
+        if (mdBubbles.length) {
+          style += 'white-space:pre-wrap;';
+          cloneEl.innerHTML = esc2(Array.from(mdBubbles).map(function(b){ return b.textContent.trim(); }).filter(Boolean).join(', '));
+        } else {
+          cloneEl.innerHTML = '';
+        }
+      }
+    }
+    cloneEl.setAttribute('style', style);
+    cloneEl.removeAttribute('class');
+  });
+
+  var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
+  var year    = yearTag ? yearTag[1] : 'BTV';
+  var html =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
+    'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
+    'xmlns="http://www.w3.org/TR/REC-html40">\n' +
+    '<head><meta charset="UTF-8">\n' +
+    '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>' +
+    '<x:Name>BTV Calendar ' + year + '</x:Name>' +
+    '<x:WorksheetOptions><x:DisplayGridlines/><x:FreezePanes/><x:FrozenNoSplit/>' +
+    '<x:SplitHorizontal>5</x:SplitHorizontal><x:TopRowBottomPane>5</x:TopRowBottomPane>' +
+    '<x:SplitVertical>1</x:SplitVertical><x:LeftColumnRightPane>1</x:LeftColumnRightPane>' +
+    '<x:ActivePane>0</x:ActivePane></x:WorksheetOptions>' +
+    '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->\n' +
+    '<style>table{border-collapse:collapse}td,th{mso-number-format:"@"}</style>\n' +
+    '</head>\n<body>\n' + clone.outerHTML + '\n</body>\n</html>';
+
+  _btvDownload(year + '_Calendar_View_' + new Date().toISOString().slice(0, 10) + '.xls', html, 'application/vnd.ms-excel');
+}
+window.btvExportCalendarXLS = btvExportCalendarXLS;
+
+// ─── Shared download helper (works both inside iframe via postMessage and standalone)
+function _btvDownload(fileName, data, mime) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'btv-download', filename: fileName, data: data, mime: mime }, '*');
+    return;
+  }
+  try {
+    var blob = new Blob([data], {type: mime});
+    var blobUrl = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = blobUrl; a.download = fileName;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 2000);
+  } catch(e) {
+    var a2 = document.createElement('a');
+    a2.href = 'data:' + mime + ',' + encodeURIComponent(data);
+    a2.download = fileName;
+    document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
+  }
+}
+
 })();
 
 
@@ -12399,274 +12598,6 @@ document.addEventListener('click', function(ev) {
   if (exportMenu && exportWrap && !exportWrap.contains(ev.target)) exportMenu.style.display = 'none';
 });
 
-// ─── Export CSV (flat list — one row per product line / entry) ────────────────
-function btvExportCSV() {
-  var st = {};
-  try { st = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) { st = {}; }
-
-  var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
-  var year = yearTag ? yearTag[1] : '';
-
-  // Build weekId → week lookup
-  var weekMap = {};
-  ALL_WEEKS.forEach(function(w){ weekMap[w.id] = w; });
-
-  function fd(iso) {
-    if (!iso) return '';
-    var d = new Date(iso + 'T00:00:00');
-    var mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
-    return d.getDate() + '-' + mon + '-' + d.getFullYear();
-  }
-  function csvQ(v) {
-    v = String(v == null ? '' : v);
-    v = v.replace(/"/g, '""');
-    return (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0) ? '"' + v + '"' : v;
-  }
-
-  var rows = [];
-  // Header
-  rows.push(['Year','Section','Week No.','Week Dates','Launch Title','Launch Date',
-             'Category','Product Name','Colour','Size / SKUs','Price (USD)','Markets','Status'].map(csvQ).join(','));
-
-  var secOrder = SECTIONS.map(function(s){ return s.key; });
-  var secLabels = {};
-  SECTIONS.forEach(function(s){ secLabels[s.key] = s.label; });
-
-  secOrder.forEach(function(sec) {
-    if (!st[sec]) return;
-    var secLabel = secLabels[sec] || sec;
-
-    ALL_WEEKS.forEach(function(w) {
-      var entries = st[sec][w.id] || [];
-      var weekDates = weekRangeLabel(w.start, w.end);
-
-      entries.forEach(function(entry) {
-        var status = entry.workflowStatus === 'published' ? 'Published' : 'Draft';
-
-        if (sec === 'global' || sec === 'china') {
-          var plines = entry.lines && entry.lines.length ? entry.lines : [{}];
-          plines.forEach(function(ln) {
-            if (!ln.productName && !ln.category && !entry.launchTitle) return;
-            rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
-              entry.launchTitle || '',
-              entry.launchDate ? fd(entry.launchDate) : '',
-              (ln.category || '').toUpperCase(),
-              ln.productName || '',
-              ln.colour || '',
-              ln.size || '',
-              ln.price ? '$' + ln.price : '',
-              '',
-              status].map(csvQ).join(','));
-          });
-
-        } else if (sec === 'nea' || sec === 'sea') {
-          var mkts = entry.allMarkets ? (sec === 'nea' ? 'CN, JP' : 'SG, TH, ID, PH') : (entry.countries || []).join(', ');
-          rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
-            entry.launchTitle || entry.optionType || '',
-            entry.startDateISO ? fd(entry.startDateISO) : (entry.launchDate ? fd(entry.launchDate) : ''),
-            entry.optionType || '',
-            entry.productTitle || '',
-            entry.colour || '',
-            entry.size || '',
-            entry.price ? '$' + entry.price : '',
-            mkts,
-            status].map(csvQ).join(','));
-
-        } else if (sec === 'restocks') {
-          var mkts = entry.allMarkets ? 'All Markets' : (entry.markets || []).join(', ');
-          var plines = entry.lines && entry.lines.length ? entry.lines : [{}];
-          plines.forEach(function(ln) {
-            rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
-              entry.launchTitle || entry.productTitle || '',
-              entry.etaISO ? fd(entry.etaISO) : '',
-              '',
-              ln.productTitle || ln.productName || '',
-              ln.colour || '',
-              ln.size || '',
-              ln.price ? '$' + ln.price : '',
-              mkts,
-              status].map(csvQ).join(','));
-          });
-
-        } else if (sec === 'events') {
-          var mkts = entry.allMarkets ? 'All Markets' : (entry.markets || []).join(', ');
-          rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
-            entry.title || '',
-            entry.startDateISO ? fd(entry.startDateISO) : '',
-            '',
-            entry.title || '',
-            '',
-            '',
-            '',
-            mkts,
-            status].map(csvQ).join(','));
-
-        } else if (sec === 'store_openings') {
-          rows.push([year, secLabel, 'Wk ' + w.weekOfYear, weekDates,
-            entry.storeName || '',
-            entry.targetOpenDate ? fd(entry.targetOpenDate) : '',
-            '',
-            entry.storeName || '',
-            '',
-            '',
-            '',
-            entry.market || '',
-            status].map(csvQ).join(','));
-        }
-      });
-    });
-  });
-
-  var csvData = '﻿' + rows.join('\r\n'); // UTF-8 BOM for Excel
-  var fileName = (year || 'BTV') + '_Calendar_List_' + new Date().toISOString().slice(0, 10) + '.csv';
-
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: 'btv-download', filename: fileName, data: csvData, mime: 'text/csv;charset=utf-8' }, '*');
-  } else {
-    try {
-      var blob = new Blob([csvData], {type: 'text/csv;charset=utf-8'});
-      var blobUrl = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = blobUrl; a.download = fileName;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 2000);
-    } catch(err) {
-      var dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvData);
-      var a2 = document.createElement('a');
-      a2.href = dataUri; a2.download = fileName;
-      document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
-    }
-  }
-}
-
-// ─── Export XLS (calendar grid view — mirrors on-screen visual layout) ────────
-function btvExportCalendarXLS() {
-  var table = document.getElementById('calendar');
-  if (!table) { alert('Calendar not found. Make sure the Calendar view is visible.'); return; }
-
-  var clone = table.cloneNode(true);
-
-  // Match live cells to clone cells by index to copy computed colours
-  var liveEls  = Array.from(table.querySelectorAll('th,td'));
-  var cloneEls = Array.from(clone.querySelectorAll('th,td'));
-
-  liveEls.forEach(function(liveEl, idx) {
-    var cloneEl = cloneEls[idx];
-    if (!cloneEl) return;
-
-    var cs  = window.getComputedStyle(liveEl);
-    var bg  = cs.backgroundColor;
-    var fg  = cs.color;
-    var fw  = (parseInt(cs.fontWeight) || 400) >= 600 ? '600' : '400';
-    var tag = liveEl.tagName.toLowerCase();
-
-    var style = 'background-color:' + bg + ';color:' + fg + ';font-weight:' + fw +
-                ';border:1px solid #d5d0c9;padding:3px 5px;font-size:8pt;' +
-                'vertical-align:top;font-family:Arial,Helvetica,sans-serif;';
-
-    function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    if (tag === 'th') {
-      cloneEl.querySelectorAll('button').forEach(function(b){ b.remove(); });
-      var txt = liveEl.innerText.replace(/[+×✎⚙↩]/g, '').trim();
-      style += 'text-align:center;white-space:nowrap;font-weight:600;';
-      cloneEl.innerHTML = esc2(txt);
-    } else {
-      // Extract readable text from live entry elements
-      var entries = liveEl.querySelectorAll('.entry');
-      if (entries.length) {
-        var texts = [];
-        entries.forEach(function(entry) {
-          var lines = [];
-          var dateEl  = entry.querySelector('.entry-date');
-          var titleEl = entry.querySelector('.entry-title');
-          if (dateEl  && dateEl.textContent.trim())  lines.push(dateEl.textContent.trim());
-          if (titleEl && titleEl.textContent.trim()) lines.push(titleEl.textContent.trim());
-
-          // Product lines (global/china/nea/sea/restocks all use .prod structure)
-          entry.querySelectorAll('.prod').forEach(function(prod) {
-            var name  = prod.querySelector('.prod-name');
-            var price = prod.querySelector('.prod-price');
-            var metas = prod.querySelectorAll('.prod-meta');
-            var parts = [];
-            if (name  && name.textContent.trim())  parts.push(name.textContent.trim());
-            if (price && price.textContent.trim()) parts.push(price.textContent.trim());
-            metas.forEach(function(m){ if(m.textContent.trim()) parts.push(m.textContent.trim()); });
-            if (parts.length) lines.push('  ' + parts.join(' | '));
-          });
-
-          // Market / info lines
-          entry.querySelectorAll('.entry-info').forEach(function(info) {
-            var t = info.textContent.trim();
-            if (t && t.indexOf('Published') < 0 && t.indexOf('Draft') < 0) lines.push(t);
-          });
-
-          if (lines.length) texts.push(lines.join('\n'));
-        });
-        var cellText = texts.join('\n─\n');
-        style += 'white-space:pre-wrap;min-width:80px;';
-        cloneEl.innerHTML = cellText ? '<pre style="margin:0;white-space:pre-wrap;font-size:7pt;font-family:Arial">' + esc2(cellText) + '</pre>' : '';
-      } else {
-        // Markdown bar cells
-        var mdBubbles = liveEl.querySelectorAll('.markdown-title');
-        if (mdBubbles.length) {
-          var mdTxt = Array.from(mdBubbles).map(function(b){ return b.textContent.trim(); }).filter(Boolean).join(', ');
-          style += 'white-space:pre-wrap;';
-          cloneEl.innerHTML = esc2(mdTxt);
-        } else {
-          cloneEl.innerHTML = '';
-        }
-      }
-    }
-
-    cloneEl.setAttribute('style', style);
-    cloneEl.removeAttribute('class');
-  });
-
-  var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
-  var year    = yearTag ? yearTag[1] : 'BTV';
-
-  var html =
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n' +
-    '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
-    'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
-    'xmlns="http://www.w3.org/TR/REC-html40">\n' +
-    '<head><meta charset="UTF-8">\n' +
-    '<!--[if gte mso 9]><xml>' +
-    '<x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>' +
-    '<x:Name>BTV Calendar ' + year + '</x:Name>' +
-    '<x:WorksheetOptions><x:DisplayGridlines/>' +
-    '<x:FreezePanes/><x:FrozenNoSplit/>' +
-    '<x:SplitHorizontal>5</x:SplitHorizontal><x:TopRowBottomPane>5</x:TopRowBottomPane>' +
-    '<x:SplitVertical>1</x:SplitVertical><x:LeftColumnRightPane>1</x:LeftColumnRightPane>' +
-    '<x:ActivePane>0</x:ActivePane>' +
-    '</x:WorksheetOptions>' +
-    '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>' +
-    '</xml><![endif]-->\n' +
-    '<style>table{border-collapse:collapse}td,th{mso-number-format:"@"}</style>\n' +
-    '</head>\n<body>\n' + clone.outerHTML + '\n</body>\n</html>';
-
-  var fileName = year + '_Calendar_View_' + new Date().toISOString().slice(0, 10) + '.xls';
-
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: 'btv-download', filename: fileName, data: html, mime: 'application/vnd.ms-excel' }, '*');
-  } else {
-    try {
-      var blob = new Blob([html], {type: 'application/vnd.ms-excel'});
-      var blobUrl = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = blobUrl; a.download = fileName;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 2000);
-    } catch(e) {
-      var uri = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(html);
-      var a2 = document.createElement('a');
-      a2.href = uri; a2.download = fileName;
-      document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
-    }
-  }
-}
 
 // ─── CSV Import ──────────────────────────────────────────────────────────────
 function btvParseCSV(text) {

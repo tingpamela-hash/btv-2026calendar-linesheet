@@ -4382,7 +4382,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
             <th>Markets (from Cal)</th>
 
-            <th>Stores (from Cal)</th>
+            <th>Launch Channels</th>
 
 
 
@@ -15352,7 +15352,7 @@ function renderMaster(){
 
         <td style="color:#555;font-size:11px">${escapeHtml((p.calMarkets||[]).join(', ') || '—')}</td>
 
-        <td style="color:#555;font-size:11px">${escapeHtml((p.calStores||[]).join(', ') || '—')}</td>
+        <td style="color:#555;font-size:11px;white-space:pre-line">${(p.calStores||[]).length ? (p.calStores).map(s => escapeHtml(s)).join('\n') : '—'}</td>
 
 
 
@@ -16228,7 +16228,7 @@ function exportCSV(){
 
 
 
-  const rows = products.map(p => [p.sku,p.barcode,p.hscode,p.hscode10,p.launchDate,p.name,p.variant,p.category,p.description,p.fabric,p.sizing,p.weightGrams,p.measurementSummary,p.washcare,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn,p.selectedForLinesheet ? 'Yes' : 'No', p.workflowStatus || 'draft',(p.calMarkets||[]).join('; '),(p.calStores||[]).join('; ')].map(v => `"${String(v || '').replace(/"/g,'""')}"`));
+  const rows = products.map(p => [p.sku,p.barcode,p.hscode,p.hscode10,p.launchDate,p.name,p.variant,p.category,p.description,p.fabric,p.sizing,p.weightGrams,p.measurementSummary,p.washcare,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn,p.selectedForLinesheet ? 'Yes' : 'No', p.workflowStatus || 'draft',(p.calMarkets||[]).join('; '),(p.calStores||[]).join(' | ')].map(v => `"${String(v || '').replace(/"/g,'""')}"`));
 
 
 
