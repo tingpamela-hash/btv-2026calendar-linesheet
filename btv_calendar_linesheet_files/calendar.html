@@ -7777,7 +7777,10 @@ function saveState(state){
 
               sgdRrp: line.price || "",
 
-              workflowStatus: entry.workflowStatus || "draft"
+              workflowStatus: entry.workflowStatus || "draft",
+
+              calMarkets: MARKETS_ALL.filter(function(m){ return !(entry.noLaunchMarkets||[]).includes(m); }),
+              calStores: []
 
             });
 
@@ -7807,6 +7810,7 @@ function saveState(state){
           linesheetRows.push({
 
             calEntryId: entry.id,
+            calSection: "nea",
 
             launchDate: entry.launchDate || entry.startDateISO || "",
 
@@ -7822,9 +7826,10 @@ function saveState(state){
 
             sgdRrp: entry.price || "",
 
-            section: "nea",
+            workflowStatus: entry.workflowStatus || "draft",
 
-            workflowStatus: entry.workflowStatus || "draft"
+            calMarkets: entry.allMarkets ? NEA_MARKETS.slice() : (entry.countries || []),
+            calStores: entry.stores || []
 
           });
 
@@ -7852,6 +7857,7 @@ function saveState(state){
           linesheetRows.push({
 
             calEntryId: entry.id,
+            calSection: "sea",
 
             launchDate: entry.launchDate || entry.startDateISO || "",
 
@@ -7867,9 +7873,10 @@ function saveState(state){
 
             sgdRrp: entry.price || "",
 
-            section: "sea",
+            workflowStatus: entry.workflowStatus || "draft",
 
-            workflowStatus: entry.workflowStatus || "draft"
+            calMarkets: entry.allMarkets ? SEA_MARKETS.slice() : (entry.countries || []),
+            calStores: entry.stores || []
 
           });
 
@@ -7914,7 +7921,10 @@ function saveState(state){
 
               sgdRrp: line.price || "",
 
-              workflowStatus: entry.workflowStatus || "draft"
+              workflowStatus: entry.workflowStatus || "draft",
+
+              calMarkets: ["CN"],
+              calStores: []
 
             });
 
@@ -7942,6 +7952,7 @@ function saveState(state){
         linesheetRows.push({
 
           calEntryId: entry.id,
+          calSection: "restocks",
 
           launchDate: entry.etaISO || "",
 
@@ -7957,9 +7968,10 @@ function saveState(state){
 
           sgdRrp: "",
 
-          section: "restocks",
+          workflowStatus: entry.workflowStatus || "draft",
 
-          workflowStatus: entry.workflowStatus || "draft"
+          calMarkets: entry.allMarkets ? MARKETS_ALL.slice() : (entry.markets || []),
+          calStores: []
 
         });
 
@@ -10828,9 +10840,15 @@ window.openEditor = function(section, weekId, entryId){
 
 
   e("confirmBtn").onclick = async () => {
+    // Disable button immediately to prevent double-submission during async ops.
+    var _cfmBtnEl = e("confirmBtn");
+    if (_cfmBtnEl) { _cfmBtnEl.disabled = true; _cfmBtnEl.textContent = 'Saving…'; }
     try {
 
-    if(!btvValidateCalendarModal(section)) return;
+    if(!btvValidateCalendarModal(section)) {
+      if (_cfmBtnEl) { _cfmBtnEl.disabled = false; _cfmBtnEl.textContent = 'Confirm'; }
+      return;
+    }
 
     if (typeof window.btvCheckVersionConflict === 'function') {
       const _calConflict = await window.btvCheckVersionConflict('calendar-2026-working-v5');
@@ -10840,7 +10858,10 @@ window.openEditor = function(section, weekId, entryId){
           'Saving now will apply your form on top of the latest calendar data.\n\n' +
           'Click OK to save, or Cancel to review first.'
         );
-        if (!_proceed) return;
+        if (!_proceed) {
+          if (_cfmBtnEl) { _cfmBtnEl.disabled = false; _cfmBtnEl.textContent = 'Confirm'; }
+          return;
+        }
       }
     }
 
@@ -11186,6 +11207,8 @@ window.openEditor = function(section, weekId, entryId){
 
     } catch (_btvConfirmErr) {
       console.error('[BTV] Confirm error:', _btvConfirmErr);
+      // Re-enable the button so the user can try again after an error.
+      if (_cfmBtnEl) { _cfmBtnEl.disabled = false; _cfmBtnEl.textContent = 'Confirm'; }
       alert('⚠ Could not save: ' + (_btvConfirmErr.message || String(_btvConfirmErr)) + '\nPlease try again or refresh.');
     }
   };
@@ -11863,10 +11886,22 @@ function _btvEmailColor(email) {
   return palette[Math.abs(hash) % palette.length];
 }
 
+// Presence-based locks are considered stale if the ts hasn't been refreshed within
+// this window. The presence heartbeat in supabase-sync.js updates ts every ~3 s, so
+// anything older than 2 minutes indicates the peer's channel is dead (crashed tab,
+// token expiry before reconnect, etc.). A stale lock must NOT block editing forever.
+var _BTV_LOCK_STALE_MS = 2 * 60 * 1000; // 2 minutes
+
 function _btvCalGetLockHolder(itemKey) {
   var users = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
   for (var i = 0; i < users.length; i++) {
-    if (users[i].item === itemKey || users[i].launchItem === itemKey) return users[i].email;
+    if (users[i].item === itemKey || users[i].launchItem === itemKey) {
+      // If the presence record has a timestamp and it's stale, ignore the lock.
+      // This handles crashed browsers or channels that died before reconnecting.
+      var _lockAge = users[i].ts ? (Date.now() - Number(users[i].ts)) : 0;
+      if (_lockAge > _BTV_LOCK_STALE_MS) continue;
+      return users[i].email;
+    }
   }
   var locks = {};
   try { locks = JSON.parse(localStorage.getItem('btv-edit-locks-v1') || '{}'); } catch(e) { locks = {}; }
@@ -12433,11 +12468,25 @@ function btvExportCSV() {
 
   var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
   var fileName = (yearTag?yearTag[1]:'BTV') + '_Calendar_Grid_' + new Date().toISOString().slice(0,10) + '.csv';
-  var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = fileName;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  var csvData = '﻿' + csv; // BOM for Excel
+  // Route through parent window when running inside an iframe (avoids download block)
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'btv-download', filename: fileName, data: csvData, mime: 'text/csv;charset=utf-8' }, '*');
+  } else {
+    try {
+      var blob = new Blob([csvData], {type:'text/csv;charset=utf-8'});
+      var blobUrl = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = blobUrl; a.download = fileName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 2000);
+    } catch(err) {
+      var dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvData);
+      var a2 = document.createElement('a');
+      a2.href = dataUri; a2.download = fileName;
+      document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
+    }
+  }
 }
 // ─── (old list-export kept as reference, now unused) ─────────────────────────
 function _btvExportCSV_list_unused() {

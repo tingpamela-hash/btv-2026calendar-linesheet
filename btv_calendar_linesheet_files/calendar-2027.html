@@ -12420,11 +12420,16 @@ function btvExportCSV() {
 
   var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
   var fileName = (yearTag?yearTag[1]:'BTV') + '_Calendar_Grid_' + new Date().toISOString().slice(0,10) + '.csv';
-  var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = fileName;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  var csvData = '﻿' + csv;
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'btv-download', filename: fileName, data: csvData, mime: 'text/csv;charset=utf-8' }, '*');
+  } else {
+    var blob = new Blob([csvData], {type:'text/csv;charset=utf-8'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = fileName;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  }
 }
 
 // ─── CSV Import ──────────────────────────────────────────────────────────────

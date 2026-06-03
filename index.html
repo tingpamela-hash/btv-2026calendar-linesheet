@@ -291,9 +291,9 @@ html, body {
 
 <!-- Iframe frames -->
 <div class="frame-wrap">
-  <iframe id="frame-cal-2026" class="frame active" title="Calendar 2026" data-src="./btv_calendar_linesheet_files/calendar.html"></iframe>
-  <iframe id="frame-cal-2027" class="frame" title="Calendar 2027" data-src="./btv_calendar_linesheet_files/calendar-2027.html"></iframe>
-  <iframe id="frame-ls" class="frame" title="Linesheet Manager" data-src="./btv_calendar_linesheet_files/linesheet.html"></iframe>
+  <iframe id="frame-cal-2026" class="frame active" title="Calendar 2026" data-src="./btv_calendar_linesheet_files/calendar.html" allow="downloads"></iframe>
+  <iframe id="frame-cal-2027" class="frame" title="Calendar 2027" data-src="./btv_calendar_linesheet_files/calendar-2027.html" allow="downloads"></iframe>
+  <iframe id="frame-ls" class="frame" title="Linesheet Manager" data-src="./btv_calendar_linesheet_files/linesheet.html" allow="downloads"></iframe>
 </div>
 
 <!-- Module login overlay -->
@@ -932,6 +932,27 @@ html, body {
     const { error } = await _sb.from('user_profiles').update(update).eq('id', userId);
     if (error) alert('Error updating access: ' + error.message);
   }
+
+  // ── Download proxy (iframes post messages here to trigger file downloads) ─
+  window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'btv-download') return;
+    var filename = e.data.filename || 'export.csv';
+    var data     = e.data.data     || '';
+    var mime     = e.data.mime     || 'text/csv;charset=utf-8';
+    try {
+      var blob = new Blob([data], { type: mime });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+    } catch(err) {
+      var uri = 'data:' + mime + ',' + encodeURIComponent(data);
+      var a2  = document.createElement('a');
+      a2.href = uri; a2.download = filename;
+      document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
+    }
+  });
 
   // ── Boot ───────────────────────────────────────────────────────────────────
 

@@ -68,6 +68,11 @@
   let _started              = false;
   let _interceptorInstalled = false;
   let _realtimeChannel      = null;
+  let _presenceIntervalId   = null;  // tracks the 3-second dispatch interval so it can be cleared on reconnect
+  let _reconnectTimer       = null;  // debounces realtime reconnect attempts
+  let _presenceReconnTimer  = null;  // debounces presence reconnect attempts
+  let _rtSb                 = null;  // realtime Supabase client — stored so it can be cleaned up on reconnect
+  let _presenceSb           = null;  // presence Supabase client — stored so it can be cleaned up on reconnect
 
   // Tracks the last-known updated_at from Supabase for each key.
   // Used for version-conflict detection.
@@ -281,9 +286,16 @@
 
   async function setupRealtime() {
     if (_realtimeChannel) return;
-    var rtSb = window.supabase.createClient(url, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
+    // Clean up the previous (dead) client before creating a new one to avoid
+    // accumulating orphaned WebSocket connections on repeated reconnects.
+    if (_rtSb) { try { _rtSb.removeAllChannels(); } catch(e) {} _rtSb = null; }
+    // autoRefreshToken: true so the access token is refreshed automatically before
+    // expiry (~1 hour). Without this the channel silently disconnects after an hour
+    // and remote updates stop arriving.
+    _rtSb = window.supabase.createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: true },
     });
+    var rtSb = _rtSb;
     if (_session) {
       try {
         await rtSb.auth.setSession({
@@ -313,6 +325,18 @@
         console.log('[BTV Sync] Realtime:', status, err || '');
         if (status === 'SUBSCRIBED') {
           console.log('[BTV Sync] Realtime connected — live sync active.');
+          if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          // Channel dropped — schedule a reconnect. Clear the reference first so
+          // setupRealtime() is willing to run again.
+          console.warn('[BTV Sync] Realtime channel lost (' + status + ') — will reconnect in 8 s');
+          _realtimeChannel = null;
+          if (!_reconnectTimer) {
+            _reconnectTimer = setTimeout(function () {
+              _reconnectTimer = null;
+              setupRealtime();
+            }, 8000);
+          }
         }
       });
   }
@@ -334,8 +358,11 @@
 
     // Create a dedicated local client so WebSocket + callbacks live entirely in THIS
     // iframe's JS context. Using parentSb caused cross-frame event-dispatch failures.
-    var _presenceSb = window.supabase.createClient(url, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
+    // autoRefreshToken: true prevents the channel from silently dying after ~1 hour.
+    // Clean up any previous (dead) client first.
+    if (_presenceSb) { try { _presenceSb.removeAllChannels(); } catch(e) {} _presenceSb = null; }
+    _presenceSb = window.supabase.createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: true },
     });
     if (_session) {
       try {
@@ -360,7 +387,41 @@
         if (status === 'SUBSCRIBED') {
           console.log('[BTV Sync] Presence connected on btv-cal-presence-v1');
           _presenceChannel.track({ email: _userEmail, item: null, field: null, ts: Date.now() });
-          setInterval(_dispatchPresence, 3000);
+          // Clear any previous interval before starting a new one (guards against
+          // duplicate intervals if the channel is reconnected).
+          if (_presenceIntervalId) clearInterval(_presenceIntervalId);
+          var _heartbeatTick = 0;
+          _presenceIntervalId = setInterval(function () {
+            _dispatchPresence();
+            _heartbeatTick++;
+            // Re-track only every 10 ticks (30 s) to refresh the ts timestamp without
+            // flooding Supabase with presence messages. The ts is what the stale-lock
+            // checker in calendar.html reads to know whether a lock is still live.
+            if (_heartbeatTick % 10 === 0 && _presenceChannel && _userEmail) {
+              try {
+                var _curState = _presenceChannel.presenceState();
+                var _myPresence = (_curState[_userId] || [])[0] || {};
+                _presenceChannel.track({
+                  email: _userEmail,
+                  item:  _myPresence.item  || null,
+                  field: _myPresence.field || null,
+                  ts:    Date.now(),
+                });
+              } catch (e) {}
+            }
+          }, 3000);
+          if (_presenceReconnTimer) { clearTimeout(_presenceReconnTimer); _presenceReconnTimer = null; }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.warn('[BTV Sync] Presence channel lost (' + status + ') — will reconnect in 8 s');
+          // Stop the stale dispatch interval while the channel is dead.
+          if (_presenceIntervalId) { clearInterval(_presenceIntervalId); _presenceIntervalId = null; }
+          _presenceChannel = null;
+          if (!_presenceReconnTimer) {
+            _presenceReconnTimer = setTimeout(function () {
+              _presenceReconnTimer = null;
+              setupPresence();
+            }, 8000);
+          }
         } else {
           console.log('[BTV Sync] Presence status:', status, 'on btv-cal-presence-v1');
         }
@@ -404,12 +465,15 @@
       if (key === _userId) return;
       const presences = state[key] || [];
       if (presences.length) {
-        const merged = { email: null, item: null, field: null, launchItem: null };
+        // ts must be included so that _btvCalGetLockHolder can detect stale locks.
+        const merged = { email: null, item: null, field: null, launchItem: null, ts: null };
         presences.forEach(function (p) {
           if (p.email) merged.email = p.email;
           if (p.item) merged.item = p.item;
           if (p.field) merged.field = p.field;
           if (p.launchItem) merged.launchItem = p.launchItem;
+          // Keep the most-recent ts across multiple presence records for this user.
+          if (p.ts && (!merged.ts || Number(p.ts) > Number(merged.ts))) merged.ts = p.ts;
         });
         if (merged.email) users.push(merged);
       }
@@ -440,7 +504,7 @@
           applyRow(row.key, val, row.updated_by, row.updated_at);
         });
       } catch (e) {}
-    }, 30000);
+    }, 15000);
   }
 
   // ── btvSyncStart ──────────────────────────────────────────────────────────

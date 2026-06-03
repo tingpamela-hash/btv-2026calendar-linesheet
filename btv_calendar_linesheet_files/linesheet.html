@@ -804,7 +804,7 @@ body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;backgroun
 
 
 
-table.master{width:100%;border-collapse:collapse;font-size:12px;min-width:2200px}
+table.master{width:100%;border-collapse:collapse;font-size:12px;min-width:2500px}
 
 
 
@@ -2295,7 +2295,11 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
       <div class="section-tag">Shared Product Information</div>
 
-
+      <div id="calMarketInfo" style="display:none;background:#f0f4fa;border:1px solid #b8cde8;border-radius:6px;padding:8px 12px;font-size:11px;color:#3a5580;margin-bottom:12px;line-height:1.6">
+        <span style="font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:10px">Calendar</span>&ensp;
+        <strong>Markets:</strong> <span id="calMarketList">—</span>
+        &ensp;&nbsp;<strong>Stores:</strong> <span id="calStoreList">—</span>
+      </div>
 
 
 
@@ -4375,6 +4379,10 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
             <th>Cal Status</th>
+
+            <th>Markets (from Cal)</th>
+
+            <th>Stores (from Cal)</th>
 
 
 
@@ -8383,6 +8391,8 @@ function loadFromCalendar(notifyNew){
           calEntryId: row.calEntryId || "",
           calSection: row.calSection || "global",
           calWeekId: row.calWeekId || "",
+          calMarkets: row.calMarkets || [],
+          calStores: row.calStores || [],
 
 
 
@@ -13814,6 +13824,22 @@ function editGroup(groupId){
 
 
 
+  // ── Calendar markets / stores banner (read-only) ────────────────────────
+  var _mInfo = document.getElementById('calMarketInfo');
+  var _mList = document.getElementById('calMarketList');
+  var _sList = document.getElementById('calStoreList');
+  if (_mInfo && _mList && _sList) {
+    var _mkts = base.calMarkets || [];
+    var _stores = base.calStores || [];
+    if (_mkts.length) {
+      _mList.textContent = _mkts.join(', ');
+      _sList.textContent = _stores.length ? _stores.join(', ') : '—';
+      _mInfo.style.display = '';
+    } else {
+      _mInfo.style.display = 'none';
+    }
+  }
+
   switchView('form');
 
   // ── Presence: announce this product is open (drives master-list amber outlines) ──
@@ -14794,7 +14820,7 @@ function renderMaster(){
 
 
 
-  if(!list.length){ tbody.innerHTML = `<tr><td colspan="27"><div class="empty-state">No matching rows yet. Add products or loosen the filters.</div></td></tr>`; return; }
+  if(!list.length){ tbody.innerHTML = `<tr><td colspan="29"><div class="empty-state">No matching rows yet. Add products or loosen the filters.</div></td></tr>`; return; }
 
 
 
@@ -14974,7 +15000,7 @@ function renderMaster(){
 
 
 
-    let html = `<tr style="background:#f0ebe0"><td colspan="27" style="padding:8px 10px;font-weight:700;font-size:12px;color:#5a4e40;letter-spacing:.03em;border-bottom:2px solid #d7c9b2">📅 Launch Date: ${escapeHtml(groupLabel)}</td></tr>`;
+    let html = `<tr style="background:#f0ebe0"><td colspan="29" style="padding:8px 10px;font-weight:700;font-size:12px;color:#5a4e40;letter-spacing:.03em;border-bottom:2px solid #d7c9b2">📅 Launch Date: ${escapeHtml(groupLabel)}</td></tr>`;
 
 
 
@@ -15323,6 +15349,10 @@ function renderMaster(){
 
 
         <td>${statusBadge}</td>
+
+        <td style="color:#555;font-size:11px">${escapeHtml((p.calMarkets||[]).join(', ') || '—')}</td>
+
+        <td style="color:#555;font-size:11px">${escapeHtml((p.calStores||[]).join(', ') || '—')}</td>
 
 
 
@@ -16188,7 +16218,7 @@ function exportCSV(){
 
 
 
-  const headers = ['SKU','Barcode','HS Code (8)','HS Code (10)','Launch Date','Product Name','Colour/Variant','Product Category','Description','Fabric Composition','Sizing','Product Weight (g)','Measurements','Washcase','SGD RRP','SGD w/o GST','JP RRP','ID RRP','TH RRP','PH RRP','CN RRP','Selected for Linesheet','Cal Status'];
+  const headers = ['SKU','Barcode','HS Code (8)','HS Code (10)','Launch Date','Product Name','Colour/Variant','Product Category','Description','Fabric Composition','Sizing','Product Weight (g)','Measurements','Washcase','SGD RRP','SGD w/o GST','JP RRP','ID RRP','TH RRP','PH RRP','CN RRP','Selected for Linesheet','Cal Status','Markets','Stores'];
 
 
 
@@ -16198,7 +16228,7 @@ function exportCSV(){
 
 
 
-  const rows = products.map(p => [p.sku,p.barcode,p.hscode,p.hscode10,p.launchDate,p.name,p.variant,p.category,p.description,p.fabric,p.sizing,p.weightGrams,p.measurementSummary,p.washcare,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn,p.selectedForLinesheet ? 'Yes' : 'No', p.workflowStatus || 'draft'].map(v => `"${String(v || '').replace(/"/g,'""')}"`));
+  const rows = products.map(p => [p.sku,p.barcode,p.hscode,p.hscode10,p.launchDate,p.name,p.variant,p.category,p.description,p.fabric,p.sizing,p.weightGrams,p.measurementSummary,p.washcare,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn,p.selectedForLinesheet ? 'Yes' : 'No', p.workflowStatus || 'draft',(p.calMarkets||[]).join('; '),(p.calStores||[]).join('; ')].map(v => `"${String(v || '').replace(/"/g,'""')}"`));
 
 
 
@@ -16208,7 +16238,7 @@ function exportCSV(){
 
 
 
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const csv = '﻿' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
 
 
 
@@ -16218,6 +16248,11 @@ function exportCSV(){
 
 
 
+  const fileName = 'linesheet_master_' + new Date().toISOString().slice(0,10) + '.csv';
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'btv-download', filename: fileName, data: csv, mime: 'text/csv;charset=utf-8' }, '*');
+    return;
+  }
   const a = document.createElement('a');
 
 
@@ -16229,16 +16264,13 @@ function exportCSV(){
 
 
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = fileName;
 
 
 
 
 
-
-
-
-
-  a.download = 'linesheet_master.csv';
+  // a.download already set above
 
 
 
