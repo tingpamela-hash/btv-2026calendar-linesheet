@@ -7984,9 +7984,7 @@ function pushChangeLog(msg){ const logs = loadChangeLog(); logs.unshift({msg, ts
 function countItems(str){ return String(str || "").split(/[,;]/).map(s => s.trim()).filter(Boolean).length; }
 
 function countLineSkus(line){
-  const colours = countItems(line && line.colour);
-  const sizes = countItems(line && line.size);
-  return colours * sizes;
+  return countItems(line && line.colour);  // SKU = number of colours only
 }
 
 function countEntrySkus(entry){
@@ -12325,148 +12323,105 @@ document.addEventListener('click', function(ev) {
   if (exportMenu && exportWrap && !exportWrap.contains(ev.target)) exportMenu.style.display = 'none';
 });
 
-// ─── Export CSV ───────────────────────────────────────────────────────────────
+// ─── Export CSV (calendar grid — mirrors the on-screen view) ─────────────────
 function btvExportCSV() {
-  var rows = [['Launch Title','Launch Date','Section','Key Level','Status','Category','Product Name','Colour(s)','Size(s)','SGD RRP','Markets','Promo Start Date','Promo End Date','Till Sold Out','Mechanics','ETA Date','Raw Entry JSON']];
-  var sections = ['global','nea','sea','china','restocks','store_openings','events'];
-  var sectionLabels = {global:'Global',nea:'NEA',sea:'SEA',china:'China',restocks:'Restocks',store_openings:'Store Openings',events:'Events/Activations'};
   var st = {};
-  try { st = JSON.parse(localStorage.getItem('calendar-2027-working-v5') || '{}'); } catch(e) { st = {}; }
-  sections.forEach(function(sec) {
-    if (!st[sec]) return;
-    Object.keys(st[sec]).sort().forEach(function(wkId) {
-      (st[sec][wkId] || []).forEach(function(entry) {
-        if (sec === 'nea' || sec === 'sea') {
-          // NEA/SEA entries have a flat structure (not lines[])
-          var mktStr = (entry.allMarkets || false) ? 'All' : (entry.countries || []).join(',');
-          var rawSz = entry.size || (entry.colorSize && entry.colorSize.indexOf(' / ') >= 0 ? entry.colorSize.split(' / ').slice(1).join(' / ') : entry.colorSize || '');
-          rows.push([
-            entry.launchTitle || '',
-            entry.launchDate || entry.startDateISO || wkId,
-            sectionLabels[sec] || sec,
-            entry.keyLevel || 'brand',
-            entry.workflowStatus || 'draft',
-            entry.optionType || '',
-            entry.productTitle || '',
-            entry.colour || '',
-            rawSz,
-            entry.price || '',
-            mktStr,
-            entry.startDateISO || '',
-            entry.tillSoldOut ? '' : (entry.endDateISO || ''),
-            entry.tillSoldOut ? 'YES' : 'NO',
-            entry.mechanics || '',
-            '',
-            JSON.stringify(entry)
-          ]);
-        } else if (sec === 'restocks') {
-          // Restocks entries have lines[] with productTitle + etaISO + markets
-          var mktStr = (entry.allMarkets || false) ? 'All' : (entry.markets || []).join(',');
-          var lines = (entry.lines && entry.lines.length) ? entry.lines : (entry.productTitle ? [{productTitle: entry.productTitle, colour: entry.colours || '', size: entry.size || '', price: entry.price || ''}] : [{}]);
-          lines.forEach(function(line) {
-            rows.push([
-              entry.launchTitle || entry.productTitle || '',
-              entry.launchDate || entry.etaISO || wkId,
-              sectionLabels[sec] || sec,
-              entry.keyLevel || 'brand',
-              entry.workflowStatus || 'draft',
-              (line.category || '').toUpperCase(),
-              line.productTitle || line.productName || '',
-              line.colour || line.colors || '',
-              line.size || '',
-              line.price || '',
-              mktStr,
-              '',
-              '',
-              '',
-              '',
-              entry.etaISO || '',
-              JSON.stringify(entry)
-            ]);
-          });
-        } else if (sec === 'store_openings') {
-          rows.push([
-            entry.storeName || '',
-            entry.targetOpenDate || wkId,
-            sectionLabels[sec] || sec,
-            entry.keyLevel || '',
-            entry.workflowStatus || 'draft',
-            '',
-            entry.storeName || '',
-            '',
-            entry.storeSize || '',
-            '',
-            entry.market || '',
-            entry.targetOpenDate || '',
-            '',
-            '',
-            entry.storeAddress || '',
-            '',
-            JSON.stringify(entry)
-          ]);
-        } else if (sec === 'events') {
-          var mktStr = (entry.allMarkets || false) ? 'All' : (entry.markets || []).join(',');
-          rows.push([
-            entry.title || '',
-            entry.startDateISO || wkId,
-            sectionLabels[sec] || sec,
-            entry.keyLevel || '',
-            entry.workflowStatus || 'draft',
-            '',
-            entry.title || '',
-            '',
-            '',
-            '',
-            mktStr,
-            entry.startDateISO || '',
-            entry.tillSoldOut ? '' : (entry.endDateISO || ''),
-            entry.tillSoldOut ? 'YES' : 'NO',
-            entry.notes || '',
-            '',
-            JSON.stringify(entry)
-          ]);
-        } else {
-          // Global entries have lines[] with productName
-          var lines = (entry.lines && entry.lines.length) ? entry.lines : [{}];
-          lines.forEach(function(line) {
-            rows.push([
-              entry.launchTitle || '',
-              entry.launchDate || wkId,
-              sectionLabels[sec] || sec,
-              entry.keyLevel || 'brand',
-              entry.workflowStatus || 'draft',
-              (line.category || '').toUpperCase(),
-              line.productName || '',
-              line.colour || '',
-              line.size || '',
-              line.price || '',
-              '',
-              '',
-              '',
-              '',
-              '',
-              '',
-              JSON.stringify(entry)
-            ]);
-          });
-        }
+  try { st = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) { st = {}; }
+  var mdSt = {};
+  try { mdSt = JSON.parse(localStorage.getItem(MARKDOWN_STORAGE_KEY) || '{}'); } catch(e) {}
+
+  // Use the same weeks that are currently visible on screen
+  var weeks = currentWeeks();
+  var visibleIds = weeks.map(function(w){ return w.id; });
+
+  // Compact date formatter
+  function fd(iso){ if(!iso) return ''; var d=new Date(iso+'T00:00:00'); return d.getDate()+'-'+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]; }
+
+  // Format an entry block as multi-line text for its cell
+  function fmtEntry(sec, entry, wkId) {
+    var status = entry.workflowStatus === 'published' ? '[P]' : '[D]';
+    var lines = [];
+    if (sec === 'global' || sec === 'china') {
+      lines.push(status + ' ' + (entry.launchTitle || '') + (entry.launchDate ? '  ' + fd(entry.launchDate) : ''));
+      (entry.lines || []).forEach(function(ln) {
+        if (!ln.productName && !ln.category) return;
+        var parts = [ln.category, ln.productName, ln.colour, ln.size, ln.price ? '$'+ln.price : ''].filter(Boolean);
+        lines.push('  ' + parts.join(' | '));
       });
+      if ((entry.noLaunchMarkets||[]).length) lines.push('  No launch: '+entry.noLaunchMarkets.join(', '));
+    } else if (sec === 'nea' || sec === 'sea') {
+      var mkts = entry.allMarkets ? (sec==='nea'?'CN,JP':'SG,TH,ID,PH') : (entry.countries||[]).join(',');
+      lines.push(status + ' ' + (entry.optionType||'') + ': ' + (entry.productTitle||entry.launchTitle||''));
+      if (entry.colour) lines.push('  Colour: '+entry.colour);
+      if (mkts) lines.push('  Mkt: '+mkts);
+    } else if (sec === 'restocks') {
+      var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(',');
+      lines.push(status + ' Restock' + (entry.etaISO ? '  ETA:'+fd(entry.etaISO) : ''));
+      (entry.lines||[]).forEach(function(ln){ if(ln.productTitle||ln.productName) lines.push('  '+(ln.productTitle||ln.productName)); });
+      if (mkts) lines.push('  Mkt: '+mkts);
+    } else if (sec === 'events') {
+      var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(',');
+      lines.push(status + ' ' + (entry.title||'Event'));
+      if (entry.startDateISO) lines.push('  '+fd(entry.startDateISO)+(entry.endDateISO&&entry.endDateISO!==entry.startDateISO?'→'+fd(entry.endDateISO):''));
+      if (mkts) lines.push('  Mkt: '+mkts);
+      if (entry.notes) lines.push('  '+entry.notes);
+    } else if (sec === 'store_openings') {
+      lines.push(status + ' ' + (entry.storeName||'Store Opening'));
+      if (entry.market) lines.push('  Mkt: '+entry.market);
+      if (entry.targetOpenDate) lines.push('  '+fd(entry.targetOpenDate));
+    }
+    return lines.join('\n');
+  }
+
+  var rows = [];
+
+  // Header row: "Section" + one column per visible week
+  var hdr = ['Section'];
+  weeks.forEach(function(w){ hdr.push('Wk '+w.weekOfYear+'\n'+weekRangeLabel(w.start,w.end)); });
+  rows.push(hdr);
+
+  // Markdown row
+  var mdEntries = Object.values(mdSt||{});
+  var mdRow = ['Markdown'];
+  weeks.forEach(function(w){
+    var cell = [];
+    mdEntries.forEach(function(md){
+      if(!md||!md.startDate||!md.endDate) return;
+      if(weekIdsInRange(md.startDate,md.endDate).indexOf(w.id)>=0)
+        cell.push((md.title||'Markdown')+' ('+fd(md.startDate)+'→'+fd(md.endDate)+')');
     });
+    mdRow.push(cell.join('\n'));
   });
-  var csv = rows.map(function(r) {
-    return r.map(function(v) {
-      v = String(v).replace(/"/g, '""');
-      return (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0) ? '"' + v + '"' : v;
+  rows.push(mdRow);
+
+  // One row per section, in SECTIONS order
+  var secOrder = SECTIONS.map(function(s){ return s.key; });
+  secOrder.forEach(function(sec){
+    var label = (SECTIONS.find(function(s){return s.key===sec;})||{}).label || sec;
+    var secRow = [label];
+    weeks.forEach(function(w){
+      var entries = (st[sec]||{})[w.id] || [];
+      var cell = entries.map(function(en){ return fmtEntry(sec, en, w.id); }).filter(Boolean).join('\n---\n');
+      secRow.push(cell);
+    });
+    rows.push(secRow);
+  });
+
+  // Encode and download
+  var csv = rows.map(function(r){
+    return r.map(function(v){
+      v = String(v).replace(/"/g,'""');
+      return (v.indexOf(',')>=0||v.indexOf('"')>=0||v.indexOf('\n')>=0) ? '"'+v+'"' : v;
     }).join(',');
   }).join('\r\n');
-  var blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8'});
+
+  var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
+  var fileName = (yearTag?yearTag[1]:'BTV') + '_Calendar_Grid_' + new Date().toISOString().slice(0,10) + '.csv';
+  var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
   var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = '2026_Calendar_Export_' + new Date().toISOString().slice(0,10) + '.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
+  a.href = URL.createObjectURL(blob); a.download = fileName;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(a.href);
 }
 
 // ─── CSV Import ──────────────────────────────────────────────────────────────
