@@ -15083,8 +15083,7 @@ function renderMaster(){
       const _trLockKey = 'ls::group::' + (p.groupId || '');
       const _trHolder = (typeof _btvLsGetLockHolder === 'function') ? _btvLsGetLockHolder(_trLockKey) : null;
       const _trLockStyle = _trHolder ? 'outline:2px solid #e6a817;outline-offset:-2px;' : '';
-      const _trLockTitle = _trHolder ? ' title="🔒 ' + _trHolder.split('@')[0] + ' is editing — click to view"' : ' title="Click to open in Product Form"';
-      html += `<tr data-gid="${escapeHtml(p.groupId||'')}" style="cursor:pointer;${_trLockStyle}" onclick="editGroup('${escapeHtml(p.groupId||'')}')"${_trLockTitle}>
+      html += `<tr data-gid="${escapeHtml(p.groupId||'')}" style="${_trLockStyle}">
 
 
 
@@ -15995,7 +15994,9 @@ function renderLinesheet(){
 
             <div class="ls-field"><span class="ls-field-label">Launch Date: </span>${escapeHtml(p.launchDate || '—')}</div>
 
+            ${(p.calMarkets||[]).length ? `<div class="ls-field"><span class="ls-field-label">Markets: </span>${escapeHtml((p.calMarkets||[]).join(', '))}</div>` : ''}
 
+            ${(p.calStores||[]).length ? `<div class="ls-field"><span class="ls-field-label">Launch Channels: </span><span style="white-space:pre-line">${(p.calStores||[]).map(s=>escapeHtml(s)).join('\n')}</span></div>` : ''}
 
 
 
@@ -16757,6 +16758,7 @@ function renderDashboard(){
 
 
         if(p.linesheetComplete) return false;
+        if(p.launchDate && new Date(p.launchDate + 'T00:00:00') < new Date()) return false;
 
 
 

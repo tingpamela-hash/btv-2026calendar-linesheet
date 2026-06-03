@@ -2580,9 +2580,9 @@
 
   .markdown-span-cell{padding:0!important;background:transparent!important;vertical-align:top!important;position:relative!important}
 
-  .markdown-track{min-height:44px}
+  .markdown-track{min-height:32px}
 
-  .markdown-bubble-span{position:relative;margin:8px;border:2px dashed #8f7f67;border-radius:12px;background:rgba(255,247,223,.9);padding:8px 10px;font-size:12px;line-height:1.15}
+  .markdown-bubble-span{position:relative;margin:3px 8px;border:2px dashed #8f7f67;border-radius:12px;background:rgba(255,247,223,.9);padding:4px 10px;font-size:12px;line-height:1.15}
 
   .entry.cat-bags,.entry.cat-mrtw,.entry.cat-wrtw,.entry.cat-krtw,.entry.cat-acc,.entry.cat-eyewear,.entry.cat-footwear,.entry.cat-lf,.entry.cat-pets{border-width:3px!important}
 
@@ -9164,7 +9164,7 @@ function render(){
     // Pre-compute the minimum vertical lane for each markdown so that
     // non-overlapping markdowns share lane 0 (slim row) while overlapping
     // ones stack, and multi-week pills stay connected across cells.
-    const _trackH = 44;
+    const _trackH = 32;
     const _laneOf = _visibleMds.map(function(md, idx){
       const mdWeeks = weekIdsInRange(md.startDate, md.endDate).filter(function(id){ return _mdWeekIdx[id] !== undefined; });
       let maxAbove = 0;
