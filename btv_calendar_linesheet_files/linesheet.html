@@ -14034,6 +14034,7 @@ function toggleLinesheetSelection(id, checked){
 
 
   item.selectedForLinesheet = checked;
+  try { localStorage.setItem('btv_linesheet_products', JSON.stringify(products)); } catch(e) {}
 
 
 
@@ -14083,9 +14084,9 @@ function btvToggleApproval(id, role, checked){
   if(role === 'designer') p.approvedDesigner = checked;
   else if(role === 'sc') p.approvedSC = checked;
   else if(role === 'merch') p.approvedMerch = checked;
-  // sync linesheetComplete for backwards compat
   p.linesheetComplete = btvAllApproved(p);
   if(!p.linesheetComplete) p.selectedForLinesheet = false;
+  try { localStorage.setItem('btv_linesheet_products', JSON.stringify(products)); } catch(e) {}
   renderMaster();
 }
 function toggleComplete(id, checked){
@@ -17098,7 +17099,7 @@ function renderDashboard(){
 
 
 
-  var log=getChangeLog();
+  var log=getChangeLog().filter(function(e){ return e.action !== 'calendar'; });
 
 
 
