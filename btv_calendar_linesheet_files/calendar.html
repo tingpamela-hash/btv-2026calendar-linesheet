@@ -8790,6 +8790,7 @@ function renderGlobal(entry){
           </div>
 
           <button class="small-btn" onclick="openEditor('${entry.section}','${entry.weekId}','${entry.id}')">Edit</button>
+          ${entry.section === 'global' ? `<button class="small-btn" style="background:#fff3e0;border-color:#ffb74d;color:#7a4f00;font-size:10px;padding:3px 8px" onclick="event.stopPropagation();btvCopyToChina('${esc(entry.id)}','${esc(entry.weekId)}')" title="Duplicate this launch into the China row">▷&nbsp;CN</button>` : ''}
 
         </div>
 
@@ -12624,6 +12625,39 @@ function _btvDownload(fileName, data, mime) {
     document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
   }
 }
+
+// ─── Copy Global launch to China row ─────────────────────────────────────────
+function btvCopyToChina(entryId, weekId) {
+  var entries = (state.global && state.global[weekId]) || [];
+  var entry = entries.find(function(e){ return e.id === entryId; });
+  if (!entry) return;
+
+  pushHistory(state);
+
+  var copy = JSON.parse(JSON.stringify(entry));
+  copy.id      = String(Date.now()) + Math.random().toString(36).slice(2, 7);
+  copy.section = 'china';
+  copy.weekId  = weekId;
+
+  if (!state.china) state.china = {};
+  if (!state.china[weekId]) state.china[weekId] = [];
+  state.china[weekId].push(copy);
+
+  saveState(state);
+  render();
+
+  // Brief non-blocking toast
+  (function(){
+    var t = document.createElement('div');
+    t.textContent = '✓  “' + (entry.launchTitle || 'Launch') + '” copied to China row';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+      'background:#1a1a1a;color:#fff;padding:10px 22px;border-radius:10px;font-size:13px;' +
+      'font-family:inherit;z-index:9999;pointer-events:none;transition:opacity .4s;white-space:nowrap';
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 500); }, 2500);
+  })();
+}
+window.btvCopyToChina = btvCopyToChina;
 
 })();
 
