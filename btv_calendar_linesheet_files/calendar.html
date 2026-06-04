@@ -12078,7 +12078,7 @@ document.addEventListener("click", (ev) => {
 
 });
 
-e("saveVersionBtn").addEventListener("click", () => {
+e("saveVersionBtn").addEventListener("click", () => { try {
 
   const versions = loadVersions();
 
@@ -12121,9 +12121,12 @@ e("saveVersionBtn").addEventListener("click", () => {
   }
 
   _btvHasUnsavedChanges = false;
-  alert(`Saved ${label}`);
+  alert(`Saved: ${label}`);
 
-});
+} catch(err) {
+  console.error('[BTV] Save Version error:', err);
+  alert('Save Version failed: ' + (err && err.message ? err.message : String(err)));
+}});
 
 e("versionHistoryBtn").addEventListener("click", () => {
   renderVersionHistory();

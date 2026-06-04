@@ -12844,7 +12844,19 @@ async function saveProductGroup(){
 
 
 
-      linesheetComplete: existingItem ? (existingItem.linesheetComplete || false) : false
+      linesheetComplete: existingItem ? (existingItem.linesheetComplete || false) : false,
+
+      // Calendar-sourced fields — read-only, must survive form save
+      calEntryId:  existingItem ? (existingItem.calEntryId  || '') : '',
+      calSection:  existingItem ? (existingItem.calSection  || 'global') : 'global',
+      calWeekId:   existingItem ? (existingItem.calWeekId   || '') : '',
+      calMarkets:  existingItem ? (existingItem.calMarkets  || []) : [],
+      calStores:   existingItem ? (existingItem.calStores   || []) : [],
+
+      // Approval flags — set via checkboxes, must survive form save
+      approvedDesigner: existingItem ? (existingItem.approvedDesigner || false) : false,
+      approvedSC:       existingItem ? (existingItem.approvedSC       || false) : false,
+      approvedMerch:    existingItem ? (existingItem.approvedMerch    || false) : false
 
 
 
@@ -16029,6 +16041,10 @@ function renderLinesheet(){
 
 
             <div class="ls-field"><span class="ls-field-label">Washcare: </span>${escapeHtml(p.washcare || '—')}</div>
+
+            ${p.measurementInch ? `<div class="ls-field"><span class="ls-field-label">Measurements (inch): </span><span style="display:block;white-space:pre-line;margin-top:2px;font-size:12px;line-height:1.5">${escapeHtml(p.measurementInch)}</span></div>` : ''}
+
+            ${p.measurementCm ? `<div class="ls-field"><span class="ls-field-label">Measurements (cm): </span><span style="display:block;white-space:pre-line;margin-top:2px;font-size:12px;line-height:1.5">${escapeHtml(p.measurementCm)}</span></div>` : ''}
 
 
 
