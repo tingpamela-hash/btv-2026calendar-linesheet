@@ -9913,7 +9913,7 @@ window.openMarkdownEditor = function(id){
 
   e("modalTitle").textContent = (existing ? "Edit " : "Add ") + "Markdown";
 
-  e("modalBody").innerHTML = buildMarkdownForm(existing) + actions(existing);
+  e("modalBody").innerHTML = buildMarkdownForm(existing) + actions(existing, "markdown");
 
   e("modal").classList.add("show");
 
@@ -10035,7 +10035,7 @@ window.openMarkdownEditor = function(id){
 
 
 
-function actions(existing){
+function actions(existing, sectionKey){
 
   const current = existing?.workflowStatus || "draft";
 
@@ -10061,7 +10061,7 @@ function actions(existing){
 
         <button id="duplicateBtn" ${existing ? "" : "style='visibility:hidden'"} style="background:#e8f5e9;border-color:#a5d6a7">Duplicate</button>
 
-        ${section === "global" ? `<button id="copyToChinaBtn" ${existing ? "" : "style='visibility:hidden'"} style="background:#fff3e0;border-color:#ffb74d;color:#7a4f00">Copy to China</button>` : ''}
+        ${sectionKey === "global" ? `<button id="copyToChinaBtn" ${existing ? "" : "style='visibility:hidden'"} style="background:#fff3e0;border-color:#ffb74d;color:#7a4f00">Copy to China</button>` : ''}
 
       <div class="right">
 
@@ -10496,15 +10496,15 @@ window.openEditor = function(section, weekId, entryId){
 
   let inner = "";
 
-  if(section === "global" || section === "china") inner = buildGlobalForm(existing, weekId) + actions(existing);
+  if(section === "global" || section === "china") inner = buildGlobalForm(existing, weekId) + actions(existing, section);
 
-  else if(section === "nea" || section === "sea") inner = buildRegionalForm(section, existing, weekId) + actions(existing);
+  else if(section === "nea" || section === "sea") inner = buildRegionalForm(section, existing, weekId) + actions(existing, section);
 
-  else if(section === "restocks") inner = buildRestockForm(existing) + actions(existing);
+  else if(section === "restocks") inner = buildRestockForm(existing) + actions(existing, section);
 
-  else if(section === "store_openings") inner = buildStoreOpeningForm(existing) + actions(existing);
+  else if(section === "store_openings") inner = buildStoreOpeningForm(existing) + actions(existing, section);
 
-  else inner = buildEventForm(existing) + actions(existing);
+  else inner = buildEventForm(existing) + actions(existing, section);
 
   e("modalBody").innerHTML = inner;
 
