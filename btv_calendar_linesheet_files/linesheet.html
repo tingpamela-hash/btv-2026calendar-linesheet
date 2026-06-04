@@ -15953,7 +15953,8 @@ function renderLinesheet(){
 
 
 
-            <div class="ls-sku">HS Code: ${escapeHtml(p.hscode || '—')}</div>
+            <div class="ls-sku">HS Code (8): ${escapeHtml(p.hscode || '—')}</div>
+            <div class="ls-sku">HS Code (10): ${escapeHtml(p.hscode10 || '—')}</div>
 
 
 
@@ -16373,20 +16374,65 @@ function importLinesheetJSON(input){
 function exportLinesheetExcel(){
   const list = selectedProducts();
   if(!list.length){ alert('No linesheet items picked.'); return; }
-  const headers = ['SKU','Barcode','HS Code (8)','HS Code (10)','Launch Date','Product Name','Colour/Variant','Product Category','Size','Product Weight (g)','Description','Fabric Composition','Washcare','Measurements','SGD RRP','SGD w/o GST','JP RRP','ID RRP','TH RRP','PH RRP','CN RRP'];
-  const escCell = function(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
-  let html = '<table><thead><tr>' + headers.map(h => '<th>'+escCell(h)+'</th>').join('') + '</tr></thead><tbody>';
-  list.forEach(function(p){
-    const row = [p.sku,p.barcode,p.hscode,p.hscode10,p.launchDate,p.name,p.variant,p.category,p.sizing,p.weightGrams,p.description,p.fabric,p.washcare,p.measurementSummary,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn];
-    html += '<tr>' + row.map(v => '<td>'+escCell(v)+'</td>').join('') + '</tr>';
+
+  // SpreadsheetML (Excel 2003 XML) — opens without "format mismatch" warning
+  function xs(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'&#10;'); }
+  function sc(val,sid){
+    var s=sid?' ss:StyleID="'+sid+'"':'';
+    return '<Cell'+s+'><Data ss:Type="String">'+xs(val)+'</Data></Cell>';
+  }
+
+  var HDR_COLS = [
+    ['SKU',70],['Barcode',90],['HS Code (8)',70],['HS Code (10)',70],
+    ['Launch Date',80],['Product Name',150],['Colour / Variant',90],
+    ['Category',80],['Sizes',90],['Weight (g)',60],
+    ['Description',180],['Fabric',120],['Washcare',120],['Measurements',140],
+    ['SGD RRP',60],['SGD ex GST',65],['JP RRP',60],['ID RRP',60],
+    ['TH RRP',60],['PH RRP',60],['CN RRP',60],
+    ['Markets (Cal)',110],['Launch Channels',160]
+  ];
+
+  var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n';
+  xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"';
+  xml += ' xmlns:o="urn:schemas-microsoft-com:office:office"';
+  xml += ' xmlns:x="urn:schemas-microsoft-com:office:excel"';
+  xml += ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n';
+
+  xml += '<Styles>\n';
+  xml += '<Style ss:ID="h"><Alignment ss:Horizontal="Center" ss:Vertical="Middle" ss:WrapText="1"/><Font ss:FontName="Arial" ss:Size="9" ss:Bold="1" ss:Color="#ffffff"/><Interior ss:Color="#1e1e1e" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#444"/></Borders></Style>\n';
+  xml += '<Style ss:ID="a"><Alignment ss:Vertical="Top" ss:WrapText="1"/><Font ss:FontName="Arial" ss:Size="9"/><Interior ss:Color="#ffffff" ss:Pattern="Solid"/></Style>\n';
+  xml += '<Style ss:ID="b"><Alignment ss:Vertical="Top" ss:WrapText="1"/><Font ss:FontName="Arial" ss:Size="9"/><Interior ss:Color="#f7f6f3" ss:Pattern="Solid"/></Style>\n';
+  xml += '</Styles>\n';
+
+  xml += '<Worksheet ss:Name="Linesheet">\n<Table>\n';
+  HDR_COLS.forEach(function(c){ xml += '<Column ss:Width="'+c[1]+'"/>'; });
+  xml += '\n';
+
+  // Header row
+  xml += '<Row ss:Height="28">'+HDR_COLS.map(function(c){ return sc(c[0],'h'); }).join('')+'</Row>\n';
+
+  // Data rows
+  list.forEach(function(p,i){
+    var s = i%2===0?'a':'b';
+    var vals = [
+      p.sku, p.barcode, p.hscode, p.hscode10, p.launchDate,
+      p.name, p.variant, p.category, p.sizing, p.weightGrams,
+      p.description, p.fabric, p.washcare, p.measurementSummary,
+      p.sgd, p.sgdNoGST, p.jp, p.idRrp, p.th, p.ph, p.cn,
+      (p.calMarkets||[]).join(', '),
+      (p.calStores||[]).join('\n')
+    ];
+    xml += '<Row>'+vals.map(function(v){ return sc(v,s); }).join('')+'</Row>\n';
   });
-  html += '</tbody></table>';
-  const blob = new Blob(['<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'+html+'</body></html>'], {type:'application/vnd.ms-excel'});
-  const a = document.createElement('a');
+
+  xml += '</Table>\n</Worksheet>\n</Workbook>';
+
+  var blob = new Blob([xml], {type:'application/vnd.ms-excel'});
+  var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'btv_linesheet_export.xls';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
 }
 
 function printLinesheet(){

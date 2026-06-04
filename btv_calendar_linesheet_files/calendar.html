@@ -12456,7 +12456,7 @@ function btvExportCSV() {
 }
 window.btvExportCSV = btvExportCSV;
 
-// ─── Export XLS (calendar grid — built from data, not DOM clone) ─────────────
+// ─── Export XLS — SpreadsheetML (Excel 2003 XML, no format-mismatch warning) ──
 function btvExportCalendarXLS() {
   var st = {};
   try { st = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) {}
@@ -12465,14 +12465,10 @@ function btvExportCalendarXLS() {
   var year = yearTag ? yearTag[1] : 'BTV';
   var weeks = currentWeeks();
 
-  // Section header colours (match CSS variables)
-  var SEC_BG  = { global:'#d4d4d4', china:'#c47800', sea:'#c43030', nea:'#4a8eb5', restocks:'#7a5a35', events:'#edecea', store_openings:'#d4d4d4' };
-  var SEC_FG  = { global:'#2d2d2d', china:'#ffffff', sea:'#ffffff', nea:'#ffffff', restocks:'#ffffff', events:'#2d2d2d', store_openings:'#2d2d2d' };
-  var HDR_BG  = '#e8e2d8';
-  var WK_A    = '#ffffff';
-  var WK_B    = '#f3f2f0';
+  var SEC_BG = { global:'#d4d4d4', china:'#c47800', sea:'#c43030', nea:'#4a8eb5', restocks:'#7a5a35', events:'#edecea', store_openings:'#d4d4d4' };
+  var SEC_FG = { global:'#2d2d2d', china:'#ffffff', sea:'#ffffff', nea:'#ffffff', restocks:'#ffffff', events:'#2d2d2d', store_openings:'#2d2d2d' };
 
-  function x(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function xs(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'&#10;'); }
 
   function fd(iso) {
     if (!iso) return '';
@@ -12480,114 +12476,128 @@ function btvExportCalendarXLS() {
     return d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
   }
 
-  // Format one entry as plain text lines joined with <br>
   function fmtEntry(sec, entry) {
     var lines = [];
-    var status = entry.workflowStatus === 'published' ? '' : ' [Draft]';
+    var draft = entry.workflowStatus !== 'published' ? ' [Draft]' : '';
     if (sec === 'global' || sec === 'china') {
-      if (entry.launchTitle) lines.push('<b>' + x(entry.launchTitle) + '</b>' + (entry.launchDate ? '  ' + x(fd(entry.launchDate)) : '') + x(status));
+      if (entry.launchTitle) lines.push(entry.launchTitle + (entry.launchDate ? '  ' + fd(entry.launchDate) : '') + draft);
       (entry.lines || []).forEach(function(ln) {
         if (!ln.productName && !ln.category) return;
-        var parts = [ln.category ? x(ln.category) : '', ln.productName ? x(ln.productName) : '', ln.price ? x('$'+ln.price) : ''].filter(Boolean);
-        if (parts.length) lines.push(parts.join(' | ') + (ln.colour ? '<br>&nbsp;&nbsp;' + x(ln.colour) : '') + (ln.size ? '<br>&nbsp;&nbsp;' + x(ln.size) : ''));
+        var parts = [ln.category, ln.productName, ln.price ? '$'+ln.price : ''].filter(Boolean);
+        lines.push('  ' + parts.join(' | ') + (ln.colour ? '\n  ' + ln.colour : '') + (ln.size ? '\n  ' + ln.size : ''));
       });
     } else if (sec === 'nea' || sec === 'sea') {
-      var title = (entry.optionType ? entry.optionType + ': ' : '') + (entry.productTitle || entry.launchTitle || '');
-      lines.push('<b>' + x(title) + '</b>' + x(status));
-      if (entry.colour) lines.push(x(entry.colour));
+      lines.push((entry.optionType ? entry.optionType + ': ' : '') + (entry.productTitle || entry.launchTitle || '') + draft);
+      if (entry.colour) lines.push('Colour: ' + entry.colour);
       var mkts = entry.allMarkets ? (sec==='nea'?'CN, JP':'SG, TH, ID, PH') : (entry.countries||[]).join(', ');
-      if (mkts) lines.push('Mkt: ' + x(mkts));
+      if (mkts) lines.push('Mkt: ' + mkts);
     } else if (sec === 'restocks') {
+      lines.push('Restock' + (entry.etaISO ? ' – ETA ' + fd(entry.etaISO) : '') + draft);
+      (entry.lines||[]).forEach(function(ln){ if(ln.productTitle||ln.productName) lines.push('  '+(ln.productTitle||ln.productName)); });
       var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
-      lines.push('<b>Restock' + (entry.etaISO ? ' – ETA ' + x(fd(entry.etaISO)) : '') + '</b>' + x(status));
-      (entry.lines||[]).forEach(function(ln){ if(ln.productTitle||ln.productName) lines.push(x(ln.productTitle||ln.productName)); });
-      if (mkts) lines.push('Mkt: ' + x(mkts));
+      if (mkts) lines.push('Mkt: ' + mkts);
     } else if (sec === 'events') {
+      lines.push((entry.title||'Event') + draft);
+      if (entry.startDateISO) lines.push(fd(entry.startDateISO) + (entry.endDateISO && entry.endDateISO !== entry.startDateISO ? ' – ' + fd(entry.endDateISO) : ''));
       var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
-      lines.push('<b>' + x(entry.title||'Event') + '</b>' + x(status));
-      if (entry.startDateISO) lines.push(x(fd(entry.startDateISO)) + (entry.endDateISO && entry.endDateISO !== entry.startDateISO ? ' – ' + x(fd(entry.endDateISO)) : ''));
-      if (mkts) lines.push('Mkt: ' + x(mkts));
+      if (mkts) lines.push('Mkt: ' + mkts);
     } else if (sec === 'store_openings') {
-      lines.push('<b>' + x(entry.storeName||'Store Opening') + '</b>' + x(status));
-      if (entry.market) lines.push('Mkt: ' + x(entry.market));
-      if (entry.targetOpenDate) lines.push(x(fd(entry.targetOpenDate)));
+      lines.push((entry.storeName||'Store Opening') + draft);
+      if (entry.market) lines.push('Mkt: ' + entry.market);
+      if (entry.targetOpenDate) lines.push(fd(entry.targetOpenDate));
     }
-    return lines.join('<br>');
+    return lines.filter(Boolean).join('\n');
   }
 
-  // Build quarter / month runs for header
+  // Quarter / month runs for merged header cells
   var qRuns = [], mRuns = [];
   weeks.forEach(function(w) {
-    var q = qRuns[qRuns.length-1];
-    if (!q || q.label !== w.quarter) qRuns.push({label: w.quarter, n: 1}); else q.n++;
-    var m = mRuns[mRuns.length-1];
-    if (!m || m.label !== w.month) mRuns.push({label: w.month, n: 1}); else m.n++;
+    var q = qRuns[qRuns.length-1]; if (!q || q.label !== w.quarter) qRuns.push({label:w.quarter,n:1}); else q.n++;
+    var m = mRuns[mRuns.length-1]; if (!m || m.label !== w.month)   mRuns.push({label:w.month,n:1});   else m.n++;
   });
 
-  var BASE  = 'font-family:Arial,sans-serif;font-size:9pt;border:1px solid #c8c4be;padding:3px 5px;';
-  var CORNER = 'background-color:' + HDR_BG + ';font-weight:bold;text-align:left;white-space:nowrap;vertical-align:middle;width:130px;';
-  var HDR   = 'background-color:' + HDR_BG + ';font-weight:bold;text-align:center;white-space:nowrap;vertical-align:middle;';
+  // ── Build SpreadsheetML ──────────────────────────────────────────────────────
+  var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n';
+  xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"';
+  xml += ' xmlns:o="urn:schemas-microsoft-com:office:office"';
+  xml += ' xmlns:x="urn:schemas-microsoft-com:office:excel"';
+  xml += ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n';
 
-  function cornerTh(txt) { return '<th style="' + BASE + CORNER + '">' + x(txt) + '</th>'; }
-  function hdrTh(txt, bg, n) {
-    var sp = n > 1 ? ' colspan="' + n + '"' : '';
-    return '<th' + sp + ' style="' + BASE + 'background-color:' + (bg||HDR_BG) + ';font-weight:bold;text-align:center;white-space:nowrap;min-width:120px;">' + x(txt) + '</th>';
+  // ── Styles ──
+  xml += '<Styles>\n';
+
+  function sty(id, bg, fg, bold, wrap, halign) {
+    var s = '<Style ss:ID="'+id+'">';
+    s += '<Alignment ss:Vertical="Top"'+(wrap?' ss:WrapText="1"':'')+(halign?' ss:Horizontal="'+halign+'"':'')+'/>';
+    s += '<Font ss:FontName="Arial" ss:Size="9"'+(bold?' ss:Bold="1"':'')+(fg&&fg!=='#000000'?' ss:Color="'+fg+'"':'')+'/>';
+    if (bg) s += '<Interior ss:Color="'+bg+'" ss:Pattern="Solid"/>';
+    s += '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#c8c4be"/>';
+    s += '<Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#c8c4be"/></Borders>';
+    s += '</Style>\n';
+    return s;
   }
-  function dataTd(html, bg) {
-    return '<td style="' + BASE + 'background-color:' + bg + ';vertical-align:top;min-width:120px;">' + (html||'') + '</td>';
-  }
-  function rowTh(txt, bg, fg) {
-    return '<th style="' + BASE + 'background-color:' + bg + ';color:' + fg + ';font-weight:bold;text-align:left;vertical-align:top;white-space:normal;width:130px;">' + x(txt) + '</th>';
-  }
 
-  var rows = '';
+  xml += sty('corner', '#e8e2d8', '#2d2d2d', true,  false, 'Left');
+  xml += sty('hdr_c',  '#e8e2d8', '#2d2d2d', true,  false, 'Center');
+  xml += sty('wk_a',   '#ffffff', '#2d2d2d', true,  false, 'Center');
+  xml += sty('wk_b',   '#f3f2f0', '#2d2d2d', true,  false, 'Center');
+  xml += sty('dat_a',  '#ffffff', '#333333', false, true,  'Left');
+  xml += sty('dat_b',  '#f3f2f0', '#333333', false, true,  'Left');
 
-  // ── Header rows ──
-  rows += '<tr>' + cornerTh('Quarter');
-  qRuns.forEach(function(r){ rows += hdrTh(r.label, HDR_BG, r.n); });
-  rows += '</tr>\n';
-
-  rows += '<tr>' + cornerTh('Month');
-  mRuns.forEach(function(r){ rows += hdrTh(r.label + ' ' + year, HDR_BG, r.n); });
-  rows += '</tr>\n';
-
-  rows += '<tr>' + cornerTh('Week');
-  weeks.forEach(function(w,i){ rows += hdrTh('Wk ' + w.weekOfYear, i%2?WK_B:WK_A, 1); });
-  rows += '</tr>\n';
-
-  rows += '<tr>' + cornerTh('Dates');
-  weeks.forEach(function(w,i){ rows += hdrTh(weekRangeLabel(w.start,w.end), i%2?WK_B:WK_A, 1); });
-  rows += '</tr>\n';
-
-  // ── Section rows ──
   SECTIONS.forEach(function(sec) {
-    var bg = SEC_BG[sec.key] || HDR_BG;
-    var fg = SEC_FG[sec.key] || '#2d2d2d';
-    rows += '<tr>' + rowTh(sec.label, bg, fg);
+    xml += sty('sec_'+sec.key, SEC_BG[sec.key]||'#d4d4d4', SEC_FG[sec.key]||'#2d2d2d', true, true, 'Left');
+  });
+
+  xml += '</Styles>\n';
+
+  // ── Worksheet ──
+  xml += '<Worksheet ss:Name="BTV Calendar '+year+'">\n<Table>\n';
+
+  // Column widths
+  xml += '<Column ss:Width="120"/>';
+  weeks.forEach(function(){ xml += '<Column ss:Width="110"/>'; });
+  xml += '\n';
+
+  function cell(val, sid, mergeAcross) {
+    var ma = mergeAcross > 0 ? ' ss:MergeAcross="'+mergeAcross+'"' : '';
+    var s  = sid ? ' ss:StyleID="'+sid+'"' : '';
+    return '<Cell'+ma+s+'><Data ss:Type="String">'+xs(val)+'</Data></Cell>';
+  }
+
+  // Quarter row (merged)
+  xml += '<Row ss:Height="20">'+cell('Quarter','corner');
+  qRuns.forEach(function(r){ xml += cell(r.label,'hdr_c',r.n-1); });
+  xml += '</Row>\n';
+
+  // Month row (merged)
+  xml += '<Row ss:Height="20">'+cell('Month','corner');
+  mRuns.forEach(function(r){ xml += cell(r.label+' '+year,'hdr_c',r.n-1); });
+  xml += '</Row>\n';
+
+  // Week row
+  xml += '<Row ss:Height="20">'+cell('Week','corner');
+  weeks.forEach(function(w,i){ xml += cell('Wk '+w.weekOfYear, i%2?'wk_b':'wk_a'); });
+  xml += '</Row>\n';
+
+  // Date row
+  xml += '<Row ss:Height="20">'+cell('Dates','corner');
+  weeks.forEach(function(w,i){ xml += cell(weekRangeLabel(w.start,w.end), i%2?'wk_b':'wk_a'); });
+  xml += '</Row>\n';
+
+  // Section rows
+  SECTIONS.forEach(function(sec) {
+    xml += '<Row>'+cell(sec.label,'sec_'+sec.key);
     weeks.forEach(function(w,i) {
       var entries = (st[sec.key]||{})[w.id] || [];
-      var cellBg = i%2 ? WK_B : WK_A;
-      var content = entries.map(function(en){ return fmtEntry(sec.key, en); }).filter(Boolean).join('<br><hr style="border:none;border-top:1px solid #ddd;margin:3px 0">');
-      rows += dataTd(content, cellBg);
+      var txt = entries.map(function(en){ return fmtEntry(sec.key,en); }).filter(Boolean).join('\n─────\n');
+      xml += cell(txt, i%2?'dat_b':'dat_a');
     });
-    rows += '</tr>\n';
+    xml += '</Row>\n';
   });
 
-  var html =
-    '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
-    'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
-    'xmlns="http://www.w3.org/TR/REC-html40">\n' +
-    '<head><meta charset="UTF-8">' +
-    '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>' +
-    '<x:Name>BTV Calendar ' + year + '</x:Name>' +
-    '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>' +
-    '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->' +
-    '<style>table{border-collapse:collapse}br{mso-data-placement:same-cell}</style>' +
-    '</head>\n<body>\n' +
-    '<table cellspacing="0" cellpadding="0">\n' + rows + '</table>\n' +
-    '</body>\n</html>';
+  xml += '</Table>\n</Worksheet>\n</Workbook>';
 
-  _btvDownload(year + '_Calendar_' + new Date().toISOString().slice(0,10) + '.xls', html, 'application/vnd.ms-excel');
+  _btvDownload(year+'_Calendar_'+new Date().toISOString().slice(0,10)+'.xls', xml, 'application/vnd.ms-excel');
 }
 window.btvExportCalendarXLS = btvExportCalendarXLS;
 
