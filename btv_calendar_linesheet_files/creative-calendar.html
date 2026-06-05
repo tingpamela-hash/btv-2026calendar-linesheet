@@ -264,7 +264,7 @@ html,body{height:100%;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
   <!-- Filter bar -->
   <div class="filter-bar">
     <input type="text" id="filterSearch" class="filter-search" placeholder="&#x1F50D; Search entries…" oninput="applyFilters()">
-    <div class="filter-group">
+    <div class="filter-group" id="filterGroupMarket">
       <span class="filter-lbl">Market:</span>
       <button class="fp fp-all on" id="fp-all" onclick="toggleMarketFilter('all')">All</button>
       <button class="fp fp-sg" id="fp-sg" onclick="toggleMarketFilter('SG')">SG</button>
@@ -274,7 +274,7 @@ html,body{height:100%;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
       <button class="fp fp-jp" id="fp-jp" onclick="toggleMarketFilter('JP')">JP</button>
       <button class="fp fp-cn" id="fp-cn" onclick="toggleMarketFilter('CN')">CN</button>
     </div>
-    <div class="filter-group">
+    <div class="filter-group" id="filterGroupStatus">
       <span class="filter-lbl">Status:</span>
       <button class="fp" id="fp-ns" onclick="toggleStatusFilter('Not Started')">Not Started</button>
       <button class="fp" id="fp-ip" onclick="toggleStatusFilter('In Progress')">In Progress</button>
@@ -542,7 +542,7 @@ const ROW_DEFS=[
   {key:'key_moments',     label:'Key Moments',           group:'context',    holiday:true},
   {key:'consumer_mindset',label:'Consumer Mindset',      group:'context',    editable:true},
   {key:'retail_impact',   label:'Retail Impact',         group:'context',    editable:true},
-  {key:'launch',          label:'Launch',                group:'product',    editable:true},
+  {key:'launch',          label:'Launch (BTV Cal — ref)',group:'product',    btvRef:true},
   {key:'region_exclusive',label:'Region Exclusive',      group:'product',    editable:true},
   {key:'restock',         label:'Restock / To Push',     group:'product',    editable:true},
   {key:'commercial',      label:'Commercial Mechanics',  group:'activation', editable:true},
@@ -829,6 +829,27 @@ function renderMarket(market){
     html+=`<td class="row-head ${gc}">${esc(row.label)}</td>`;
     if(row.auto){
       WEEKS.forEach(w=>{ html+=`<td class="${gc} readonly no-hover"><div class="chip c-ns" style="font-size:8.5px">${esc(weekTheme(w.n))}</div></td>`; });
+    } else if(row.btvRef){
+      // Read-only BTV Calendar reference — spanning supported, view popup only
+      const refEntries=getMarketEntries(market).filter(e=>e.row===row.key).sort((a,b)=>a.week-b.week);
+      const cov=new Set();
+      refEntries.forEach(e=>{ if(e.weekEnd&&e.weekEnd>e.week) for(let w=e.week+1;w<=e.weekEnd&&w<=53;w++) cov.add(w); });
+      WEEKS.forEach(w=>{
+        if(cov.has(w.n)) return;
+        const starts=refEntries.filter(e=>e.week===w.n);
+        const spanE=starts.filter(e=>e.weekEnd&&e.weekEnd>w.n).sort((a,b)=>b.weekEnd-a.weekEnd)[0];
+        const cs=spanE?(spanE.weekEnd-w.n+1):1;
+        let chips='';
+        if(spanE&&matchesFilter(spanE)){
+          const cid=_cacheEntry(spanE);
+          chips+=`<div class="chip c-auto" onclick="_viewEntry('${esc(cid)}');event.stopPropagation();"><span class="span-tag">→Wk${spanE.weekEnd}</span>${spanE._seeded?'<span class="seeded-tag">●</span>':''}${esc(spanE.title)}</div>`;
+        }
+        starts.filter(e=>(!e.weekEnd||e.weekEnd<=e.week)&&matchesFilter(e)).forEach(e=>{
+          const cid=_cacheEntry(e);
+          chips+=`<div class="chip c-auto" onclick="_viewEntry('${esc(cid)}');event.stopPropagation();" title="${esc(e.title)}">${e._seeded?'<span class="seeded-tag">●</span>':''}${esc(e.title)}</div>`;
+        });
+        html+=`<td${cs>1?` colspan="${cs}"`:''}  class="${gc} readonly">${chips}</td>`;
+      });
     } else if(row.holiday){
       WEEKS.forEach(w=>{ const hol=holidays[w.n]; html+=`<td class="${gc} readonly holiday-cell no-hover">${hol?`<div class="holiday-chip">${esc(hol)}</div>`:''}</td>`; });
     } else if(SOCIAL_ROWS.has(row.key)){
@@ -901,12 +922,75 @@ function renderSocialRow(market, rowKey, gc){
 
 // ── Global Creative Calendar ───────────────────────────────────────────────
 
-const GLOBAL_CREATIVE_ROWS=[
-  {key:'km',  label:'Key Moments',          srcKeys:['launch','key_moments','restock','region_exclusive']},
-  {key:'act', label:'Activations & Mechanics', srcKeys:['commercial','seeding','new_stores']},
-  {key:'soc', label:'Social / Content',     srcKeys:['ig_grid','ig_stories','ig_mkt','tiktok','line','red_xhs','wechat']},
-  {key:'edm', label:'Channel (EDM)',         srcKeys:['edm','edm_tagOn']},
+// Global view row configuration
+const GLOBAL_BTV_ROWS=[
+  {key:'g_cal',   label:'Calendar',      mkts:null,                  srcRow:'launch'},
+  {key:'g_sea',   label:'SEA',           mkts:['SG','TH','ID','PH'], srcRow:'launch'},
+  {key:'g_nea',   label:'NEA',           mkts:['CN','JP'],           srcRow:'launch'},
+  {key:'g_china', label:'China',         mkts:['CN'],                srcRow:'launch'},
+  {key:'g_rst',   label:'Restock',       mkts:null,                  srcRow:'restock'},
+  {key:'g_store', label:'Store Opening', mkts:null,                  srcRow:'new_stores'},
 ];
+
+const GLOBAL_CREATIVE_ROWS=[
+  {key:'act', label:'Activations & Mechanics', srcKeys:['commercial','seeding']},
+  {key:'soc', label:'Social / Content',        srcKeys:['ig_grid','ig_stories','ig_mkt','tiktok','line','red_xhs','wechat']},
+  {key:'edm', label:'Channel (EDM)',            srcKeys:['edm','edm_tagOn']},
+];
+
+// Core helper: collect entries for a set of markets + row keys at a week,
+// group by normalised title → deduplicate with yellow for multi-market matches.
+function buildGlobalCellHtml(mkts, rowKeys, weekNum, opts){
+  // opts: { includeHolidays, readonly }
+  const tg={}; // normalisedTitle → { title, markets:[], entries:[], _hol? }
+  const mktScope = mkts || MARKETS;
+
+  // Holidays (for context rows)
+  if(opts&&opts.includeHolidays){
+    mktScope.forEach(mkt=>{
+      const hol=(HOLIDAYS[mkt]||{})[weekNum];
+      if(!hol) return;
+      const k='hol|'+hol.toLowerCase().slice(0,30);
+      if(!tg[k]) tg[k]={title:hol,markets:[],_hol:true};
+      if(!tg[k].markets.includes(mkt)) tg[k].markets.push(mkt);
+    });
+  }
+
+  // Entries from state
+  rowKeys.forEach(rk=>{
+    mktScope.forEach(mkt=>{
+      getCellEntries(mkt,rk,weekNum).forEach(e=>{
+        if(!matchesFilter(e)) return;
+        const k=(e.title||'').trim().toLowerCase();
+        if(!tg[k]) tg[k]={title:e.title,markets:[],entries:[]};
+        if(!tg[k].markets.includes(mkt)) tg[k].markets.push(mkt);
+        if(!tg[k].entries) tg[k].entries=[];
+        tg[k].entries.push({...e, _mkt:mkt});
+      });
+    });
+  });
+
+  let chips='';
+  // Sort: multi-market first (yellow), then single-market
+  const sorted=Object.values(tg).sort((a,b)=>(b.markets.length-a.markets.length));
+  sorted.forEach(g=>{
+    const isGlobal=g.markets.length>1;
+    const mktList=g.markets.slice().sort().join(', ');
+    const cssClass=isGlobal?'mkt-global':(MKT_CSS[g.markets[0]]||'c-ns');
+    if(g._hol){
+      chips+=`<div class="chip ${cssClass}"><span class="country-tag">${esc(isGlobal?mktList:g.markets[0])}</span>${esc(g.title)}</div>`;
+      return;
+    }
+    const rep=g.entries&&g.entries[0];
+    const cid=rep?_cacheEntry({...rep,_displayMarkets:isGlobal?mktList:g.markets[0]}):'';
+    const spanTag=rep&&rep.weekEnd&&rep.weekEnd>weekNum?`<span class="span-tag">→Wk${rep.weekEnd}</span>`:'';
+    chips+=`<div class="chip ${cssClass}"${cid?` onclick="_viewEntry('${esc(cid)}');event.stopPropagation();"`:''} title="${esc(g.title)}">
+      <span class="country-tag">${esc(isGlobal?mktList:g.markets[0])}</span>
+      ${spanTag}${esc(g.title)}
+    </div>`;
+  });
+  return chips;
+}
 
 function renderGlobal(){
   const tbl=document.getElementById('globalTable');
@@ -914,67 +998,61 @@ function renderGlobal(){
   if(!tbl||!body) return;
   const existThead=tbl.querySelector('thead');if(existThead)existThead.remove();
   tbl.insertAdjacentHTML('afterbegin',`<thead>${buildThead()}</thead>`);
-
   let html='';
+  const W=WEEKS.length;
 
-  // ── Creative rows: all markets, deduplicated by title ──
+  // ── CONTEXT section ────────────────────────────────────────────────────
+  html+=`<tr class="group-row g-context"><td class="row-head" colspan="${W+1}">Context</td></tr>`;
+
+  // Theme/Season — auto, one row (no per-market split needed)
+  html+=`<tr class="g-context"><td class="row-head g-context">Theme / Season</td>`;
+  WEEKS.forEach(w=>{
+    html+=`<td class="g-context readonly no-hover"><div class="chip c-ns" style="font-size:8.5px">${esc(weekTheme(w.n))}</div></td>`;
+  });
+  html+=`</tr>`;
+
+  // Key Moments & Holidays — auto from HOLIDAYS, yellow for shared
+  html+=`<tr class="g-context"><td class="row-head g-context">Key Moments &amp; Holidays</td>`;
+  WEEKS.forEach(w=>{
+    html+=`<td class="g-context readonly">${buildGlobalCellHtml(null,[],w.n,{includeHolidays:true})}</td>`;
+  });
+  html+=`</tr>`;
+
+  // Consumer Mindset — from entries
+  html+=`<tr class="g-context"><td class="row-head g-context">Consumer Mindset</td>`;
+  WEEKS.forEach(w=>{
+    html+=`<td class="g-context readonly">${buildGlobalCellHtml(null,['consumer_mindset'],w.n,{})}</td>`;
+  });
+  html+=`</tr>`;
+
+  // Retail Impact — from entries
+  html+=`<tr class="g-context"><td class="row-head g-context">Retail Impact</td>`;
+  WEEKS.forEach(w=>{
+    html+=`<td class="g-context readonly">${buildGlobalCellHtml(null,['retail_impact'],w.n,{})}</td>`;
+  });
+  html+=`</tr>`;
+
+  // ── FROM BTV CALENDAR section ──────────────────────────────────────────
+  html+=`<tr class="group-row g-btvrow"><td class="row-head" colspan="${W+1}">From BTV Calendar (Reference Only)</td></tr>`;
+
+  GLOBAL_BTV_ROWS.forEach(brow=>{
+    const mkts=brow.mkts||MARKETS;
+    html+=`<tr class="g-btvrow"><td class="row-head g-btvrow">${esc(brow.label)}</td>`;
+    WEEKS.forEach(w=>{
+      html+=`<td class="g-btvrow readonly">${buildGlobalCellHtml(mkts,[brow.srcRow],w.n,{})}</td>`;
+    });
+    html+=`</tr>`;
+  });
+
+  // ── CREATIVE CALENDAR section ──────────────────────────────────────────
+  html+=`<tr class="group-row g-activation"><td class="row-head" colspan="${W+1}">Creative Calendar</td></tr>`;
+
   GLOBAL_CREATIVE_ROWS.forEach(gRow=>{
     html+=`<tr class="g-activation"><td class="row-head g-activation">${esc(gRow.label)}</td>`;
     WEEKS.forEach(w=>{
-      // Collect all entries for this row across all markets at this week
-      const titleGroups={};
-      MARKETS.forEach(mkt=>{
-        gRow.srcKeys.forEach(rk=>{
-          getCellEntries(mkt,rk,w.n).filter(e=>matchesFilter(e)).forEach(e=>{
-            const key=(e.title||'').trim().toLowerCase();
-            if(!titleGroups[key]) titleGroups[key]={title:e.title,markets:[],entries:[],e:e};
-            if(!titleGroups[key].markets.includes(mkt)) titleGroups[key].markets.push(mkt);
-            titleGroups[key].entries.push(e);
-          });
-        });
-      });
-
-      // Add holidays for km row
-      let holChips='';
-      if(gRow.srcKeys.includes('key_moments')){
-        MARKETS.forEach(mkt=>{
-          const hol=(HOLIDAYS[mkt]||{})[w.n];
-          if(hol){
-            const key='hol-'+hol.toLowerCase().slice(0,20);
-            if(!titleGroups[key]) titleGroups[key]={title:hol,markets:[],entries:[],_hol:true};
-            if(!titleGroups[key].markets.includes(mkt)) titleGroups[key].markets.push(mkt);
-          }
-        });
-      }
-
-      let chips='';
-      Object.values(titleGroups).forEach(g=>{
-        if(g._hol){
-          // Holiday: show as single global chip if 2+ markets
-          const mktList=g.markets.sort().join(', ');
-          const cssClass=g.markets.length>1?'mkt-global':(MKT_CSS[g.markets[0]]||'c-ns');
-          chips+=`<div class="chip ${cssClass}">
-            <span class="country-tag">${esc(g.markets.length>1?mktList:g.markets[0])}</span>
-            ${esc(g.title)}
-          </div>`;
-          return;
-        }
-        // Same launch across 2+ markets → yellow global chip
-        const isGlobal=g.markets.length>1;
-        const mktList=g.markets.sort().join(', ');
-        const cssClass=isGlobal?'mkt-global':(MKT_CSS[g.markets[0]]||'c-ns');
-        const repEntry=g.entries[0];
-        const cid=_cacheEntry({...repEntry,_displayMarkets:mktList});
-        chips+=`<div class="chip ${cssClass}" onclick="_viewEntry('${esc(cid)}');event.stopPropagation();" title="${esc(g.title)}">
-          <span class="country-tag">${esc(isGlobal?mktList:g.markets[0])}</span>
-          ${repEntry.weekEnd&&repEntry.weekEnd>w.n?`<span class="span-tag">→Wk${repEntry.weekEnd}</span>`:''}
-          ${esc(g.title)}
-        </div>`;
-      });
-
-      html+=`<td class="g-activation readonly">${chips}</td>`;
+      html+=`<td class="g-activation readonly">${buildGlobalCellHtml(null,gRow.srcKeys,w.n,{})}</td>`;
     });
-    html+='</tr>';
+    html+=`</tr>`;
   });
 
   body.innerHTML=html;
@@ -1023,6 +1101,16 @@ function switchTab(name){
   document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById(name==='global'?'tabGlobal':'tab'+name)?.classList.add('active');
   document.getElementById(name==='global'?'panelGlobal':'panel'+name)?.classList.add('active');
+  // Per-market views: show search only; global view: show all filter controls
+  const isGlobal = name==='global';
+  const mktGrp = document.getElementById('filterGroupMarket');
+  const stsGrp = document.getElementById('filterGroupStatus');
+  const cntEl  = document.getElementById('filterCount');
+  const clrEl  = document.querySelector('.clear-filter');
+  if(mktGrp) mktGrp.style.display = isGlobal ? '' : 'none';
+  if(stsGrp) stsGrp.style.display = isGlobal ? '' : 'none';
+  if(cntEl)  cntEl.style.display  = isGlobal ? '' : 'none';
+  if(clrEl)  clrEl.style.display  = isGlobal ? '' : 'none';
   if(name==='global') renderGlobal(); else renderMarket(name);
 }
 
@@ -1161,6 +1249,13 @@ document.getElementById('fWeekEnd').innerHTML=buildWeekOpts(null,true);
 // Auto-seed on first load if no launch data exists for any market
 const hasData=MARKETS.some(m=>(state[m]||[]).some(e=>e.row==='launch'));
 if(!hasData){ seedData(false); }
+// Init filter bar visibility (global = all controls visible)
+(function(){
+  const mktGrp=document.getElementById('filterGroupMarket');
+  const stsGrp=document.getElementById('filterGroupStatus');
+  if(mktGrp) mktGrp.style.display='';
+  if(stsGrp) stsGrp.style.display='';
+})();
 renderGlobal();
 </script>
 </body>
