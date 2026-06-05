@@ -704,7 +704,7 @@ function dayLabel(weekNum, dayIdx){
 
 // ── BTV Calendar data integration ─────────────────────────────────────────
 
-// Read marketing workflow entries for a given market + week
+// Read marketing workflow entries for a specific market + week (market-scoped)
 function getBtvMktEntries(market, weekNum){
   try{
     const raw = localStorage.getItem('calendar-2026-marketing-workflow-v1');
@@ -716,6 +716,48 @@ function getBtvMktEntries(market, weekNum){
       return wn===weekNum;
     }).map(e=>({ ...e, _source:'btv-mkt' }));
   }catch{ return []; }
+}
+
+// Combined BTV entries for a SINGLE market — used by per-market Launch rows.
+// Reads from both the marketing workflow (already market-keyed) AND the main
+// calendar state, keeping only entries where the market is explicitly included.
+function getBtvEntriesForMarket(market, weekNum){
+  // Source 1: per-market workflow (data[market] — already scoped)
+  const out = getBtvMktEntries(market, weekNum);
+  const seen = new Set(out.map(e=>e.title||''));
+
+  // Source 2: main calendar state filtered by this market
+  if(!_btvMainCache.loaded){ _btvMainCache.entries=getBtvMainEntries(); _btvMainCache.loaded=true; }
+  _btvMainCache.entries.forEach(e=>{
+    const inWeek = e.week===weekNum || (e.weekEnd&&e.week<=weekNum&&e.weekEnd>=weekNum);
+    if(!inWeek) return;
+    // Include only when this market is explicitly listed
+    if(!e.markets.includes(market)) return;
+    if(seen.has(e.title)) return; // deduplicate by title
+    seen.add(e.title);
+    out.push({ ...e, _source:'btv-main' });
+  });
+  return out;
+}
+
+// All BTV entries for ALL markets at a given week — used by Global view.
+function getBtvEntriesAllMarkets(weekNum){
+  const out = [];
+  MARKETS.forEach(m=>{
+    getBtvMktEntries(m, weekNum).forEach(e=>out.push({...e, _market:m}));
+  });
+  // Also include main calendar entries (show once per unique title per market combo)
+  if(!_btvMainCache.loaded){ _btvMainCache.entries=getBtvMainEntries(); _btvMainCache.loaded=true; }
+  const seen = new Set();
+  _btvMainCache.entries.forEach(e=>{
+    const inWeek = e.week===weekNum || (e.weekEnd&&e.week<=weekNum&&e.weekEnd>=weekNum);
+    if(!inWeek) return;
+    const key = e.title+'|'+(e.markets||[]).join(',');
+    if(seen.has(key)) return;
+    seen.add(key);
+    out.push({ ...e, _source:'btv-main' });
+  });
+  return out;
 }
 
 // Read main BTV Calendar state entries
@@ -809,9 +851,9 @@ function renderMarket(market){
         html += `<td class="${gc} readonly holiday-cell no-hover">${hol?`<div class="holiday-chip">${esc(hol)}</div>`:''}</td>`;
       });
     } else if(row.btvAuto){
-      // BTV Calendar launch row
+      // BTV Calendar launch row — only entries for THIS market
       WEEKS.forEach(w=>{
-        const btv = getBtvMktEntries(market, w.n);
+        const btv = getBtvEntriesForMarket(market, w.n);
         const chips = btv.map(e=>`<div class="chip c-auto" title="${esc(e.title||'')}"><span class="country-tag">${esc(market)}</span>${esc(e.title||'')}</div>`).join('');
         html += `<td class="${gc} readonly">${chips}</td>`;
       });
@@ -972,7 +1014,7 @@ function renderGlobal(){
       const mkts = row.markets || MARKETS;
       let chips = '';
 
-      // From marketing workflow
+      // Workflow data — each market in this row's market scope
       mkts.forEach(m=>{
         getBtvMktEntries(m, w.n).forEach(e=>{
           const cid = _cacheRaw({...e, _market:m, _globalBtv:true});
@@ -981,11 +1023,16 @@ function renderGlobal(){
           </div>`;
         });
       });
-      // From main calendar state
-      btvMainEntries(row.section, w.n, row.markets).forEach(e=>{
-        const dispMkts = e.markets.length?e.markets.join(','):'Global';
-        const cssClass = e.markets.length===1?MKT_CSS[e.markets[0]]:'mkt-global';
-        const cid = _cacheRaw(e);
+      // Main calendar state — filter to this row's market scope
+      btvMainEntries(row.section, w.n, row.markets||null).forEach(e=>{
+        // Only show markets included in this row's scope
+        const visibleMkts = row.markets
+          ? e.markets.filter(m=>row.markets.includes(m))
+          : e.markets;
+        if(!visibleMkts.length&&!e.markets.includes('Global')) return;
+        const dispMkts = visibleMkts.length?visibleMkts.join(','):'Global';
+        const cssClass = visibleMkts.length===1?MKT_CSS[visibleMkts[0]]:'mkt-global';
+        const cid = _cacheRaw({...e, _displayMarkets:dispMkts});
         chips += `<div class="chip ${cssClass}" onclick="_viewRaw('${esc(cid)}');event.stopPropagation();">
           <span class="country-tag">${esc(dispMkts)}</span>${esc(e.title||'')}
         </div>`;
@@ -1031,15 +1078,17 @@ function renderGlobal(){
         });
       }
 
-      // BTV Calendar auto-entries (for launches_km)
+      // BTV Calendar auto-entries (for launches_km) — ALL markets combined
       if(gRow.srcKeys.includes('launch')){
-        MARKETS.forEach(m=>{
-          getBtvMktEntries(m, w.n).forEach(e=>{
-            const cid = _cacheRaw({...e,_market:m});
-            chips += `<div class="chip ${MKT_CSS[m]||'c-auto'}" onclick="_viewRaw('${esc(cid)}');event.stopPropagation();">
-              <span class="country-tag">${esc(m)}</span>${esc(e.title||'')}
-            </div>`;
-          });
+        getBtvEntriesAllMarkets(w.n).forEach(e=>{
+          // Determine which market(s) this entry belongs to
+          const mkt = e._market || (e.markets&&e.markets.length===1?e.markets[0]:null);
+          const dispMkt = mkt || (e.markets&&e.markets.length?e.markets.join(','):'Global');
+          const cssClass = MKT_CSS[mkt]||'mkt-global';
+          const cid = _cacheRaw({...e, _market:mkt||dispMkt});
+          chips += `<div class="chip ${cssClass}" onclick="_viewRaw('${esc(cid)}');event.stopPropagation();">
+            <span class="country-tag">${esc(dispMkt)}</span>${esc(e.title||'')}
+          </div>`;
         });
       }
 
