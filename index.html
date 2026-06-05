@@ -268,11 +268,12 @@ html, body {
 <!-- Top navigation -->
 <nav class="top-nav">
   <span class="top-nav-brand">BTV Planner</span>
-  <button class="top-nav-btn active" data-frame="cal" onclick="showFrame('cal')">Calendar</button>
+  <button class="top-nav-btn active" data-frame="cal" onclick="showFrame('cal')">BTV Calendar</button>
   <div id="calYearPicker" class="cal-year-picker">
     <button id="yearBtn2026" class="year-btn active-year" onclick="setCalYear('2026')">2026</button>
     <button id="yearBtn2027" class="year-btn" onclick="setCalYear('2027')">2027</button>
   </div>
+  <button class="top-nav-btn" data-frame="creative" onclick="showFrame('creative')">Creative Calendar</button>
   <button class="top-nav-btn" data-frame="ls" onclick="showFrame('ls')">Linesheet</button>
   <div class="nav-right">
     <div class="nav-online-wrap" id="navOnlineWrap" style="display:none">
@@ -293,6 +294,7 @@ html, body {
 <div class="frame-wrap">
   <iframe id="frame-cal-2026" class="frame active" title="Calendar 2026" data-src="./btv_calendar_linesheet_files/calendar.html" allow="downloads"></iframe>
   <iframe id="frame-cal-2027" class="frame" title="Calendar 2027" data-src="./btv_calendar_linesheet_files/calendar-2027.html" allow="downloads"></iframe>
+  <iframe id="frame-creative" class="frame" title="Creative Calendar" data-src="./btv_calendar_linesheet_files/creative-calendar.html" allow="downloads"></iframe>
   <iframe id="frame-ls" class="frame" title="Linesheet Manager" data-src="./btv_calendar_linesheet_files/linesheet.html" allow="downloads"></iframe>
 </div>
 
@@ -305,9 +307,10 @@ html, body {
     <div id="moduleChoiceStep">
       <div class="module-login-title">Welcome back</div>
       <div class="module-login-copy" style="margin-bottom:22px">Where would you like to go?</div>
-      <div style="display:flex;gap:12px">
-        <button style="flex:1;padding:14px;border:none;border-radius:11px;background:#111;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('cal')">Calendar</button>
-        <button style="flex:1;padding:14px;border:none;border-radius:11px;background:#444;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('ls')">Linesheet</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#111;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('cal')">BTV Calendar</button>
+        <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#3a3a3a;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('creative')">Creative Calendar</button>
+        <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#555;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('ls')">Linesheet</button>
       </div>
     </div>
 
@@ -396,7 +399,7 @@ html, body {
     window.BTV_SUPABASE_CONFIG.anonKey
   );
 
-  const MODULE_LABELS = { cal: 'Calendar', ls: 'Linesheet' };
+  const MODULE_LABELS = { cal: 'BTV Calendar', creative: 'Creative Calendar', ls: 'Linesheet' };
   let _currentModule = 'cal';
   let _moduleChosen = false;
   let _session = null;
@@ -553,6 +556,7 @@ html, body {
   function _startSyncInCalFrame(session) {
     _startSyncInFrame('frame-cal-2026', session);
     _startSyncInFrame('frame-cal-2027', session);
+    _startSyncInFrame('frame-creative', session);
     _startSyncInFrame('frame-ls', session);
   }
 
@@ -566,8 +570,9 @@ html, body {
       _setupPresence(session);
       _startSyncInCalFrame(session);
       // Auto-unlock accessible modules — no need to re-enter credentials if session exists
-      if (_canAccess('cal')) _setUnlocked('cal');
-      if (_canAccess('ls'))  _setUnlocked('ls');
+      if (_canAccess('cal'))      _setUnlocked('cal');
+      if (_canAccess('creative')) _setUnlocked('creative');
+      if (_canAccess('ls'))       _setUnlocked('ls');
     }
 
     _sb.auth.onAuthStateChange(async function (event, session) {
@@ -618,8 +623,8 @@ html, body {
 
   function _canAccess(mod) {
     if (!_profile) return true; // no profile yet → authenticated users get through
-    const field = mod === 'cal' ? _profile.can_access_cal : _profile.can_access_ls;
-    return field !== false; // only block when explicitly set to false
+    if (mod === 'cal' || mod === 'creative') return _profile.can_access_cal !== false;
+    return _profile.can_access_ls !== false;
   }
 
   function _refreshOverlay() {
@@ -709,8 +714,9 @@ html, body {
       }
       _setUnlocked(_currentModule);
       // Unlock all permitted modules so the user never re-enters credentials when switching tabs
-      if (_canAccess('cal')) _setUnlocked('cal');
-      if (_canAccess('ls'))  _setUnlocked('ls');
+      if (_canAccess('cal'))      _setUnlocked('cal');
+      if (_canAccess('creative')) _setUnlocked('creative');
+      if (_canAccess('ls'))       _setUnlocked('ls');
       document.getElementById('moduleLoginOverlay').classList.remove('show');
       showFrame(_currentModule);
       _startSyncInCalFrame(data.session);
@@ -765,7 +771,7 @@ html, body {
     document.querySelectorAll('.frame').forEach(function (el) { el.classList.remove('active'); });
     document.querySelectorAll('.top-nav-btn').forEach(function (el) { el.classList.remove('active'); });
 
-    // Show year picker only when Calendar tab is active
+    // Show year picker only when BTV Calendar tab is active
     var picker = document.getElementById('calYearPicker');
     if (picker) picker.style.display = name === 'cal' ? 'flex' : 'none';
 
@@ -779,7 +785,7 @@ html, body {
       try { lf.contentWindow.loadFromCalendar && lf.contentWindow.loadFromCalendar(); } catch (e) {}
     }
     if (_isUnlocked(name) && frame) {
-      var pc = name === 'cal' ? _calPasscode(_calYear) : ((window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026');
+      var pc = (name === 'cal') ? _calPasscode(_calYear) : ((window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026');
       _bypassFramePasscode(frame, pc);
     }
     if (!_isUnlocked(name)) {

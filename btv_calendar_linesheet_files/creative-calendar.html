@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creative Calendar 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-config.js"></script>
+<script src="../js/supabase-sync.js"></script>
+<style>
+:root {
+  --bg: #f7f6f3;
+  --panel: #ffffff;
+  --grid: #e0ddd8;
+  --text: #111111;
+  --muted: #787470;
+  --accent: #111;
+  --btn: #f0efed;
+  --radius: 12px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; overflow: hidden; }
+
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── Top bar ── */
+.topbar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--grid);
+  position: relative; z-index: 20;
+}
+.page-title { font-size: 13px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--text); margin-right: 8px; }
+.page-sub { font-size: 11px; color: var(--muted); }
+
+/* ── Sub-tabs ── */
+.tab-bar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 16px 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--grid);
+  overflow-x: auto;
+}
+.tab-btn {
+  padding: 7px 16px; border: none; background: transparent;
+  font: inherit; font-size: 11.5px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+  cursor: pointer; border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, background .15s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text); background: #f5f4f1; }
+.tab-btn.active { color: var(--text); border-bottom-color: var(--text); background: #f5f4f1; }
+.tab-btn.global-tab.active { border-bottom-color: #c43030; color: #c43030; }
+
+/* ── View panels ── */
+.view-panels { flex: 1; overflow: hidden; position: relative; }
+.view-panel { display: none; height: 100%; flex-direction: column; overflow: hidden; }
+.view-panel.active { display: flex; }
+
+/* ── Market view toolbar ── */
+.mkt-toolbar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--grid);
+}
+.mkt-toolbar h2 { font-size: 14px; font-weight: 700; }
+.mkt-toolbar .sub { font-size: 11px; color: var(--muted); margin-left: 6px; }
+.add-btn {
+  margin-left: auto;
+  padding: 8px 16px; border: none; border-radius: 9px;
+  background: var(--text); color: #fff;
+  font: inherit; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .05em; cursor: pointer;
+  transition: background .15s;
+}
+.add-btn:hover { background: #333; }
+
+/* ── Table wrapper ── */
+.table-scroll {
+  flex: 1; overflow: auto;
+}
+.cal-table {
+  border-collapse: separate; border-spacing: 0;
+  width: max-content; min-width: 100%;
+}
+.cal-table thead th {
+  position: sticky; top: 0; z-index: 10;
+  background: #fafaf8;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); text-align: center;
+  padding: 8px 5px 6px;
+  border-bottom: 2px solid var(--grid);
+  border-right: 1px solid var(--grid);
+  min-width: 90px; max-width: 90px; width: 90px;
+}
+.cal-table thead th.row-head {
+  position: sticky; top: 0; left: 0; z-index: 15;
+  text-align: left; padding: 8px 12px;
+  min-width: 160px; max-width: 160px; width: 160px;
+  background: #fafaf8;
+}
+.cal-table thead th .wk-range { font-size: 9px; font-weight: 400; color: #aaa; display: block; margin-top: 1px; }
+
+/* ── Row headers ── */
+.cal-table tbody td.row-head {
+  position: sticky; left: 0; z-index: 5;
+  background: #fafaf8;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); padding: 6px 12px;
+  border-right: 2px solid var(--grid);
+  border-bottom: 1px solid var(--grid);
+  white-space: nowrap;
+}
+.cal-table tbody td.row-head.market-group {
+  font-size: 11px; font-weight: 800; color: var(--text);
+  background: #f0efed; letter-spacing: .1em;
+  border-top: 2px solid var(--grid);
+}
+.cal-table tbody td.row-head.holiday-row { color: #c43030; background: #fdf6f5; }
+
+/* ── Data cells ── */
+.cal-table tbody td {
+  border-right: 1px solid var(--grid);
+  border-bottom: 1px solid var(--grid);
+  padding: 4px 5px;
+  vertical-align: top;
+  min-width: 90px; max-width: 90px; width: 90px;
+  cursor: pointer;
+  transition: background .1s;
+}
+.cal-table tbody td:hover { background: #f5f4f1; }
+.cal-table tbody td.readonly { cursor: default; }
+.cal-table tbody td.readonly:hover { background: transparent; }
+.cal-table tbody td.holiday-cell { background: #fdf6f5 !important; }
+.cal-table tbody td.holiday-cell:hover { background: #faeae8 !important; }
+
+/* ── Global view cells ── */
+.cal-table tbody td.group-header {
+  background: #f0efed;
+  border-top: 2px solid var(--grid);
+  cursor: default;
+}
+.cal-table tbody td.group-header:hover { background: #f0efed; }
+
+/* ── Entry chips ── */
+.chip {
+  display: block; margin: 2px 0;
+  padding: 2px 5px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; line-height: 1.3;
+  cursor: pointer; transition: opacity .1s;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 80px;
+}
+.chip:hover { opacity: .75; }
+.chip.status-not-started { background: #f0efed; color: #555; }
+.chip.status-in-progress { background: #e8f0fb; color: #2a5fcf; }
+.chip.status-in-review   { background: #fff3cd; color: #856404; }
+.chip.status-approved    { background: #d4edda; color: #1a6630; }
+.chip.status-delivered   { background: #111; color: #fff; }
+
+.add-chip {
+  display: block; margin: 2px 0;
+  padding: 2px 5px; border-radius: 4px;
+  font-size: 10px; color: #ccc; cursor: pointer;
+  text-align: center;
+}
+.add-chip:hover { color: #888; background: #eee; }
+
+/* ── Holiday chips ── */
+.holiday-chip {
+  display: block; margin: 2px 0;
+  padding: 2px 5px; border-radius: 4px;
+  font-size: 9.5px; font-weight: 600; line-height: 1.3;
+  background: #fde8e8; color: #c43030;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 80px;
+}
+
+/* ── Global read-only badge ── */
+.readonly-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: #c43030; background: #fde8e8; border: 1px solid #f5c6c6;
+  padding: 3px 10px; border-radius: 20px; margin-left: auto;
+}
+
+/* ── Modal overlay ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.38); align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-card {
+  background: #fff; border: 1px solid var(--grid); border-radius: 18px;
+  padding: 28px 26px 22px; width: 100%; max-width: 480px;
+  box-shadow: 0 8px 50px rgba(0,0,0,.16); position: relative;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+.modal-close {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; font-size: 22px; color: #aaa;
+  cursor: pointer; line-height: 1; padding: 2px;
+  transition: color .15s;
+}
+.modal-close:hover { color: var(--text); }
+
+.form-lbl {
+  display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 5px; margin-top: 14px;
+}
+.form-lbl:first-of-type { margin-top: 0; }
+.form-inp, .form-sel, .form-txt {
+  width: 100%; padding: 9px 12px;
+  border: 1.5px solid var(--grid); border-radius: 10px;
+  font: inherit; font-size: 13px; background: #fafaf9; color: var(--text);
+  outline: none; transition: border-color .15s;
+  -webkit-appearance: none;
+}
+.form-inp:focus, .form-sel:focus, .form-txt:focus { border-color: var(--text); background: #fff; }
+.form-txt { resize: vertical; min-height: 70px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-actions { display: flex; gap: 8px; margin-top: 18px; }
+.btn-primary {
+  flex: 1; padding: 10px; border: none; border-radius: 10px;
+  background: var(--text); color: #fff; font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.btn-primary:hover { background: #333; }
+.btn-ghost {
+  padding: 10px 18px; border: 1.5px solid var(--grid); border-radius: 10px;
+  background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: border-color .15s, color .15s;
+}
+.btn-ghost:hover { border-color: #999; color: var(--text); }
+.btn-danger {
+  padding: 10px 18px; border: 1.5px solid #f5c6c6; border-radius: 10px;
+  background: transparent; color: #c43030; font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+}
+.btn-danger:hover { background: #fde8e8; }
+
+/* ── Status dot in chips ── */
+.status-pill {
+  display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700;
+}
+.s-ns  { background: #f0efed; color: #555; }
+.s-ip  { background: #e8f0fb; color: #2a5fcf; }
+.s-ir  { background: #fff3cd; color: #856404; }
+.s-ap  { background: #d4edda; color: #1a6630; }
+.s-del { background: #111; color: #fff; }
+
+/* ── Global view ── */
+.global-info-bar {
+  flex-shrink: 0; padding: 10px 16px;
+  background: #fdf6f5; border-bottom: 1px solid #f5c6c6;
+  display: flex; align-items: center; gap: 10px;
+}
+.global-info-text { font-size: 11.5px; color: #c43030; font-weight: 600; }
+
+/* ── Empty state ── */
+.empty-cell { color: #ddd; font-size: 11px; text-align: center; padding: 4px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <span class="page-title">Creative Calendar</span>
+    <span class="page-sub">2026 — Beyond The Vines</span>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn global-tab active" id="tabGlobal" onclick="switchTab('global')">Global Marketing Calendar</button>
+    <button class="tab-btn" id="tabSG" onclick="switchTab('SG')">SG</button>
+    <button class="tab-btn" id="tabTH" onclick="switchTab('TH')">TH</button>
+    <button class="tab-btn" id="tabID" onclick="switchTab('ID')">ID</button>
+    <button class="tab-btn" id="tabPH" onclick="switchTab('PH')">PH</button>
+    <button class="tab-btn" id="tabJP" onclick="switchTab('JP')">JP</button>
+    <button class="tab-btn" id="tabCN" onclick="switchTab('CN')">CN</button>
+  </div>
+
+  <!-- View panels -->
+  <div class="view-panels">
+
+    <!-- Global (read-only consolidated) -->
+    <div class="view-panel active" id="panelGlobal">
+      <div class="global-info-bar">
+        <span class="global-info-text">Global Marketing Calendar</span>
+        <span class="readonly-badge">Read-Only · Consolidated View</span>
+      </div>
+      <div class="table-scroll">
+        <table class="cal-table" id="globalTable"><tbody id="globalTbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Per-market panels -->
+    <div class="view-panel" id="panelSG">
+      <div class="mkt-toolbar">
+        <div>
+          <h2>SG Marketing Calendar</h2>
+          <span class="sub">Singapore · Week-by-week creative planning</span>
+        </div>
+        <button class="add-btn" onclick="openAddModal('SG')">+ Add Entry</button>
+      </div>
+      <div class="table-scroll">
+        <table class="cal-table" id="tableSG"><thead id="theadSG"></thead><tbody id="tbodySG"></tbody></table>
+      </div>
+    </div>
+
+    <div class="view-panel" id="panelTH">
+      <div class="mkt-toolbar">
+        <div>
+          <h2>TH Marketing Calendar</h2>
+          <span class="sub">Thailand · Week-by-week creative planning</span>
+        </div>
+        <button class="add-btn" onclick="openAddModal('TH')">+ Add Entry</button>
+      </div>
+      <div class="table-scroll">
+        <table class="cal-table" id="tableTH"><thead id="theadTH"></thead><tbody id="tbodyTH"></tbody></table>
+      </div>
+    </div>
+
+    <div class="view-panel" id="panelID">
+      <div class="mkt-toolbar">
+        <div>
+          <h2>ID Marketing Calendar</h2>
+          <span class="sub">Indonesia · Week-by-week creative planning</span>
+        </div>
+        <button class="add-btn" onclick="openAddModal('ID')">+ Add Entry</button>
+      </div>
+      <div class="table-scroll">
+        <table class="cal-table" id="tableID"><thead id="theadID"></thead><tbody id="tbodyID"></tbody></table>
+      </div>
+    </div>
+
+    <div class="view-panel" id="panelPH">
+      <div class="mkt-toolbar">
+        <div>
+          <h2>PH Marketing Calendar</h2>
+          <span class="sub">Philippines · Week-by-week creative planning</span>
+        </div>
+        <button class="add-btn" onclick="openAddModal('PH')">+ Add Entry</button>
+      </div>
+      <div class="table-scroll">
+        <table class="cal-table" id="tablePH"><thead id="theadPH"></thead><tbody id="tbodyPH"></tbody></table>
+      </div>
+    </div>
+
+    <div class="view-panel" id="panelJP">
+      <div class="mkt-toolbar">
+        <div>
+          <h2>JP Marketing Calendar</h2>
+          <span class="sub">Japan · Week-by-week creative planning</span>
+        </div>
+        <button class="add-btn" onclick="openAddModal('JP')">+ Add Entry</button>
+      </div>
+      <div class="table-scroll">
+        <table class="cal-table" id="tableJP"><thead id="theadJP"></thead><tbody id="tbodyJP"></tbody></table>
+      </div>
+    </div>
+
+    <div class="view-panel" id="panelCN">
+      <div class="mkt-toolbar">
+        <div>
+          <h2>CN Marketing Calendar</h2>
+          <span class="sub">China · Week-by-week creative planning</span>
+        </div>
+        <button class="add-btn" onclick="openAddModal('CN')">+ Add Entry</button>
+      </div>
+      <div class="table-scroll">
+        <table class="cal-table" id="tableCN"><thead id="theadCN"></thead><tbody id="tbodyCN"></tbody></table>
+      </div>
+    </div>
+
+  </div><!-- end view-panels -->
+</div><!-- end app -->
+
+<!-- Add / Edit Entry Modal -->
+<div class="modal-overlay" id="entryModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal()" title="Close">&times;</button>
+    <div class="modal-title" id="modalTitle">Add Entry</div>
+    <div class="modal-sub" id="modalSub">Fill in the details for this creative entry.</div>
+
+    <label class="form-lbl" for="fTitle">Title / Campaign Name</label>
+    <input type="text" id="fTitle" class="form-inp" placeholder="e.g. CNY Campaign – Dragon Dance Reel">
+
+    <div class="form-row">
+      <div>
+        <label class="form-lbl" for="fMarket">Market</label>
+        <select id="fMarket" class="form-sel">
+          <option value="SG">SG — Singapore</option>
+          <option value="TH">TH — Thailand</option>
+          <option value="ID">ID — Indonesia</option>
+          <option value="PH">PH — Philippines</option>
+          <option value="JP">JP — Japan</option>
+          <option value="CN">CN — China</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-lbl" for="fWeek">Week</label>
+        <select id="fWeek" class="form-sel"></select>
+      </div>
+    </div>
+
+    <label class="form-lbl" for="fRow">Category / Channel</label>
+    <select id="fRow" class="form-sel" onchange="onRowChange()">
+      <option value="launch">Launch / Key Date (from BTV Calendar)</option>
+      <option value="key_moments">Key Moments &amp; Holidays</option>
+      <option value="brand_events">Brand Events</option>
+      <option value="retail_events">Retail Events</option>
+      <option value="digital">Digital Activations</option>
+      <option value="ig_grid">IG Grid</option>
+      <option value="ig_stories">IG Stories</option>
+      <option value="ig_tagons">IG Tag-ons / Marketing</option>
+      <option value="edm">EDM (Email)</option>
+      <option value="line">LINE</option>
+      <option value="red_xhs">RED / Xiaohongshu</option>
+      <option value="kol">KOL / Seeding</option>
+      <option value="gwp">GWP</option>
+      <option value="ads">Ads / Support</option>
+    </select>
+
+    <label class="form-lbl" for="fBrief">Content Brief / Notes</label>
+    <textarea id="fBrief" class="form-txt" placeholder="Describe the content concept, activation details, or key message…"></textarea>
+
+    <div class="form-row">
+      <div>
+        <label class="form-lbl" for="fOwner">Owner</label>
+        <input type="text" id="fOwner" class="form-inp" placeholder="e.g. Sarah / Marketing">
+      </div>
+      <div>
+        <label class="form-lbl" for="fStatus">Status</label>
+        <select id="fStatus" class="form-sel">
+          <option value="Not Started">Not Started</option>
+          <option value="In Progress">In Progress</option>
+          <option value="In Review">In Review</option>
+          <option value="Approved">Approved</option>
+          <option value="Delivered">Delivered</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="form-lbl" for="fLink">Reference Link (optional)</label>
+    <input type="text" id="fLink" class="form-inp" placeholder="https://…">
+
+    <div class="form-actions">
+      <button class="btn-primary" onclick="saveEntry()">Save</button>
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-danger" id="deleteBtn" style="display:none" onclick="deleteEntry()">Delete</button>
+    </div>
+    <div id="modalErr" style="font-size:12px;color:#c43030;margin-top:10px;min-height:0"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Constants ──────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'creative-cal-2026-v1';
+const MARKETS = ['SG','TH','ID','PH','JP','CN'];
+
+// All 53 weeks: Wk 1 starts Mon 29 Dec 2025
+const WEEKS = (function(){
+  const Mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const out = [];
+  // Start: Mon 29 Dec 2025
+  let d = new Date(2025, 11, 29);
+  for(let n = 1; n <= 53; n++){
+    const s = new Date(d);
+    const e = new Date(d); e.setDate(e.getDate()+6);
+    let range;
+    if(s.getMonth() === e.getMonth()){
+      range = s.getDate() + '–' + e.getDate() + ' ' + Mo[s.getMonth()];
+    } else {
+      range = s.getDate() + ' ' + Mo[s.getMonth()] + ' – ' + e.getDate() + ' ' + Mo[e.getMonth()];
+    }
+    out.push({ n, range });
+    d.setDate(d.getDate()+7);
+  }
+  return out;
+})();
+
+// Rows per market
+const BASE_ROWS = [
+  { key:'launch',        label:'Launch / Key Date',         auto: true },
+  { key:'key_moments',   label:'Key Moments & Holidays',    holiday: true },
+  { key:'brand_events',  label:'Brand Events' },
+  { key:'retail_events', label:'Retail Events' },
+  { key:'digital',       label:'Digital Activations' },
+  { key:'ig_grid',       label:'IG Grid' },
+  { key:'ig_stories',    label:'IG Stories' },
+  { key:'ig_tagons',     label:'IG Tag-ons / Marketing' },
+  { key:'edm',           label:'EDM' },
+  { key:'kol',           label:'KOL / Seeding' },
+  { key:'gwp',           label:'GWP' },
+  { key:'ads',           label:'Ads / Support' },
+];
+// TH gets LINE after EDM, CN gets RED/XHS after EDM
+function getRows(market){
+  const rows = [...BASE_ROWS];
+  if(market === 'TH'){
+    const idx = rows.findIndex(r=>r.key==='kol');
+    rows.splice(idx, 0, { key:'line', label:'LINE' });
+  }
+  if(market === 'CN'){
+    const idx = rows.findIndex(r=>r.key==='kol');
+    rows.splice(idx, 0, { key:'red_xhs', label:'RED / Xiaohongshu' });
+  }
+  return rows;
+}
+
+// Per-market public holidays / key dates (week number → label)
+const HOLIDAYS = {
+  SG: { 1:'New Year\'s Day', 5:'Chinese New Year (29–30 Jan)', 14:'Hari Raya Puasa / Good Friday', 18:'Labour Day', 21:'Vesak Day', 23:'Hari Raya Haji', 32:'National Day (9 Aug)', 43:'Deepavali', 52:'Christmas' },
+  TH: { 1:'New Year\'s Day', 15:'Songkran (13–15 Apr)', 18:'Labour Day / Coronation Day', 22:'Visakha Bucha', 31:'King\'s Birthday (28 Jul)', 33:'Mother\'s Day (12 Aug)', 41:'Memorial Day (13 Oct)', 43:'Chulalongkorn Day (23 Oct)', 49:'Father\'s Day (5 Dec)', 50:'Constitution Day (10 Dec)' },
+  ID: { 1:'New Year\'s Day', 5:'Chinese New Year', 14:'Hari Raya Idul Fitri / Good Friday', 18:'Labour Day', 34:'Independence Day (17 Aug)', 40:'Maulid Nabi', 52:'Christmas' },
+  PH: { 1:'New Year\'s Day', 5:'Chinese New Year', 14:'Holy Week (Maundy Thu / Good Fri)', 18:'Labour Day', 24:'Independence Day (12 Jun)', 34:'Ninoy Aquino Day (21 Aug)', 35:'National Heroes Day (31 Aug)', 44:'All Saints\' Day (1 Nov)', 48:'Bonifacio Day (30 Nov)', 52:'Christmas' },
+  JP: { 1:'New Year Holidays', 3:'Coming of Age Day (12 Jan)', 7:'National Foundation Day (11 Feb)', 9:'Emperor\'s Birthday (23 Feb)', 12:'Vernal Equinox (20 Mar)', 18:'Golden Week (29 Apr–6 May)', 19:'Golden Week', 29:'Marine Day (20 Jul)', 32:'Mountain Day (11 Aug)', 39:'Respect for the Aged / Autumnal Equinox', 41:'Sports Day (12 Oct)', 44:'Culture Day (3 Nov)', 47:'Labour Thanksgiving Day (23 Nov)' },
+  CN: { 1:'New Year\'s Day', 5:'Spring Festival / CNY (29 Jan)', 6:'CNY Golden Week', 14:'Qingming Festival (4–6 Apr)', 18:'Labour Day Golden Week (1–5 May)', 25:'Dragon Boat Festival (19 Jun)', 40:'National Day Golden Week (1–7 Oct)', 41:'National Day Golden Week' },
+};
+
+// Row color coding (for chips)
+const ROW_COLORS = {
+  launch:        'status-approved',
+  key_moments:   'status-in-review',
+  brand_events:  'status-in-progress',
+  retail_events: 'status-in-progress',
+  digital:       '',
+  ig_grid:       '',
+  ig_stories:    '',
+  ig_tagons:     '',
+  edm:           '',
+  line:          '',
+  red_xhs:       '',
+  kol:           '',
+  gwp:           '',
+  ads:           '',
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+let state = loadState();
+let currentTab = 'global';
+let modalEntry = null; // null = new, object = editing
+
+// ── Persistence ────────────────────────────────────────────────────────────
+
+function loadState(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+}
+
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function getMarketEntries(market){
+  return state[market] || [];
+}
+
+function getCellEntries(market, rowKey, week){
+  return getMarketEntries(market).filter(e => e.row === rowKey && e.week === week);
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+
+function switchTab(name){
+  currentTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  const btn = document.getElementById('tab' + (name === 'global' ? 'Global' : name));
+  const panel = document.getElementById('panel' + (name === 'global' ? 'Global' : name));
+  if(btn) btn.classList.add('active');
+  if(panel) panel.classList.add('active');
+  if(name !== 'global') renderMarket(name);
+  else renderGlobal();
+}
+
+// ── Render helpers ─────────────────────────────────────────────────────────
+
+function esc(v){ return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function statusClass(status){
+  const map = { 'Not Started':'status-not-started','In Progress':'status-in-progress','In Review':'status-in-review','Approved':'status-approved','Delivered':'status-delivered' };
+  return map[status] || 'status-not-started';
+}
+
+function buildWeekThead(marketId){
+  let th = `<tr><th class="row-head">Category</th>`;
+  WEEKS.forEach(w => {
+    th += `<th>Wk ${w.n}<span class="wk-range">${w.range}</span></th>`;
+  });
+  th += `</tr>`;
+  return th;
+}
+
+// ── Render per-market ──────────────────────────────────────────────────────
+
+function renderMarket(market){
+  const theadEl = document.getElementById('thead' + market);
+  const tbodyEl = document.getElementById('tbody' + market);
+  if(!theadEl || !tbodyEl) return;
+
+  theadEl.innerHTML = buildWeekThead(market);
+
+  const rows = getRows(market);
+  const holidays = HOLIDAYS[market] || {};
+  let html = '';
+
+  rows.forEach(row => {
+    const isHoliday = row.holiday;
+    const isAuto = row.auto;
+    const rowClass = isHoliday ? 'row-head holiday-row' : 'row-head';
+    html += `<tr>`;
+    html += `<td class="${rowClass}">${esc(row.label)}</td>`;
+
+    WEEKS.forEach(w => {
+      const hol = holidays[w.n];
+      let cellClass = '';
+      let cellContent = '';
+
+      if(isHoliday && hol){
+        cellClass = 'holiday-cell readonly';
+        cellContent = `<span class="holiday-chip">${esc(hol)}</span>`;
+      } else if(isAuto){
+        // Pull from BTV Calendar marketing state
+        const btvEntries = getBtvCalEntries(market, w.n);
+        cellClass = 'readonly';
+        if(btvEntries.length){
+          cellContent = btvEntries.map(e => `<span class="chip status-approved" title="${esc(e.title)}">${esc(e.title)}</span>`).join('');
+        }
+      } else {
+        const entries = getCellEntries(market, row.key, w.n);
+        const cellData = `data-market="${esc(market)}" data-row="${esc(row.key)}" data-week="${w.n}"`;
+        if(entries.length){
+          cellContent = entries.map(e =>
+            `<span class="chip ${statusClass(e.status)}" onclick="openEditModal('${esc(e.id)}','${esc(market)}'); event.stopPropagation();" title="${esc(e.title)}">${esc(e.title)}</span>`
+          ).join('');
+          cellContent += `<span class="add-chip" onclick="openAddModal('${esc(market)}','${esc(row.key)}',${w.n}); event.stopPropagation();">+</span>`;
+        }
+        html += `<td ${cellData} onclick="openAddModal('${esc(market)}','${esc(row.key)}',${w.n})" title="Add entry">${cellContent}</td>`;
+        html += '';
+        return; // skip closing td below
+      }
+
+      html += `<td class="${cellClass}">${cellContent}</td>`;
+    });
+    html += `</tr>`;
+  });
+
+  tbodyEl.innerHTML = html;
+}
+
+// Pull BTV Calendar market marketing entries for a given market + week
+function getBtvCalEntries(market, weekNum){
+  try {
+    const raw = localStorage.getItem('calendar-2026-marketing-workflow-v1');
+    if(!raw) return [];
+    const data = JSON.parse(raw);
+    const entries = data[market] || [];
+    // weekId in BTV cal is a date string; map to week number
+    return entries.filter(e => {
+      if(!e.weekId) return false;
+      const wn = dateStringToWeekNum(e.weekId);
+      return wn === weekNum && (e.status === 'published' || e.row === 'Week / Launch Title / Launch Date');
+    }).slice(0, 3);
+  } catch { return []; }
+}
+
+// Convert BTV calendar weekId (YYYY-MM-DD) to week number 1-53
+function dateStringToWeekNum(dateStr){
+  // Week 1 starts 2025-12-29
+  const wk1 = new Date(2025, 11, 29);
+  const d = new Date(dateStr + 'T00:00:00');
+  if(isNaN(d)) return 0;
+  const diff = Math.floor((d - wk1) / (7 * 24 * 3600 * 1000));
+  return diff + 1;
+}
+
+// ── Render global (read-only consolidated) ────────────────────────────────
+
+function renderGlobal(){
+  const tbody = document.getElementById('globalTbody');
+  if(!tbody) return;
+
+  // Build thead
+  const table = document.getElementById('globalTable');
+  let theadHtml = `<thead><tr><th class="row-head">Market / Row</th>`;
+  WEEKS.forEach(w => {
+    theadHtml += `<th>Wk ${w.n}<span class="wk-range">${w.range}</span></th>`;
+  });
+  theadHtml += `</tr></thead>`;
+  // Insert thead before tbody
+  const existing = table.querySelector('thead');
+  if(existing) existing.remove();
+  table.insertAdjacentHTML('afterbegin', theadHtml);
+
+  // Summary rows: per market, 3 condensed rows
+  const GLOBAL_ROWS = [
+    { key:'launch_km',   label:'Launches & Key Moments', srcKeys:['launch','key_moments'] },
+    { key:'activations', label:'Activations',            srcKeys:['brand_events','retail_events','digital','gwp','ads'] },
+    { key:'social',      label:'Social / Content',       srcKeys:['ig_grid','ig_stories','ig_tagons','edm','line','red_xhs','kol'] },
+  ];
+
+  let html = '';
+  MARKETS.forEach(mkt => {
+    const holidays = HOLIDAYS[mkt] || {};
+    // Market group header row
+    html += `<tr><td class="row-head market-group" colspan="${WEEKS.length + 1}">${mkt}</td></tr>`;
+
+    GLOBAL_ROWS.forEach(gRow => {
+      html += `<tr><td class="row-head">${esc(gRow.label)}</td>`;
+      WEEKS.forEach(w => {
+        const hol = holidays[w.n];
+        let chips = '';
+
+        // Holiday chip on launch_km row
+        if(gRow.key === 'launch_km' && hol){
+          chips += `<span class="holiday-chip">${esc(hol)}</span>`;
+        }
+        // BTV Calendar entries on launch row
+        if(gRow.srcKeys.includes('launch')){
+          getBtvCalEntries(mkt, w.n).forEach(e => {
+            chips += `<span class="chip status-approved" title="${esc(e.title)}">${esc(e.title)}</span>`;
+          });
+        }
+        // Creative calendar entries for source rows
+        gRow.srcKeys.filter(k=>k!=='launch').forEach(rowKey => {
+          getCellEntries(mkt, rowKey, w.n).forEach(e => {
+            chips += `<span class="chip ${statusClass(e.status)}" title="${esc(e.title)}">${esc(e.title)}</span>`;
+          });
+        });
+
+        html += `<td class="readonly${hol && gRow.key==='launch_km' ? ' holiday-cell' : ''}">${chips || ''}</td>`;
+      });
+      html += `</tr>`;
+    });
+  });
+
+  tbody.innerHTML = html;
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+
+function buildWeekOptions(selectedWeek){
+  return WEEKS.map(w => `<option value="${w.n}"${w.n === selectedWeek ? ' selected' : ''}>Wk ${w.n} — ${w.range}</option>`).join('');
+}
+
+function openAddModal(market, rowKey, week){
+  modalEntry = null;
+  document.getElementById('modalTitle').textContent = 'Add Creative Entry';
+  document.getElementById('modalSub').textContent = `${market} · ${rowKey ? rowKey.replace(/_/g,' ') : ''} · Wk ${week || ''}`;
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fMarket').value = market || 'SG';
+  document.getElementById('fWeek').innerHTML = buildWeekOptions(week || 1);
+  document.getElementById('fRow').value = rowKey || 'brand_events';
+  document.getElementById('fBrief').value = '';
+  document.getElementById('fOwner').value = '';
+  document.getElementById('fStatus').value = 'Not Started';
+  document.getElementById('fLink').value = '';
+  document.getElementById('deleteBtn').style.display = 'none';
+  document.getElementById('modalErr').textContent = '';
+  document.getElementById('entryModal').classList.add('show');
+  setTimeout(() => document.getElementById('fTitle').focus(), 60);
+}
+
+function openEditModal(id, market){
+  const entries = getMarketEntries(market);
+  const entry = entries.find(e => e.id === id);
+  if(!entry) return;
+  modalEntry = entry;
+  document.getElementById('modalTitle').textContent = 'Edit Entry';
+  document.getElementById('modalSub').textContent = `${entry.market} · ${entry.row.replace(/_/g,' ')} · Wk ${entry.week}`;
+  document.getElementById('fTitle').value = entry.title || '';
+  document.getElementById('fMarket').value = entry.market;
+  document.getElementById('fWeek').innerHTML = buildWeekOptions(entry.week);
+  document.getElementById('fRow').value = entry.row;
+  document.getElementById('fBrief').value = entry.brief || '';
+  document.getElementById('fOwner').value = entry.owner || '';
+  document.getElementById('fStatus').value = entry.status || 'Not Started';
+  document.getElementById('fLink').value = entry.link || '';
+  document.getElementById('deleteBtn').style.display = '';
+  document.getElementById('modalErr').textContent = '';
+  document.getElementById('entryModal').classList.add('show');
+  setTimeout(() => document.getElementById('fTitle').focus(), 60);
+}
+
+function closeModal(){
+  document.getElementById('entryModal').classList.remove('show');
+  modalEntry = null;
+}
+
+function onRowChange(){
+  // Could dynamically show/hide channel-specific fields in future
+}
+
+function saveEntry(){
+  const title  = document.getElementById('fTitle').value.trim();
+  const market = document.getElementById('fMarket').value;
+  const week   = parseInt(document.getElementById('fWeek').value);
+  const row    = document.getElementById('fRow').value;
+  const brief  = document.getElementById('fBrief').value.trim();
+  const owner  = document.getElementById('fOwner').value.trim();
+  const status = document.getElementById('fStatus').value;
+  const link   = document.getElementById('fLink').value.trim();
+  const errEl  = document.getElementById('modalErr');
+
+  if(!title){ errEl.textContent = 'Please enter a title.'; return; }
+
+  if(modalEntry){
+    // Edit existing
+    modalEntry.title  = title;
+    modalEntry.market = market;
+    modalEntry.week   = week;
+    modalEntry.row    = row;
+    modalEntry.brief  = brief;
+    modalEntry.owner  = owner;
+    modalEntry.status = status;
+    modalEntry.link   = link;
+    modalEntry.updated = new Date().toISOString();
+  } else {
+    // New entry
+    state[market] = state[market] || [];
+    state[market].unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      market, week, row, title, brief, owner, status, link,
+      created: new Date().toISOString(),
+      updated: new Date().toISOString(),
+    });
+  }
+
+  saveState();
+  closeModal();
+  renderCurrent();
+}
+
+function deleteEntry(){
+  if(!modalEntry) return;
+  if(!confirm('Delete this entry?')) return;
+  const mkt = modalEntry.market;
+  state[mkt] = (state[mkt] || []).filter(e => e.id !== modalEntry.id);
+  saveState();
+  closeModal();
+  renderCurrent();
+}
+
+function renderCurrent(){
+  if(currentTab === 'global') renderGlobal();
+  else renderMarket(currentTab);
+}
+
+// ── Keyboard shortcut ──────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') closeModal();
+});
+
+// ── Supabase sync hooks ────────────────────────────────────────────────────
+
+window.btvRender = function(){
+  state = loadState();
+  renderCurrent();
+};
+
+window.btvSyncStorageKey = STORAGE_KEY;
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+(function init(){
+  // Populate week select once (will be repopulated on openAddModal)
+  document.getElementById('fWeek').innerHTML = buildWeekOptions(1);
+  renderGlobal();
+})();
+</script>
+</body>
+</html>
