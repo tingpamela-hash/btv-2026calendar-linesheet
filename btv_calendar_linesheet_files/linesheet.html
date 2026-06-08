@@ -18608,46 +18608,6 @@ window.btvReloadAndRender = function() {
     await _ch.track({ email: _email, item: _item, field: _field, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now() });
   };
 
-  // ── Online bar: avatars of who else is in this tab ────────────────────────
-
-  function _renderOnlineBar() {
-    var users = window.btvGetOnlineUsers();
-    var bar   = document.getElementById('btv-ls-online-bar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'btv-ls-online-bar';
-      bar.style.cssText = 'position:fixed;top:10px;right:14px;z-index:9990;display:flex;gap:5px;align-items:center;pointer-events:none';
-      document.body.appendChild(bar);
-    }
-    bar.innerHTML = '';
-    if (!users.length) return;
-    var lbl = document.createElement('span');
-    lbl.style.cssText = 'font-size:9px;font-weight:700;color:#999;letter-spacing:.08em;font-family:Helvetica,sans-serif;text-transform:uppercase;margin-right:2px';
-    lbl.textContent   = 'Online';
-    bar.appendChild(lbl);
-    users.forEach(function (u) {
-      var chip     = document.createElement('div');
-      var initials = (u.email || '??').split('@')[0].substring(0, 2).toUpperCase();
-      chip.style.cssText = [
-        'width:26px;height:26px;border-radius:50%;',
-        'background:' + _btvEmailColor(u.email) + ';color:#fff;',
-        'font-size:10px;font-weight:700;display:flex;align-items:center;',
-        'justify-content:center;font-family:Helvetica,sans-serif;',
-        'border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);',
-        'position:relative;pointer-events:auto;cursor:default;',
-      ].join('');
-      chip.title     = u.email + (u.item ? ' — editing a product' : ' — browsing');
-      chip.textContent = initials;
-      if (u.item) {
-        var dot = document.createElement('div');
-        dot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;background:#22c55e;border-radius:50%;border:1.5px solid #fff';
-        chip.appendChild(dot);
-      }
-      bar.appendChild(chip);
-    });
-  }
-
-  window.addEventListener('btv-presence-changed', _renderOnlineBar);
 
   // ── Diagnosis helper (call window.btvDiagnosePresence() in DevTools) ─────
 
