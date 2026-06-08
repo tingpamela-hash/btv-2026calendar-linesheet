@@ -18297,20 +18297,24 @@ window.addEventListener('btv-presence-changed', function() {
 
   // Presence-layer sync: when a peer leaves a field, apply their typed value to our form
   // so we see what they wrote even before they click Save
+  console.log('[BTV SYNC] presence-changed: gid=' + _gid + ' dirty=' + _btvFormDirty + ' users=' + JSON.stringify(_onlineUsers.map(function(u){return{email:u.email,item:u.item,field:u.field,lastField:u.lastField};})));
   if (_gid && !_btvFormDirty) {
     var _piid = 'ls::group::' + _gid;
     _onlineUsers.forEach(function(u) {
-      if (u.item !== _piid) return;
-      if (!u.lastField || !u.lastField.key) return;
-      if (_appliedLastFields[u.email] === u.lastField.ts) return; // already applied this update
+      if (u.item !== _piid) { console.log('[BTV SYNC] skip item mismatch:', u.item, '!=', _piid); return; }
+      if (!u.lastField || !u.lastField.key) { console.log('[BTV SYNC] skip no lastField for', u.email); return; }
+      if (_appliedLastFields[u.email] === u.lastField.ts) { console.log('[BTV SYNC] skip already applied ts=' + u.lastField.ts); return; }
       var pfk = u.lastField.key;
       var pel = document.querySelector('#view-form [data-field-key="' + pfk + '"]');
+      console.log('[BTV SYNC] will apply:', pfk, '=', u.lastField.val, 'el found=', !!pel, 'focused=', document.activeElement === pel);
       if (pel && document.activeElement !== pel && pel.type !== 'hidden') {
         pel.value = u.lastField.val;
         _appliedLastFields[u.email] = u.lastField.ts;
-        console.log('[BTV LS] Applied peer field update:', pfk, '=', u.lastField.val, 'from', u.email);
+        console.log('[BTV SYNC] Applied peer field update:', pfk, '=', u.lastField.val, 'from', u.email);
       }
     });
+  } else {
+    console.log('[BTV SYNC] skipping lastField apply: gid=' + _gid + ' dirty=' + _btvFormDirty);
   }
 
   _btvLsUpdateColabBar(_onlineUsers);
@@ -18693,6 +18697,9 @@ window.btvReloadAndRender = function() {
       var leftEl = document.querySelector('#view-form [data-field-key="' + prevField + '"]');
       if (leftEl && leftEl.type !== 'hidden') {
         _lastField = { key: prevField, val: leftEl.value, ts: Date.now() };
+        console.log('[BTV LS] btvTrackField captured lastField:', JSON.stringify(_lastField));
+      } else {
+        console.log('[BTV LS] btvTrackField: leftEl NOT FOUND for prevField=' + prevField);
       }
     }
     if (groupId) window._btvCurrentLaunchItem = _btvLsGetCalendarLaunchItem(groupId);
