@@ -18368,8 +18368,10 @@ function _btvLsApplyFieldLocks(groupId) {
   var itemId = 'ls::group::' + groupId;
   var fieldHolders = {};
   allUsers.forEach(function(u) { if (u.item === itemId && u.field) fieldHolders[u.field] = u.email; });
-  if (Object.keys(fieldHolders).length) console.log('[BTV LS] Field locks active:', fieldHolders);
-  document.querySelectorAll('#view-form [data-field-key]').forEach(function(el) {
+  console.log('[BTV FL] applyFieldLocks gid=' + groupId + ' itemId=' + itemId + ' allUsers=' + JSON.stringify(allUsers.map(function(u){return{email:u.email,item:u.item,field:u.field};})) + ' fieldHolders=' + JSON.stringify(fieldHolders));
+  var formEls = document.querySelectorAll('#view-form [data-field-key]');
+  console.log('[BTV FL] #view-form [data-field-key] found ' + formEls.length + ' elements');
+  formEls.forEach(function(el) {
     if (el.type === 'hidden') return;
     var fk = el.dataset.fieldKey;
     var holder = fieldHolders[fk];
@@ -18381,6 +18383,7 @@ function _btvLsApplyFieldLocks(groupId) {
         el.style.outline = '2px solid #ef4444';
         el.title = '⚠️ ' + holder.split('@')[0] + ' is also editing this field';
       } else {
+        console.log('[BTV FL] LOCKING field ' + fk + ' for holder ' + holder);
         el.disabled = true;
         el.style.outline = '2px solid #e6a817';
         el.title = '🔒 ' + holder.split('@')[0] + ' is editing this field';
@@ -18469,32 +18472,29 @@ window.addEventListener('beforeunload', function(e) {
 });
 
 // Called by supabase-sync.js when a remote change arrives in this iframe.
-// If the product form has unsaved changes, skip re-rendering to protect them.
+// If the product form has unsaved changes, or is currently open, skip re-rendering
+// to avoid disrupting the editing session.
 window.btvReloadAndRender = function() {
   try {
     var raw = localStorage.getItem('btv_product_data');
     _btvProductData = raw ? JSON.parse(raw) : [];
   } catch(e) {}
-  if (_btvFormDirty) {
+
+  var formOpen = !!(window._btvCurrentGroupId || editingGroupId);
+
+  if (_btvFormDirty || formOpen) {
     window._btvLsSkippedRemoteWhileDirty = true;
-    // Don't blow away the user's in-progress edits — just refresh dashboard
-    if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
-    // Show a toast so the user knows a sync happened but their edits are safe
-    if (typeof showBtvSyncToast === 'function') showBtvSyncToast('Live update received — save your changes first to sync.');
-    else {
-      var _t = document.getElementById('btv-sync-toast-ls');
-      if (!_t) { _t = document.createElement('div'); _t.id = 'btv-sync-toast-ls'; _t.style.cssText = 'position:fixed;bottom:70px;right:20px;z-index:9999;background:#222;color:#fff;border-radius:10px;padding:10px 16px;font-size:12px;font-weight:500;pointer-events:none;opacity:0;transition:opacity .3s'; document.body.appendChild(_t); }
-      _t.textContent = 'Live update received — save your changes first.';
-      _t.style.opacity = '1';
-      clearTimeout(_t._tmr);
-      _t._tmr = setTimeout(function() { _t.style.opacity = '0'; }, 4000);
-    }
+    // Silently update background data only — do not re-render or toast while editing
+    try {
+      var _rr = localStorage.getItem('btv_linesheet_products');
+      if (_rr) products = JSON.parse(_rr);
+    } catch(e) {}
     return;
   }
-  // Reload saved enriched products before merging with calendar data
+  // No product open — safe to fully re-render
   try {
-    var _rr = localStorage.getItem('btv_linesheet_products');
-    if (_rr) products = JSON.parse(_rr);
+    var _rr2 = localStorage.getItem('btv_linesheet_products');
+    if (_rr2) products = JSON.parse(_rr2);
   } catch(e) {}
   if (typeof loadFromCalendar === 'function') loadFromCalendar(false);
   if (document.getElementById('changeLogList') && typeof renderDashboard === 'function') renderDashboard();
