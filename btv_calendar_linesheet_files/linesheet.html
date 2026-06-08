@@ -18534,6 +18534,7 @@ window.btvReloadAndRender = function() {
   // ── Init ────────────────────────────────────────────────────────────────
 
   window.btvLsPresenceInit = async function (session) {
+    console.log('[BTV LS] btvLsPresenceInit called, _ch already=', !!_ch, 'user=', session && session.user && session.user.email);
     if (_ch) return; // already running
     _uid   = session.user.id;
     _email = session.user.email || '';
@@ -18609,9 +18610,11 @@ window.btvReloadAndRender = function() {
   };
 
   window.btvSetEditing = async function (itemId) {
+    console.log('[BTV LS] btvSetEditing called, _ch=', !!_ch, 'itemId=', itemId);
     if (!_ch) return;
     _item  = itemId; _field = null;
     await _ch.track({ email: _email, item: itemId, field: null, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now() });
+    console.log('[BTV LS] btvSetEditing tracked OK');
   };
 
   window.btvClearEditing = async function () {
@@ -18623,6 +18626,7 @@ window.btvReloadAndRender = function() {
   };
 
   window.btvTrackField = async function (groupId, fieldKey) {
+    console.log('[BTV LS] btvTrackField called, groupId=', groupId, 'field=', fieldKey, '_ch=', !!_ch);
     if (!_ch) return;
     _item  = groupId ? 'ls::group::' + groupId : null;
     _field = fieldKey || null;
