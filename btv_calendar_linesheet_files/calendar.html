@@ -12504,9 +12504,11 @@ function btvExportCalendarXLS() {
   var year = yearTag ? yearTag[1] : 'BTV';
   var weeks = currentWeeks();
 
+  // Section colours — matches the calendar view
   var SEC_BG = { global:'#d4d4d4', china:'#c47800', sea:'#c43030', nea:'#4a8eb5', restocks:'#7a5a35', events:'#edecea', store_openings:'#d4d4d4' };
   var SEC_FG = { global:'#2d2d2d', china:'#ffffff', sea:'#ffffff', nea:'#ffffff', restocks:'#ffffff', events:'#2d2d2d', store_openings:'#2d2d2d' };
 
+  // XML-escape and convert newlines to Excel line-break character
   function xs(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'&#10;'); }
 
   function fd(iso) {
@@ -12523,27 +12525,35 @@ function btvExportCalendarXLS() {
       (entry.lines || []).forEach(function(ln) {
         if (!ln.productName && !ln.category) return;
         var parts = [ln.category, ln.productName, ln.price ? '$'+ln.price : ''].filter(Boolean);
-        lines.push('  ' + parts.join(' | ') + (ln.colour ? '\n  ' + ln.colour : '') + (ln.size ? '\n  ' + ln.size : ''));
+        var row = '  ' + parts.join('  |  ');
+        if (ln.colour) row += '\n  Colour: ' + ln.colour;
+        if (ln.size)   row += '\n  Size: '   + ln.size;
+        lines.push(row);
       });
     } else if (sec === 'nea' || sec === 'sea') {
-      lines.push((entry.optionType ? entry.optionType + ': ' : '') + (entry.productTitle || entry.launchTitle || '') + draft);
+      var title = (entry.optionType ? entry.optionType + ': ' : '') + (entry.productTitle || entry.launchTitle || '');
+      lines.push(title + draft);
       if (entry.colour) lines.push('Colour: ' + entry.colour);
       var mkts = entry.allMarkets ? (sec==='nea'?'CN, JP':'SG, TH, ID, PH') : (entry.countries||[]).join(', ');
-      if (mkts) lines.push('Mkt: ' + mkts);
+      if (mkts) lines.push('Markets: ' + mkts);
     } else if (sec === 'restocks') {
-      lines.push('Restock' + (entry.etaISO ? ' – ETA ' + fd(entry.etaISO) : '') + draft);
-      (entry.lines||[]).forEach(function(ln){ if(ln.productTitle||ln.productName) lines.push('  '+(ln.productTitle||ln.productName)); });
+      lines.push('Restock' + (entry.etaISO ? ' — ETA ' + fd(entry.etaISO) : '') + draft);
+      (entry.lines||[]).forEach(function(ln){ if(ln.productTitle||ln.productName) lines.push('  ' + (ln.productTitle||ln.productName)); });
       var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
-      if (mkts) lines.push('Mkt: ' + mkts);
+      if (mkts) lines.push('Markets: ' + mkts);
     } else if (sec === 'events') {
       lines.push((entry.title||'Event') + draft);
-      if (entry.startDateISO) lines.push(fd(entry.startDateISO) + (entry.endDateISO && entry.endDateISO !== entry.startDateISO ? ' – ' + fd(entry.endDateISO) : ''));
+      if (entry.startDateISO) {
+        var dateRange = fd(entry.startDateISO);
+        if (entry.endDateISO && entry.endDateISO !== entry.startDateISO) dateRange += ' – ' + fd(entry.endDateISO);
+        lines.push(dateRange);
+      }
       var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
-      if (mkts) lines.push('Mkt: ' + mkts);
+      if (mkts) lines.push('Markets: ' + mkts);
     } else if (sec === 'store_openings') {
       lines.push((entry.storeName||'Store Opening') + draft);
-      if (entry.market) lines.push('Mkt: ' + entry.market);
-      if (entry.targetOpenDate) lines.push(fd(entry.targetOpenDate));
+      if (entry.market) lines.push('Market: ' + entry.market);
+      if (entry.targetOpenDate) lines.push('Target: ' + fd(entry.targetOpenDate));
     }
     return lines.filter(Boolean).join('\n');
   }
@@ -12565,26 +12575,39 @@ function btvExportCalendarXLS() {
   // ── Styles ──
   xml += '<Styles>\n';
 
-  function sty(id, bg, fg, bold, wrap, halign) {
+  // Font: Helvetica Neue matches the calendar view; falls back to Arial on Windows
+  function sty(id, bg, fg, bold, wrap, halign, size) {
+    var sz = size || 10;
     var s = '<Style ss:ID="'+id+'">';
-    s += '<Alignment ss:Vertical="Top"'+(wrap?' ss:WrapText="1"':'')+(halign?' ss:Horizontal="'+halign+'"':'')+'/>';
-    s += '<Font ss:FontName="Arial" ss:Size="9"'+(bold?' ss:Bold="1"':'')+(fg&&fg!=='#000000'?' ss:Color="'+fg+'"':'')+'/>';
+    s += '<Alignment ss:Vertical="Top" ss:WrapText="1"'+(halign?' ss:Horizontal="'+halign+'"':'')+'/>';
+    s += '<Font ss:FontName="Helvetica Neue" ss:Size="'+sz+'"'+(bold?' ss:Bold="1"':'')+(fg&&fg!=='#000000'?' ss:Color="'+fg+'"':'')+'/>';
     if (bg) s += '<Interior ss:Color="'+bg+'" ss:Pattern="Solid"/>';
-    s += '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#c8c4be"/>';
-    s += '<Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#c8c4be"/></Borders>';
+    s += '<Borders>';
+    s += '<Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#d0ccc6"/>';
+    s += '<Border ss:Position="Right"  ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#d0ccc6"/>';
+    s += '</Borders>';
     s += '</Style>\n';
     return s;
   }
 
-  xml += sty('corner', '#e8e2d8', '#2d2d2d', true,  false, 'Left');
-  xml += sty('hdr_c',  '#e8e2d8', '#2d2d2d', true,  false, 'Center');
-  xml += sty('wk_a',   '#ffffff', '#2d2d2d', true,  false, 'Center');
-  xml += sty('wk_b',   '#f3f2f0', '#2d2d2d', true,  false, 'Center');
-  xml += sty('dat_a',  '#ffffff', '#333333', false, true,  'Left');
-  xml += sty('dat_b',  '#f3f2f0', '#333333', false, true,  'Left');
+  // Corner/header labels (top-left cells and row labels)
+  xml += sty('corner',  '#ede8e2', '#1a1a1a', true,  true, 'Left',   10);
+  // Quarter / Month merged header cells
+  xml += sty('hdr_q',   '#dbd5cc', '#1a1a1a', true,  true, 'Center', 10);
+  xml += sty('hdr_m',   '#e8e2d8', '#1a1a1a', true,  true, 'Center', 10);
+  // Week number cells (alternating)
+  xml += sty('wk_a',    '#f7f6f3', '#1a1a1a', true,  true, 'Center', 10);
+  xml += sty('wk_b',    '#eeece8', '#1a1a1a', true,  true, 'Center', 10);
+  // Date range cells (alternating)
+  xml += sty('dt_a',    '#f7f6f3', '#555555', false, true, 'Center', 9);
+  xml += sty('dt_b',    '#eeece8', '#555555', false, true, 'Center', 9);
+  // Data cells (alternating columns)
+  xml += sty('dat_a',   '#ffffff', '#2d2d2d', false, true, 'Left',   10);
+  xml += sty('dat_b',   '#faf9f7', '#2d2d2d', false, true, 'Left',   10);
 
+  // Per-section label styles (left column)
   SECTIONS.forEach(function(sec) {
-    xml += sty('sec_'+sec.key, SEC_BG[sec.key]||'#d4d4d4', SEC_FG[sec.key]||'#2d2d2d', true, true, 'Left');
+    xml += sty('sec_'+sec.key, SEC_BG[sec.key]||'#d4d4d4', SEC_FG[sec.key]||'#2d2d2d', true, true, 'Left', 10);
   });
 
   xml += '</Styles>\n';
@@ -12592,9 +12615,9 @@ function btvExportCalendarXLS() {
   // ── Worksheet ──
   xml += '<Worksheet ss:Name="BTV Calendar '+year+'">\n<Table>\n';
 
-  // Column widths
-  xml += '<Column ss:Width="120"/>';
-  weeks.forEach(function(){ xml += '<Column ss:Width="110"/>'; });
+  // Column widths: first col = section label, rest = week columns
+  xml += '<Column ss:Width="130"/>';
+  weeks.forEach(function(){ xml += '<Column ss:Width="160"/>'; });
   xml += '\n';
 
   function cell(val, sid, mergeAcross) {
@@ -12603,38 +12626,49 @@ function btvExportCalendarXLS() {
     return '<Cell'+ma+s+'><Data ss:Type="String">'+xs(val)+'</Data></Cell>';
   }
 
-  // Quarter row (merged)
-  xml += '<Row ss:Height="20">'+cell('Quarter','corner');
-  qRuns.forEach(function(r){ xml += cell(r.label,'hdr_c',r.n-1); });
+  // All header rows: fixed height 22pt; AutoFitHeight=0 so they stay compact
+  // Section/data rows: no fixed height + AutoFitHeight=1 so wrapped text shows fully
+
+  // Quarter row (merged spans)
+  xml += '<Row ss:Height="22" ss:AutoFitHeight="0">'+cell('Quarter','corner');
+  qRuns.forEach(function(r){ xml += cell(r.label,'hdr_q',r.n-1); });
   xml += '</Row>\n';
 
-  // Month row (merged)
-  xml += '<Row ss:Height="20">'+cell('Month','corner');
-  mRuns.forEach(function(r){ xml += cell(r.label+' '+year,'hdr_c',r.n-1); });
+  // Month row (merged spans)
+  xml += '<Row ss:Height="22" ss:AutoFitHeight="0">'+cell('Month','corner');
+  mRuns.forEach(function(r){ xml += cell(r.label+' '+year,'hdr_m',r.n-1); });
   xml += '</Row>\n';
 
-  // Week row
-  xml += '<Row ss:Height="20">'+cell('Week','corner');
+  // Week number row
+  xml += '<Row ss:Height="22" ss:AutoFitHeight="0">'+cell('Week','corner');
   weeks.forEach(function(w,i){ xml += cell('Wk '+w.weekOfYear, i%2?'wk_b':'wk_a'); });
   xml += '</Row>\n';
 
-  // Date row
-  xml += '<Row ss:Height="20">'+cell('Dates','corner');
-  weeks.forEach(function(w,i){ xml += cell(weekRangeLabel(w.start,w.end), i%2?'wk_b':'wk_a'); });
+  // Date range row
+  xml += '<Row ss:Height="22" ss:AutoFitHeight="0">'+cell('Dates','corner');
+  weeks.forEach(function(w,i){ xml += cell(weekRangeLabel(w.start,w.end), i%2?'dt_b':'dt_a'); });
   xml += '</Row>\n';
 
-  // Section rows
+  // Section rows — auto-height so all wrapped text is visible
   SECTIONS.forEach(function(sec) {
-    xml += '<Row>'+cell(sec.label,'sec_'+sec.key);
+    xml += '<Row ss:AutoFitHeight="1">'+cell(sec.label,'sec_'+sec.key);
     weeks.forEach(function(w,i) {
       var entries = (st[sec.key]||{})[w.id] || [];
-      var txt = entries.map(function(en){ return fmtEntry(sec.key,en); }).filter(Boolean).join('\n─────\n');
+      var txt = entries.map(function(en){ return fmtEntry(sec.key,en); }).filter(Boolean).join('\n— — —\n');
       xml += cell(txt, i%2?'dat_b':'dat_a');
     });
     xml += '</Row>\n';
   });
 
-  xml += '</Table>\n</Worksheet>\n</Workbook>';
+  // Freeze the 4 header rows and the section-label column so they stay visible while scrolling
+  var wsOpts = '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">';
+  wsOpts += '<FreezePanes/><FrozenNoSplit/>';
+  wsOpts += '<SplitHorizontal>4</SplitHorizontal><TopRowBottomPane>4</TopRowBottomPane>';
+  wsOpts += '<SplitVertical>1</SplitVertical><LeftColumnRightPane>1</LeftColumnRightPane>';
+  wsOpts += '<ActivePane>0</ActivePane>';
+  wsOpts += '</WorksheetOptions>';
+
+  xml += '</Table>\n' + wsOpts + '\n</Worksheet>\n</Workbook>';
 
   _btvDownload(year+'_Calendar_'+new Date().toISOString().slice(0,10)+'.xls', xml, 'application/vnd.ms-excel');
 }
