@@ -18290,10 +18290,32 @@ function _btvLsApplyLockBadges() {
 
 window.addEventListener('btv-presence-changed', function() {
   var _onlineUsers = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  _btvLsUpdateColabBar(_onlineUsers);
   _btvLsApplyLockBadges();
   var _gid = window._btvCurrentGroupId || editingGroupId;
   if (_gid) _btvLsApplyFieldLocks(_gid);
 });
+
+function _btvLsUpdateColabBar(users) {
+  var bar = document.getElementById('btv-ls-colab-status');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'btv-ls-colab-status';
+    bar.style.cssText = 'position:fixed;bottom:12px;right:14px;z-index:9990;background:#fff;border:1.5px solid #d1c9bc;border-radius:8px;padding:6px 12px;font-size:11px;font-family:Helvetica,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.12);min-width:140px;';
+    document.body.appendChild(bar);
+  }
+  if (!users.length) {
+    bar.innerHTML = '<span style="color:#aaa;">● Only you online</span>';
+    return;
+  }
+  var html = '<span style="color:#22c55e;font-weight:700;">● ' + users.length + ' other' + (users.length > 1 ? 's' : '') + ' online</span><br>';
+  users.forEach(function(u) {
+    var name = (u.email || '').split('@')[0];
+    var loc  = u.item ? (u.field ? ' · editing ' + (u.field.replace('f_','')) : ' · viewing product') : ' · browsing';
+    html += '<span style="color:#555;font-size:10px;">' + name + loc + '</span><br>';
+  });
+  bar.innerHTML = html;
+}
 
 // ── Field-level presence: who is in which field on the same product ──────────
 
@@ -18346,6 +18368,7 @@ function _btvLsApplyFieldLocks(groupId) {
   var itemId = 'ls::group::' + groupId;
   var fieldHolders = {};
   allUsers.forEach(function(u) { if (u.item === itemId && u.field) fieldHolders[u.field] = u.email; });
+  if (Object.keys(fieldHolders).length) console.log('[BTV LS] Field locks active:', fieldHolders);
   document.querySelectorAll('#view-form [data-field-key]').forEach(function(el) {
     if (el.type === 'hidden') return;
     var fk = el.dataset.fieldKey;
