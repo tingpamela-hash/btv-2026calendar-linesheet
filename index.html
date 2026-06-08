@@ -273,7 +273,7 @@ html, body {
     <button id="yearBtn2026" class="year-btn active-year" onclick="setCalYear('2026')">2026</button>
     <button id="yearBtn2027" class="year-btn" onclick="setCalYear('2027')">2027</button>
   </div>
-  <button class="top-nav-btn" data-frame="creative" onclick="showFrame('creative')">Creative Calendar</button>
+  <button id="creativeNavBtn" class="top-nav-btn" data-frame="creative" onclick="showFrame('creative')">Creative Calendar</button>
   <button class="top-nav-btn" data-frame="ls" onclick="showFrame('ls')">Linesheet</button>
   <div class="nav-right">
     <div class="nav-online-wrap" id="navOnlineWrap" style="display:none">
@@ -309,7 +309,7 @@ html, body {
       <div class="module-login-copy" style="margin-bottom:22px">Where would you like to go?</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#111;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('cal')">BTV Calendar</button>
-        <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#3a3a3a;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('creative')">Creative Calendar</button>
+        <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#3a3a3a;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" id="creativeModuleChoiceBtn" onclick="btvSelectModule('creative')">Creative Calendar</button>
         <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#555;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('ls')">Linesheet</button>
       </div>
     </div>
@@ -609,6 +609,11 @@ html, body {
   function _updateNavButtons(loggedIn) {
     document.getElementById('navChangePwdBtn').style.display = loggedIn ? '' : 'none';
     document.getElementById('navSignOutBtn').style.display   = loggedIn ? '' : 'none';
+    var isAdmin = loggedIn && _session && _session.user && _session.user.email === 'charmaine.lau.btv@gmail.com';
+    var cn = document.getElementById('creativeNavBtn');
+    if (cn) cn.style.display = (loggedIn && !isAdmin) ? 'none' : '';
+    var cm = document.getElementById('creativeModuleChoiceBtn');
+    if (cm) cm.style.display = (loggedIn && !isAdmin) ? 'none' : '';
   }
 
   // ── Module selection & overlay ─────────────────────────────────────────────
@@ -622,8 +627,12 @@ html, body {
   }
 
   function _canAccess(mod) {
-    if (!_profile) return true; // no profile yet → authenticated users get through
-    if (mod === 'cal' || mod === 'creative') return _profile.can_access_cal !== false;
+    if (mod === 'creative') {
+      var email = _session && _session.user && _session.user.email;
+      return email === 'charmaine.lau.btv@gmail.com';
+    }
+    if (!_profile) return true;
+    if (mod === 'cal') return _profile.can_access_cal !== false;
     return _profile.can_access_ls !== false;
   }
 

@@ -12499,12 +12499,12 @@ window.btvExportCSV = btvExportCSV;
 function btvExportCalendarXLS() {
   var st = {};
   try { st = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) {}
-  var mdSt = {};
-  try { mdSt = JSON.parse(localStorage.getItem(MARKDOWN_STORAGE_KEY) || '{}'); } catch(e) {}
-
   var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
   var year = yearTag ? yearTag[1] : 'BTV';
-  var weeks = currentWeeks();
+  // Export current quarter only (3 months)
+  var _today = new Date();
+  var _currentQ = 'Q' + (Math.floor(_today.getMonth() / 3) + 1);
+  var weeks = ALL_WEEKS.filter(function(w) { return w.quarter === _currentQ; });
 
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function fd(iso) {
@@ -12567,7 +12567,7 @@ function btvExportCalendarXLS() {
   // Markdown row: collect labels per week
   var mdByWeek = {};
   weeks.forEach(function(w) { mdByWeek[w.id] = []; });
-  Object.values(mdSt).forEach(function(md) {
+  Object.values(markdownState).forEach(function(md) {
     if (!md || !md.startDate || !md.endDate) return;
     var label = (md.title || 'Markdown') + '  ' + fd(md.startDate) + '-' + fd(md.endDate);
     weekIdsInRange(md.startDate, md.endDate).forEach(function(wid) {
@@ -12642,7 +12642,7 @@ function btvExportCalendarXLS() {
   weeks.forEach(function(w, i) { xml += cell(weekRangeLabel(w.start, w.end), i % 2 ? 'dt_b' : 'dt_a'); });
   xml += '</Row>\n';
 
-  xml += '<Row ss:AutoFitHeight="1">' + cell('Markdown', 'md_lbl');
+  xml += '<Row ss:Height="36" ss:AutoFitHeight="1">' + cell('Markdown', 'md_lbl');
   weeks.forEach(function(w, i) { xml += cell((mdByWeek[w.id] || []).join('\n'), i % 2 ? 'md_b' : 'md_a'); });
   xml += '</Row>\n';
 
