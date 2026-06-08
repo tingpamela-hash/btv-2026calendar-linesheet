@@ -18375,18 +18375,27 @@ function _btvLsApplyFieldLocks(groupId) {
     var holder = fieldHolders[fk];
     var badge = el.parentElement ? el.parentElement.querySelector('.btv-fl-badge[data-fk="' + fk + '"]') : null;
     if (holder) {
-      el.disabled = true;
-      el.style.outline = '2px solid #e6a817';
-      el.title = '🔒 ' + holder.split('@')[0] + ' is editing this field';
+      var isFocused = (document.activeElement === el);
+      if (isFocused) {
+        // Current user is already in this field — don't kick them out, show conflict warning
+        el.style.outline = '2px solid #ef4444';
+        el.title = '⚠️ ' + holder.split('@')[0] + ' is also editing this field';
+      } else {
+        el.disabled = true;
+        el.style.outline = '2px solid #e6a817';
+        el.title = '🔒 ' + holder.split('@')[0] + ' is editing this field';
+      }
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'btv-fl-badge';
         badge.dataset.fk = fk;
-        badge.style.cssText = 'display:inline-block;margin-left:6px;background:#e6a817;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 7px;vertical-align:middle;';
-        badge.title = holder;
+        badge.style.cssText = 'display:inline-block;margin-left:6px;font-size:9px;font-weight:700;border-radius:10px;padding:1px 7px;vertical-align:middle;';
         el.insertAdjacentElement('afterend', badge);
       }
-      badge.textContent = holder.split('@')[0];
+      badge.style.background = isFocused ? '#ef4444' : '#e6a817';
+      badge.style.color = '#fff';
+      badge.title = holder;
+      badge.textContent = (isFocused ? '⚠️ ' : '🔒 ') + holder.split('@')[0];
     } else {
       if (!el.readOnly) el.disabled = false;
       el.style.outline = '';
