@@ -18288,11 +18288,33 @@ function _btvLsApplyLockBadges() {
   });
 }
 
+// Tracks which lastField updates have already been applied per peer (email → ts)
+var _appliedLastFields = {};
+
 window.addEventListener('btv-presence-changed', function() {
   var _onlineUsers = typeof window.btvGetOnlineUsers === 'function' ? window.btvGetOnlineUsers() : [];
+  var _gid = window._btvCurrentGroupId || editingGroupId;
+
+  // Presence-layer sync: when a peer leaves a field, apply their typed value to our form
+  // so we see what they wrote even before they click Save
+  if (_gid && !_btvFormDirty) {
+    var _piid = 'ls::group::' + _gid;
+    _onlineUsers.forEach(function(u) {
+      if (u.item !== _piid) return;
+      if (!u.lastField || !u.lastField.key) return;
+      if (_appliedLastFields[u.email] === u.lastField.ts) return; // already applied this update
+      var pfk = u.lastField.key;
+      var pel = document.querySelector('#view-form [data-field-key="' + pfk + '"]');
+      if (pel && document.activeElement !== pel && pel.type !== 'hidden') {
+        pel.value = u.lastField.val;
+        _appliedLastFields[u.email] = u.lastField.ts;
+        console.log('[BTV LS] Applied peer field update:', pfk, '=', u.lastField.val, 'from', u.email);
+      }
+    });
+  }
+
   _btvLsUpdateColabBar(_onlineUsers);
   _btvLsApplyLockBadges();
-  var _gid = window._btvCurrentGroupId || editingGroupId;
   if (_gid) _btvLsApplyFieldLocks(_gid);
 });
 
@@ -18471,6 +18493,25 @@ window.addEventListener('beforeunload', function(e) {
   if (_btvFormDirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
+// Save-sync layer: refresh form fields from the saved product data after another user saves.
+// Only updates fields the local user isn't currently focused on, and only for simple f_ fields.
+function _btvRefreshFormFromSaved(gid) {
+  if (!gid) return;
+  var grpItems = products.filter(function(p) { return p.groupId === gid; });
+  if (!grpItems.length) return;
+  var base = grpItems[0];
+  var activeEl = document.activeElement;
+  document.querySelectorAll('#view-form [data-field-key]').forEach(function(el) {
+    if (el === activeEl || el.type === 'hidden') return;
+    var fk = el.dataset.fieldKey;
+    if (!fk || !fk.startsWith('f_')) return; // skip measurement table rows (handled separately)
+    var prop = fk.slice(2); // 'f_description' → 'description'
+    if (base[prop] === undefined) return;
+    var newVal = base[prop] == null ? '' : String(base[prop]);
+    if (el.value !== newVal) el.value = newVal;
+  });
+}
+
 // Called by supabase-sync.js when a remote change arrives in this iframe.
 // If the product form has unsaved changes, or is currently open, skip re-rendering
 // to avoid disrupting the editing session.
@@ -18484,11 +18525,16 @@ window.btvReloadAndRender = function() {
 
   if (_btvFormDirty || formOpen) {
     window._btvLsSkippedRemoteWhileDirty = true;
-    // Silently update background data only — do not re-render or toast while editing
+    // Update background data so it's fresh when the user saves or navigates away
     try {
       var _rr = localStorage.getItem('btv_linesheet_products');
       if (_rr) products = JSON.parse(_rr);
     } catch(e) {}
+    // Save-sync layer: if form is open but not dirty, refresh visible fields from the
+    // saved product data so the user sees the other person's saved changes
+    if (formOpen && !_btvFormDirty) {
+      _btvRefreshFormFromSaved(window._btvCurrentGroupId || editingGroupId);
+    }
     return;
   }
   // No product open — safe to fully re-render
@@ -18534,11 +18580,12 @@ window.btvReloadAndRender = function() {
 (function () {
   'use strict';
 
-  var _ch    = null;  // Realtime channel
-  var _uid   = null;
-  var _email = null;
-  var _item  = null;  // currently tracked product item
-  var _field = null;  // currently tracked field key
+  var _ch        = null;  // Realtime channel
+  var _uid       = null;
+  var _email     = null;
+  var _item      = null;  // currently tracked product item
+  var _field     = null;  // currently tracked field key
+  var _lastField = null;  // { key, val, ts } — last field value left, broadcast to peers
 
   // ── Init ────────────────────────────────────────────────────────────────
 
@@ -18605,12 +18652,13 @@ window.btvReloadAndRender = function() {
       if (k === _uid) return;
       var arr = state[k] || [];
       if (arr.length) {
-        var merged = { email: null, item: null, field: null, launchItem: null };
+        var merged = { email: null, item: null, field: null, launchItem: null, lastField: null };
         arr.forEach(function(p) {
           if (p.email) merged.email = p.email;
           if (p.item) merged.item = p.item;
           if (p.field) merged.field = p.field;
           if (p.launchItem) merged.launchItem = p.launchItem;
+          if (p.lastField) merged.lastField = p.lastField;
         });
         if (merged.email) users.push(merged);
       }
@@ -18637,11 +18685,19 @@ window.btvReloadAndRender = function() {
   window.btvTrackField = async function (groupId, fieldKey) {
     console.log('[BTV LS] btvTrackField called, groupId=', groupId, 'field=', fieldKey, '_ch=', !!_ch);
     if (!_ch) return;
+    var prevField = _field; // capture before we overwrite it
     _item  = groupId ? 'ls::group::' + groupId : null;
     _field = fieldKey || null;
+    // When leaving a field (fieldKey=null), capture the value for peer sync
+    if (!fieldKey && prevField) {
+      var leftEl = document.querySelector('#view-form [data-field-key="' + prevField + '"]');
+      if (leftEl && leftEl.type !== 'hidden') {
+        _lastField = { key: prevField, val: leftEl.value, ts: Date.now() };
+      }
+    }
     if (groupId) window._btvCurrentLaunchItem = _btvLsGetCalendarLaunchItem(groupId);
     if (typeof _btvLsSetSharedLaunchLock === 'function') _btvLsSetSharedLaunchLock(window._btvCurrentLaunchItem);
-    await _ch.track({ email: _email, item: _item, field: _field, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now() });
+    await _ch.track({ email: _email, item: _item, field: _field, launchItem: window._btvCurrentLaunchItem || null, ts: Date.now(), lastField: _lastField });
   };
 
 
