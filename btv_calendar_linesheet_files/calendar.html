@@ -12659,13 +12659,13 @@ function btvExportCalendarXLS() {
 window.btvExportCalendarXLS = btvExportCalendarXLS;
 
 function btvPrintPDF(rangeMode) {
-  var weeks;
+  var allWeeks;
   if (rangeMode === 'today') {
-    weeks = getThreeMonthWindowFromToday();
+    allWeeks = getThreeMonthWindowFromToday();
   } else {
-    weeks = ALL_WEEKS.filter(function(w) { return w.quarter === rangeMode; });
+    allWeeks = ALL_WEEKS.filter(function(w) { return w.quarter === rangeMode; });
   }
-  if (!weeks.length) { alert('No weeks in this range.'); return; }
+  if (!allWeeks.length) { alert('No weeks in this range.'); return; }
 
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function fd(iso) {
@@ -12681,12 +12681,26 @@ function btvPrintPDF(rangeMode) {
   var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
   var year = yearTag ? yearTag[1] : '2026';
 
-  // Section label colours matching the live calendar CSS variables
   var SEC_BG = {global:'#d4d4d4',china:'#c47800',sea:'#c43030',nea:'#4a8eb5',
     restocks:'#7a5a35',events:'#edecea',store_openings:'#d4d4d4'};
   var SEC_FG = {global:'#2d2d2d',china:'#ffffff',sea:'#ffffff',nea:'#ffffff',
     restocks:'#ffffff',events:'#2d2d2d',store_openings:'#2d2d2d'};
 
+  // ── Group weeks by month (each month = one PDF page) ──────────────────────
+  var pages = [];
+  var curMonth = null, curGroup = [];
+  allWeeks.forEach(function(w) {
+    if (w.month !== curMonth) {
+      if (curGroup.length) pages.push(curGroup);
+      curMonth = w.month;
+      curGroup = [w];
+    } else {
+      curGroup.push(w);
+    }
+  });
+  if (curGroup.length) pages.push(curGroup);
+
+  // ── Entry formatter ───────────────────────────────────────────────────────
   function fmtEntry(sec, entry) {
     var isDraft = entry.workflowStatus !== 'published';
     var h = '<div class="entry">';
@@ -12728,112 +12742,143 @@ function btvPrintPDF(rangeMode) {
     return h;
   }
 
-  // ── Quarter / month merge runs ───────────────────────────────────────────
-  var qRuns=[], mRuns=[];
-  weeks.forEach(function(w) {
-    var q=qRuns[qRuns.length-1]; if(!q||q.label!==w.quarter) qRuns.push({label:w.quarter,n:1}); else q.n++;
-    var m=mRuns[mRuns.length-1]; if(!m||m.label!==w.month)   mRuns.push({label:w.month,n:1});   else m.n++;
-  });
-
-  // ── Markdown: build lane-based colspan spans ─────────────────────────────
-  var mdSpans = [];
-  Object.values(markdownState).forEach(function(md) {
-    if (!md || !md.startDate || !md.endDate) return;
-    var mdStart = new Date(md.startDate + 'T00:00:00');
-    var mdEnd   = new Date(md.endDate   + 'T00:00:00');
-    var firstIdx = -1, lastIdx = -1;
-    weeks.forEach(function(w, i) {
-      if (w.start <= mdEnd && w.end >= mdStart) {
-        if (firstIdx === -1) firstIdx = i;
-        lastIdx = i;
-      }
+  // ── Markdown: build lane-based colspan rows for a given week group ────────
+  function buildMdRows(wks) {
+    var mdSpans = [];
+    Object.values(markdownState).forEach(function(md) {
+      if (!md || !md.startDate || !md.endDate) return;
+      var mdStart = new Date(md.startDate + 'T00:00:00');
+      var mdEnd   = new Date(md.endDate   + 'T00:00:00');
+      var firstIdx = -1, lastIdx = -1;
+      wks.forEach(function(w, idx) {
+        if (w.start <= mdEnd && w.end >= mdStart) {
+          if (firstIdx === -1) firstIdx = idx;
+          lastIdx = idx;
+        }
+      });
+      if (firstIdx !== -1) mdSpans.push({md:md, first:firstIdx, last:lastIdx});
     });
-    if (firstIdx !== -1) mdSpans.push({md:md, first:firstIdx, last:lastIdx});
-  });
-  mdSpans.sort(function(a,b) { return a.first - b.first; });
+    mdSpans.sort(function(a,b) { return a.first - b.first; });
 
-  // Assign each span to the first lane where it doesn't collide
-  var lanes = []; // lanes[l] = [{first,last,...}, ...]
-  mdSpans.forEach(function(sp) {
-    var placed = false;
-    for (var l = 0; l < lanes.length; l++) {
-      var lane = lanes[l];
-      if (lane[lane.length-1].last < sp.first) {
-        lane.push(sp); sp.lane = l; placed = true; break;
+    var lanes = [];
+    mdSpans.forEach(function(sp) {
+      var placed = false;
+      for (var l = 0; l < lanes.length; l++) {
+        if (lanes[l][lanes[l].length-1].last < sp.first) {
+          lanes[l].push(sp); sp.lane = l; placed = true; break;
+        }
       }
-    }
-    if (!placed) { sp.lane = lanes.length; lanes.push([sp]); }
-  });
-  var numLanes = lanes.length || 1;
+      if (!placed) { sp.lane = lanes.length; lanes.push([sp]); }
+    });
+    var numLanes = lanes.length || 1;
 
-  // Build one <tr> per lane for the markdown section
-  function buildMdRows() {
-    var rows = '';
     if (!mdSpans.length) {
-      rows = '<tr class="mr"><th class="lbl" style="font-weight:700">Markdown</th>';
-      for (var c = 0; c < weeks.length; c++) rows += '<td></td>';
-      return rows + '</tr>';
+      var r = '<tr class="mr"><th class="lbl">Markdown</th>';
+      for (var c = 0; c < wks.length; c++) r += '<td></td>';
+      return r + '</tr>';
     }
-    lanes.forEach(function(lane, laneIdx) {
+    var rows = '';
+    lanes.forEach(function(lane, li) {
       rows += '<tr class="mr">';
-      if (laneIdx === 0) {
-        rows += '<th class="lbl" rowspan="'+numLanes+'" style="font-weight:700">Markdown</th>';
-      }
+      if (li === 0) rows += '<th class="lbl" rowspan="'+numLanes+'">Markdown</th>';
       var ci = 0;
       lane.forEach(function(sp) {
         while (ci < sp.first) { rows += '<td></td>'; ci++; }
         var span = sp.last - sp.first + 1;
-        var label = esc(sp.md.title || 'Markdown');
-        var dates = esc(fd(sp.md.startDate)) + '–' + esc(fd(sp.md.endDate));
         rows += '<td colspan="'+span+'" class="md-span">'
-              + '<div class="mb"><strong>'+label+'</strong><br><span class="mb-d">'+dates+'</span></div>'
+              + '<div class="mb"><strong>'+esc(sp.md.title||'Markdown')+'</strong>'
+              + '<br><span class="mb-d">'+esc(fd(sp.md.startDate))+'–'+esc(fd(sp.md.endDate))+'</span></div>'
               + '</td>';
         ci = sp.last + 1;
       });
-      while (ci < weeks.length) { rows += '<td></td>'; ci++; }
+      while (ci < wks.length) { rows += '<td></td>'; ci++; }
       rows += '</tr>';
     });
     return rows;
+  }
+
+  // ── Build one table per month page ────────────────────────────────────────
+  function buildPageTable(wks, isLast) {
+    var n = wks.length;
+
+    // Quarter / month label for this page
+    var qLabel = wks[0].quarter + ' ' + year;
+    var mLabel = wks[0].month + ' ' + year;
+
+    var t = '<table>';
+    t += '<colgroup><col class="lbl-col">';
+    for (var c = 0; c < n; c++) t += '<col>';
+    t += '</colgroup>';
+
+    // THEAD
+    t += '<thead>';
+    t += '<tr class="hq"><th class="lbl"></th><th colspan="'+n+'">'+esc(qLabel)+'</th></tr>';
+    t += '<tr class="hm"><th class="lbl"></th><th colspan="'+n+'">'+esc(mLabel)+'</th></tr>';
+    t += '<tr class="hw"><th class="lbl">Week</th>';
+    wks.forEach(function(w) { t += '<th>Wk '+w.weekOfYear+'</th>'; });
+    t += '</tr><tr class="hd"><th class="lbl">Dates</th>';
+    wks.forEach(function(w) { t += '<th>'+esc(weekRangeLabel(w.start,w.end))+'</th>'; });
+    t += '</tr></thead>';
+
+    // TBODY
+    t += '<tbody>';
+    t += buildMdRows(wks);
+
+    SECTIONS.forEach(function(sec) {
+      var bg = SEC_BG[sec.key]||'#d4d4d4', fg = SEC_FG[sec.key]||'#2d2d2d';
+      t += '<tr><th class="lbl" style="background:'+bg+';color:'+fg+'">'
+         + esc(sec.label)+'</th>';
+      wks.forEach(function(w, wi) {
+        var entries = (state[sec.key]||{})[w.id]||[];
+        t += '<td class="'+(wi%2?'wb':'wa')+'">'
+           + entries.map(function(e){return fmtEntry(sec.key,e);}).join('')
+           + '</td>';
+      });
+      t += '</tr>';
+    });
+
+    t += '</tbody></table>';
+    // Page break after every page except the last
+    return '<div class="pg"' + (isLast ? '' : ' style="page-break-after:always"') + '>' + t + '</div>';
   }
 
   var rangeLabel = rangeMode==='today' ? 'Next 3 Months' : (rangeMode+' '+year);
 
   // ── CSS ──────────────────────────────────────────────────────────────────
   var css = [
-    // Force all backgrounds to print — Chrome strips them by default
     '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}',
     '*{box-sizing:border-box;margin:0;padding:0}',
-    // Use the same warm off-white background as the calendar page
-    'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:7pt;color:#111;background:#f7f6f4}',
-    'h1{font-size:9pt;font-weight:600;margin:5px 0 5px;color:#3a3530;letter-spacing:.03em}',
-    // Fixed layout so all weeks fit on one A4 landscape width
-    'table{border-collapse:collapse;table-layout:fixed;width:100%;background:#f7f6f4}',
+    'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:8pt;color:#111;background:#f7f6f4}',
+    'h1{font-size:10pt;font-weight:600;margin:0 0 6px;color:#3a3530;letter-spacing:.02em}',
+    // One table per page, fills page width
+    'table{border-collapse:collapse;table-layout:fixed;width:100%;background:#f7f6f4;margin-bottom:0}',
     'thead{display:table-header-group}',
-    'th,td{border:1px solid #d6d2cc;padding:2px 3px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;font-size:7pt}',
+    'th,td{border:1px solid #d6d2cc;padding:3px 5px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;font-size:8pt}',
     'th{font-weight:600;text-align:left}',
-    // Label column
-    '.lbl{width:70pt;background:#f0ece6;color:#3a3530;border-right:2px solid #d6d2cc!important}',
-    // Alternating week columns matching --wkA / --wkB
+    // Fixed label column; week columns fill the rest equally
+    '.lbl-col{width:80pt}',
+    '.lbl{background:#f0ece6;color:#3a3530;border-right:2px solid #d6d2cc!important}',
+    // Alt week columns
     '.wa{background:#ffffff}',
     '.wb{background:#f3f2f0}',
     // Header rows
-    '.hq th{background:#dbd5cc;text-align:center;font-size:7.5pt;font-weight:700;color:#3a3530;height:14pt}',
-    '.hm th{background:#e8e2d8;text-align:center;font-size:7pt;font-weight:700;color:#3a3530;height:12pt}',
-    '.hw th{background:#f4f2ef;text-align:center;font-size:6.5pt;color:#4a4a4a;height:11pt}',
-    '.hd th{background:#f7f6f3;text-align:center;font-size:6pt;color:#888;height:10pt}',
+    '.hq th{background:#dbd5cc;text-align:center;font-size:8.5pt;font-weight:700;color:#3a3530;height:16pt}',
+    '.hm th{background:#e8e2d8;text-align:center;font-size:8pt;font-weight:700;color:#3a3530;height:14pt}',
+    '.hw th{background:#f4f2ef;text-align:center;font-size:7.5pt;color:#4a4a4a;height:13pt}',
+    '.hd th{background:#f7f6f3;text-align:center;font-size:7pt;color:#888;height:12pt}',
     // Markdown row
     '.mr th,.mr td{background:#fffdf7}',
-    '.mb{background:#f5df73;border:1px solid #d8b231;border-radius:4px;padding:2px 4px;font-size:6pt;color:#3a2a00;display:block;line-height:1.4;white-space:normal;word-break:break-word}',
-    '.mb-d{font-size:5.5pt;font-weight:400;color:#6a4e00}',
-    // Entry cards – matching .entry{background:#fffdfa; border:1px solid var(--grid); border-radius:18px}
-    '.entry{background:#fffdfa;border:1px solid #d6d2cc;border-radius:5px;padding:3px 4px;margin-bottom:2px}',
+    '.mb{background:#f5df73;border:1px solid #d8b231;border-radius:5px;padding:3px 5px;font-size:7pt;color:#3a2a00;display:block;line-height:1.4;word-break:break-word}',
+    '.mb-d{font-size:6.5pt;font-weight:400;color:#6a4e00}',
+    // Entry cards matching .entry{background:#fffdfa;border:1px solid var(--grid);border-radius:18px}
+    '.entry{background:#fffdfa;border:1px solid #d6d2cc;border-radius:6px;padding:4px 5px;margin-bottom:3px}',
     '.entry:last-child{margin-bottom:0}',
-    '.et{font-weight:600;font-size:7pt;line-height:1.3;color:#111}',
-    '.ed{font-size:6pt;color:#787470;margin-top:1px;font-weight:600}',
-    '.el{font-size:6pt;color:#444;margin-top:1px}',
-    '.em{font-size:5.5pt;color:#787470;margin-top:1px;font-style:italic}',
-    '.dr{font-weight:400;color:#b07050;font-size:5.5pt}',
-    // Allow section rows to break across pages naturally (Fix 3)
+    '.et{font-weight:600;font-size:8pt;line-height:1.3;color:#111}',
+    '.ed{font-size:7pt;color:#787470;margin-top:1px;font-weight:600}',
+    '.el{font-size:7pt;color:#444;margin-top:2px}',
+    '.em{font-size:6.5pt;color:#787470;margin-top:2px;font-style:italic}',
+    '.dr{font-weight:400;color:#b07050;font-size:6.5pt}',
+    '.pg{padding-bottom:0}',
     'thead tr{page-break-inside:avoid}',
     '@media print{',
     '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}',
@@ -12843,47 +12888,17 @@ function btvPrintPDF(rangeMode) {
     '}'
   ].join('');
 
-  // ── Build HTML ────────────────────────────────────────────────────────────
+  // ── Assemble full HTML document ───────────────────────────────────────────
+  var bodyContent = pages.map(function(wks, idx) {
+    return buildPageTable(wks, idx === pages.length - 1);
+  }).join('');
+
   var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">';
   html += '<title>BTV Calendar ' + esc(rangeLabel) + '</title>';
   html += '<style>' + css + '</style>';
   html += '</head><body>';
   html += '<h1>BTV Calendar — ' + esc(rangeLabel) + '</h1>';
-  html += '<table><colgroup><col style="width:70pt">';
-  weeks.forEach(function() { html += '<col>'; });
-  html += '</colgroup>';
-
-  // THEAD
-  html += '<thead>';
-  html += '<tr class="hq"><th class="lbl"></th>';
-  qRuns.forEach(function(r) { html += '<th colspan="'+r.n+'">'+esc(r.label)+' '+year+'</th>'; });
-  html += '</tr><tr class="hm"><th class="lbl"></th>';
-  mRuns.forEach(function(r) { html += '<th colspan="'+r.n+'">'+esc(r.label)+'</th>'; });
-  html += '</tr><tr class="hw"><th class="lbl">Week</th>';
-  weeks.forEach(function(w) { html += '<th>Wk '+w.weekOfYear+'</th>'; });
-  html += '</tr><tr class="hd"><th class="lbl">Dates</th>';
-  weeks.forEach(function(w) { html += '<th>'+esc(weekRangeLabel(w.start,w.end))+'</th>'; });
-  html += '</tr></thead>';
-
-  // TBODY
-  html += '<tbody>';
-
-  // Markdown rows (lane-based colspan)
-  html += buildMdRows();
-
-  // Section rows – allow natural page breaks (no page-break-inside:avoid on tr)
-  SECTIONS.forEach(function(sec) {
-    var bg = SEC_BG[sec.key]||'#d4d4d4', fg = SEC_FG[sec.key]||'#2d2d2d';
-    html += '<tr><th class="lbl" style="background:'+bg+';color:'+fg+';font-weight:700">'+esc(sec.label)+'</th>';
-    weeks.forEach(function(w, i) {
-      var entries = (state[sec.key]||{})[w.id]||[];
-      var cls = i%2 ? 'wb' : 'wa';
-      html += '<td class="'+cls+'">' + entries.map(function(e){return fmtEntry(sec.key,e);}).join('') + '</td>';
-    });
-    html += '</tr>';
-  });
-
-  html += '</tbody></table>';
+  html += bodyContent;
   html += '<script>window.addEventListener("load",function(){window.print();});<\/script>';
   html += '</body></html>';
 
