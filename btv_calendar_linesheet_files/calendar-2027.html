@@ -2381,6 +2381,12 @@
 
 
 
+  /* ── Publish to public calendar button ───────────────────────────────────── */
+  .pub-btn{display:block;width:100%;padding:2px 6px;margin-top:2px;border:1px solid #ccc;background:#f5f3ef;color:#888;font-size:10px;font-weight:700;letter-spacing:.03em;border-radius:6px;cursor:pointer;text-align:center;transition:background .15s,color .15s,border-color .15s}
+  .pub-btn:hover{background:#e8e4dc;color:#555;border-color:#aaa}
+  .pub-btn.pub-on{background:#2a6e2a;color:#fff;border-color:#1d4d1d}
+  .pub-btn.pub-on:hover{background:#1f5a1f}
+
   @media print{
 
     /* show left header column in print */
@@ -8770,7 +8776,10 @@ function renderGlobal(entry){
 
           </div>
 
-          <button class="small-btn" onclick="openEditor('${entry.section}','${entry.weekId}','${entry.id}')">Edit</button>
+          <div style="display:flex;flex-direction:column;align-items:stretch;min-width:58px">
+            <button class="small-btn" onclick="openEditor('${entry.section}','${entry.weekId}','${entry.id}')">Edit</button>
+            <button class="pub-btn${_publishedIds.has(entry.id)?' pub-on':''}" onclick="btvTogglePublish('${entry.id}','${entry.weekId}','${entry.section}')" title="${_publishedIds.has(entry.id)?'Remove from public calendar':'Publish to public calendar'}">${_publishedIds.has(entry.id)?'\u2714 Live':'\u2191 Publish'}</button>
+          </div>
 
         </div>
 
@@ -8844,7 +8853,10 @@ function renderRegional(entry){
 
           </div>
 
-          <button class="small-btn" onclick="openEditor('${entry.section}','${entry.weekId}','${entry.id}')">Edit</button>
+          <div style="display:flex;flex-direction:column;align-items:stretch;min-width:58px">
+            <button class="small-btn" onclick="openEditor('${entry.section}','${entry.weekId}','${entry.id}')">Edit</button>
+            <button class="pub-btn${_publishedIds.has(entry.id)?' pub-on':''}" onclick="btvTogglePublish('${entry.id}','${entry.weekId}','${entry.section}')" title="${_publishedIds.has(entry.id)?'Remove from public calendar':'Publish to public calendar'}">${_publishedIds.has(entry.id)?'\u2714 Live':'\u2191 Publish'}</button>
+          </div>
 
         </div>
 
@@ -8934,7 +8946,10 @@ function renderRestock(entry){
 
           </div>
 
-          <button class="small-btn" onclick="openEditor('${entry.section}','${entry.weekId}','${entry.id}')">Edit</button>
+          <div style="display:flex;flex-direction:column;align-items:stretch;min-width:58px">
+            <button class="small-btn" onclick="openEditor('${entry.section}','${entry.weekId}','${entry.id}')">Edit</button>
+            <button class="pub-btn${_publishedIds.has(entry.id)?' pub-on':''}" onclick="btvTogglePublish('${entry.id}','${entry.weekId}','${entry.section}')" title="${_publishedIds.has(entry.id)?'Remove from public calendar':'Publish to public calendar'}">${_publishedIds.has(entry.id)?'\u2714 Live':'\u2191 Publish'}</button>
+          </div>
 
         </div>
 
@@ -13355,6 +13370,59 @@ function btvPrintPDF(rangeMode) {
   else { alert('Please allow pop-ups to export PDF.'); }
 }
 window.btvPrintPDF = btvPrintPDF;
+// ── Public Calendar: Publish / Unpublish ─────────────────────────────────────
+var _publishedIds = new Set();
+
+function _btvLoadPublished() {
+  if (!window._btvSb) return;
+  var yr = parseInt((STORAGE_KEY.match(/calendar-(\d{4})-/) || [])[1] || '0');
+  window._btvSb.from('public_calendar_entries')
+    .select('entry_id').eq('year', yr)
+    .then(function(res) {
+      _publishedIds = new Set((res.data || []).map(function(r) { return r.entry_id; }));
+      render();
+    });
+}
+
+async function btvTogglePublish(entryId, weekId, section) {
+  if (!window._btvSb) { alert('Sync not ready. Please wait and try again.'); return; }
+  var yr = parseInt((STORAGE_KEY.match(/calendar-(\d{4})-/) || [])[1] || '0');
+  var entry = (((state || {})[section] || {})[weekId] || []).find(function(e) { return e.id === entryId; });
+  if (!entry) return;
+
+  if (_publishedIds.has(entryId)) {
+    var { error } = await window._btvSb.from('public_calendar_entries')
+      .delete().eq('entry_id', entryId).eq('year', yr);
+    if (error) { alert('Error removing from public calendar: ' + error.message); return; }
+    _publishedIds.delete(entryId);
+  } else {
+    var { error } = await window._btvSb.from('public_calendar_entries')
+      .upsert({
+        entry_id: entryId, year: yr, week_id: weekId, section: section,
+        entry_data: entry,
+        published_by: window._btvSyncEmail || '',
+        published_at: new Date().toISOString()
+      }, { onConflict: 'entry_id,year' });
+    if (error) { alert('Error publishing to public calendar: ' + error.message); return; }
+    _publishedIds.add(entryId);
+  }
+  // Update all buttons for this entry without full re-render
+  document.querySelectorAll('[data-entry-id="' + entryId + '"] .pub-btn').forEach(function(btn) {
+    var on = _publishedIds.has(entryId);
+    btn.classList.toggle('pub-on', on);
+    btn.textContent = on ? '\u2714 Live' : '\u2191 Publish';
+    btn.title = on ? 'Remove from public calendar' : 'Publish to public calendar';
+  });
+}
+window.btvTogglePublish = btvTogglePublish;
+
+// Retry until _btvSb is available, then load published state
+(function _waitForSb() {
+  if (window._btvSb) { _btvLoadPublished(); }
+  else { setTimeout(_waitForSb, 600); }
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─────────────────────────────────────────────────────────────────────────────
 </script>
 

@@ -538,6 +538,9 @@
         return;
       }
     }
+    // Expose Supabase client and user email for other modules (e.g. public calendar)
+    window._btvSb = _sb;
+    window._btvSyncEmail = _userEmail;
 
     // Pull latest state — include updated_at for version tracking
     console.log('[BTV Sync] Pulling latest state from cloud…');
