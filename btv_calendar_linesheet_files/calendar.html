@@ -12800,6 +12800,8 @@ function btvPrintPDF(rangeMode) {
 
   // ── CSS ──────────────────────────────────────────────────────────────────
   var css = [
+    // Force all backgrounds to print — Chrome strips them by default
+    '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}',
     '*{box-sizing:border-box;margin:0;padding:0}',
     // Use the same warm off-white background as the calendar page
     'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:7pt;color:#111;background:#f7f6f4}',
@@ -12810,7 +12812,7 @@ function btvPrintPDF(rangeMode) {
     'th,td{border:1px solid #d6d2cc;padding:2px 3px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;font-size:7pt}',
     'th{font-weight:600;text-align:left}',
     // Label column
-    '.lbl{width:70pt;background:#f0ece6;color:#3a3530}',
+    '.lbl{width:70pt;background:#f0ece6;color:#3a3530;border-right:2px solid #d6d2cc!important}',
     // Alternating week columns matching --wkA / --wkB
     '.wa{background:#ffffff}',
     '.wb{background:#f3f2f0}',
@@ -12834,6 +12836,7 @@ function btvPrintPDF(rangeMode) {
     // Allow section rows to break across pages naturally (Fix 3)
     'thead tr{page-break-inside:avoid}',
     '@media print{',
+    '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}',
     '@page{size:A4 landscape;margin:8mm 8mm}',
     'h1{margin:0 0 4px}',
     'thead{display:table-header-group}',
