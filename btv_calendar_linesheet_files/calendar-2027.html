@@ -3108,20 +3108,25 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
     <button id="undoBtn" title="Undo previous edit" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:7px 12px;font-size:17px;border-radius:10px;cursor:pointer;line-height:1;align-self:flex-end">&#8592;</button>
 
     <div style="position:relative;align-self:flex-end" id="btvDlDropWrap">
-      <button onclick="btvToggleDlDrop(event)" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer">&#8595;&nbsp;Download</button>
+      <button onclick="btvToggleDlDrop(event)" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer">&#8595;&nbsp;Export</button>
       <div class="btv-dl-menu" id="btvDlMenu" onclick="this.style.display='none'">
-        <button id="pdfBtn">&#128444;&#65039;&nbsp;&nbsp;Current View PDF</button>
-        <button id="pdfTodayBtn">&#128444;&#65039;&nbsp;&nbsp;3-Month View from Today</button>
+        <button onclick="btvExportCSV()">Export .csv (List View)</button>
+        <button onclick="btvExportCalendarXLS()">Export .xls (Calendar View)</button>
+        <button id="downloadVersionBtn">Export .json</button>
+        <div style="border-top:1px solid #e0d8cc;margin:4px 0"></div>
+        <button onclick="btvPrintPDF('today')">PDF: Next 3 Months</button>
+        <button onclick="btvPrintPDF('Q1')">PDF: Q1 (Jan–Mar)</button>
+        <button onclick="btvPrintPDF('Q2')">PDF: Q2 (Apr–Jun)</button>
+        <button onclick="btvPrintPDF('Q3')">PDF: Q3 (Jul–Sep)</button>
+        <button onclick="btvPrintPDF('Q4')">PDF: Q4 (Oct–Dec)</button>
       </div>
     </div>
     <input type="file" id="jsonImportInput" accept=".json" style="display:none" onchange="btvImportJSON(this)"/>
 
     <input type="file" id="csvImportInput" accept=".csv" style="display:none" onchange="btvImportCSV(this)"/>
     <div style="position:relative;align-self:flex-end" id="btvExportDropWrap">
-      <button onclick="btvToggleExportDrop(event)" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer">&#8595;&nbsp;Export / Import</button>
+      <button onclick="btvToggleExportDrop(event)" style="background:#fff;color:#111;border:1.5px solid #d6d2cc;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:.05em;border-radius:10px;cursor:pointer">&#8595;&nbsp;Import</button>
       <div class="btv-dl-menu" id="btvExportMenu" onclick="this.style.display='none'">
-        <button onclick="btvExportCSV()">Export .csv</button>
-        <button id="downloadVersionBtn">Export .json</button>
         <button onclick="document.getElementById('csvImportInput').click()">Import .csv</button>
         <button id="importJsonBtn">Import .json</button>
       </div>
@@ -11944,30 +11949,6 @@ e("undoBtn").addEventListener("click", () => {
 
 });
 
-e("pdfBtn").addEventListener("click", () => {
-    document.body.classList.add("btv-print-current");
-    render();
-    setTimeout(() => {
-      window.print();
-      document.body.classList.remove("btv-print-current");
-      render();
-    }, 80);
-  });
-
-var __pdfTodayBtn = e("pdfTodayBtn");
-if(__pdfTodayBtn){
-  __pdfTodayBtn.addEventListener("click", () => {
-    pdfPrintFromToday = true;
-    document.body.classList.add("btv-print-current");
-    render();
-    setTimeout(() => {
-      window.print();
-      pdfPrintFromToday = false;
-      document.body.classList.remove("btv-print-current");
-      render();
-    }, 80);
-  });
-}
 
 e("calendarTabBtn").addEventListener("click", ()=>switchView("calendar"));
 
@@ -12915,6 +12896,453 @@ function btvImportCSV(input) {
   };
   reader.readAsText(file, 'UTF-8');
 }
+// ─── Download helper (supports both standalone and iframe/parent-proxy usage) ──
+function _btvDownload(fileName, data, mime) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'btv-download', filename: fileName, data: data, mime: mime }, '*');
+  } else {
+    var blob = new Blob([data], {type: mime});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = fileName;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  }
+}
+window._btvDownload = _btvDownload;
+function btvExportCalendarXLS() {
+  var st = {};
+  try { st = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) {}
+  var mdSt = {};
+  try { mdSt = JSON.parse(localStorage.getItem(MARKDOWN_STORAGE_KEY) || '{}'); } catch(e) {}
+
+  var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
+  var year = yearTag ? yearTag[1] : 'BTV';
+  var weeks = currentWeeks();
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fd(iso) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T00:00:00');
+    return d.getDate() + ' ' + MONTHS[d.getMonth()];
+  }
+
+  function xs(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '&#10;');
+  }
+
+  function fmtEntry(sec, entry) {
+    var lines = [];
+    var status = entry.workflowStatus !== 'published' ? '  [Draft]' : '';
+    if (sec === 'global' || sec === 'china') {
+      lines.push((entry.launchTitle || '') + (entry.launchDate ? '  ' + fd(entry.launchDate) : '') + status);
+      (entry.lines || []).forEach(function(ln) {
+        if (!ln.productName && !ln.category) return;
+        var p = [ln.category, ln.productName, ln.price ? '$' + ln.price : ''].filter(Boolean).join('  ');
+        if (ln.colour) p += '  ' + ln.colour;
+        lines.push('  ' + p);
+      });
+      var mkts = (entry.launchMarkets || []).join(', ') || (entry.allMarkets ? 'All Mkts' : '');
+      var skuCount = (entry.lines || []).reduce(function(n, l) { return n + (Number(l.skuCount) || 0); }, 0);
+      var meta = [skuCount ? skuCount + ' SKUs' : '', mkts ? 'Mkts: ' + mkts : ''].filter(Boolean).join('  |  ');
+      if (meta) lines.push(meta);
+    } else if (sec === 'nea' || sec === 'sea') {
+      lines.push((entry.optionType ? entry.optionType + ': ' : '') + (entry.productTitle || entry.launchTitle || '') + status);
+      if (entry.colour) lines.push('  ' + entry.colour);
+      var mkts = entry.allMarkets ? (sec === 'nea' ? 'CN, JP' : 'SG, TH, ID, PH') : (entry.countries || []).join(', ');
+      if (mkts) lines.push('  Mkts: ' + mkts);
+    } else if (sec === 'restocks') {
+      lines.push((entry.productTitle || entry.title || 'Restock') + (entry.etaISO ? '  ETA ' + fd(entry.etaISO) : '') + status);
+      (entry.lines || []).forEach(function(ln) { if (ln.productTitle || ln.productName) lines.push('  ' + (ln.productTitle || ln.productName)); });
+      var mkts = entry.allMarkets ? 'All' : (entry.markets || []).join(', ');
+      if (mkts) lines.push('  Mkts: ' + mkts);
+    } else if (sec === 'events') {
+      var dates = entry.startDateISO ? fd(entry.startDateISO) + (entry.endDateISO && entry.endDateISO !== entry.startDateISO ? ' - ' + fd(entry.endDateISO) : '') : '';
+      lines.push((entry.title || 'Event') + (dates ? '  ' + dates : '') + status);
+      var mkts = entry.allMarkets ? 'All' : (entry.markets || []).join(', ');
+      if (mkts) lines.push('  Mkts: ' + mkts);
+    } else if (sec === 'store_openings') {
+      lines.push((entry.storeName || 'Store Opening') + (entry.market ? '  ' + entry.market : '') + status);
+      if (entry.targetOpenDate) lines.push('  Target: ' + fd(entry.targetOpenDate));
+    }
+    return lines.filter(Boolean).join('\n');
+  }
+
+  var qRuns = [], mRuns = [];
+  weeks.forEach(function(w) {
+    var q = qRuns[qRuns.length - 1]; if (!q || q.label !== w.quarter) qRuns.push({ label: w.quarter, n: 1 }); else q.n++;
+    var m = mRuns[mRuns.length - 1]; if (!m || m.label !== w.month)   mRuns.push({ label: w.month,   n: 1 }); else m.n++;
+  });
+
+  // Markdown row: collect labels per week
+  var mdByWeek = {};
+  weeks.forEach(function(w) { mdByWeek[w.id] = []; });
+  Object.values(mdSt).forEach(function(md) {
+    if (!md || !md.startDate || !md.endDate) return;
+    var label = (md.title || 'Markdown') + '  ' + fd(md.startDate) + '-' + fd(md.endDate);
+    weekIdsInRange(md.startDate, md.endDate).forEach(function(wid) {
+      if (mdByWeek[wid] !== undefined && !mdByWeek[wid].includes(label)) mdByWeek[wid].push(label);
+    });
+  });
+
+  var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n';
+  xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"';
+  xml += ' xmlns:o="urn:schemas-microsoft-com:office:office"';
+  xml += ' xmlns:x="urn:schemas-microsoft-com:office:excel"';
+  xml += ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n';
+  xml += '<Styles>\n';
+
+  var SEC_BG = { global: '#d4d4d4', china: '#c47800', sea: '#c43030', nea: '#4a8eb5', restocks: '#7a5a35', events: '#edecea', store_openings: '#d4d4d4' };
+  var SEC_FG = { global: '#2d2d2d', china: '#ffffff', sea: '#ffffff', nea: '#ffffff', restocks: '#ffffff', events: '#2d2d2d', store_openings: '#2d2d2d' };
+
+  function sty(id, bg, fg, bold, halign, size) {
+    var sz = size || 10;
+    var s = '<Style ss:ID="' + id + '">';
+    s += '<Alignment ss:Vertical="Top" ss:WrapText="1"' + (halign ? ' ss:Horizontal="' + halign + '"' : '') + '/>';
+    s += '<Font ss:FontName="Helvetica Neue" ss:Size="' + sz + '"' + (bold ? ' ss:Bold="1"' : '') + (fg && fg !== '#000000' ? ' ss:Color="' + fg + '"' : '') + '/>';
+    if (bg) s += '<Interior ss:Color="' + bg + '" ss:Pattern="Solid"/>';
+    s += '<Borders>';
+    s += '<Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#d0ccc6"/>';
+    s += '<Border ss:Position="Right"  ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#d0ccc6"/>';
+    s += '</Borders></Style>\n';
+    return s;
+  }
+
+  xml += sty('corner', '#ede8e2', '#1a1a1a', true,  'Left',   10);
+  xml += sty('hdr_q',  '#dbd5cc', '#1a1a1a', true,  'Center', 10);
+  xml += sty('hdr_m',  '#e8e2d8', '#1a1a1a', true,  'Center', 10);
+  xml += sty('wk_a',   '#f7f6f3', '#1a1a1a', true,  'Center', 10);
+  xml += sty('wk_b',   '#eeece8', '#1a1a1a', true,  'Center', 10);
+  xml += sty('dt_a',   '#f7f6f3', '#666666', false, 'Center',  9);
+  xml += sty('dt_b',   '#eeece8', '#666666', false, 'Center',  9);
+  xml += sty('dat_a',  '#ffffff', '#1a1a1a', false, 'Left',   10);
+  xml += sty('dat_b',  '#faf9f7', '#1a1a1a', false, 'Left',   10);
+  xml += sty('md_lbl', '#f5f0e8', '#5a4a2a', true,  'Left',   10);
+  xml += sty('md_a',   '#fffbf0', '#5a4a2a', false, 'Left',    9);
+  xml += sty('md_b',   '#faf6ea', '#5a4a2a', false, 'Left',    9);
+  SECTIONS.forEach(function(sec) {
+    xml += sty('sec_' + sec.key, SEC_BG[sec.key] || '#d4d4d4', SEC_FG[sec.key] || '#2d2d2d', true, 'Left', 10);
+  });
+  xml += '</Styles>\n';
+
+  xml += '<Worksheet ss:Name="BTV Calendar ' + year + '">\n<Table>\n';
+  xml += '<Column ss:Width="110"/>';
+  weeks.forEach(function() { xml += '<Column ss:Width="155"/>'; });
+  xml += '\n';
+
+  function cell(val, sid, mergeAcross) {
+    var ma = mergeAcross > 0 ? ' ss:MergeAcross="' + mergeAcross + '"' : '';
+    var s  = sid ? ' ss:StyleID="' + sid + '"' : '';
+    return '<Cell' + ma + s + '><Data ss:Type="String">' + xs(val) + '</Data></Cell>';
+  }
+
+  xml += '<Row ss:Height="18" ss:AutoFitHeight="0">' + cell('Quarter', 'corner');
+  qRuns.forEach(function(r) { xml += cell(r.label, 'hdr_q', r.n - 1); });
+  xml += '</Row>\n';
+
+  xml += '<Row ss:Height="18" ss:AutoFitHeight="0">' + cell('Month', 'corner');
+  mRuns.forEach(function(r) { xml += cell(r.label + ' ' + year, 'hdr_m', r.n - 1); });
+  xml += '</Row>\n';
+
+  xml += '<Row ss:Height="18" ss:AutoFitHeight="0">' + cell('Week', 'corner');
+  weeks.forEach(function(w, i) { xml += cell('Wk ' + w.weekOfYear, i % 2 ? 'wk_b' : 'wk_a'); });
+  xml += '</Row>\n';
+
+  xml += '<Row ss:Height="18" ss:AutoFitHeight="0">' + cell('Dates', 'corner');
+  weeks.forEach(function(w, i) { xml += cell(weekRangeLabel(w.start, w.end), i % 2 ? 'dt_b' : 'dt_a'); });
+  xml += '</Row>\n';
+
+  xml += '<Row ss:AutoFitHeight="1">' + cell('Markdown', 'md_lbl');
+  weeks.forEach(function(w, i) { xml += cell((mdByWeek[w.id] || []).join('\n'), i % 2 ? 'md_b' : 'md_a'); });
+  xml += '</Row>\n';
+
+  SECTIONS.forEach(function(sec) {
+    xml += '<Row ss:AutoFitHeight="1">' + cell(sec.label, 'sec_' + sec.key);
+    weeks.forEach(function(w, i) {
+      var entries = (st[sec.key] || {})[w.id] || [];
+      var txt = entries.map(function(en) { return fmtEntry(sec.key, en); }).filter(Boolean).join('\n\n');
+      xml += cell(txt, i % 2 ? 'dat_b' : 'dat_a');
+    });
+    xml += '</Row>\n';
+  });
+
+  xml += '</Table>\n';
+
+  var wsOpts = '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">';
+  wsOpts += '<FreezePanes/><FrozenNoSplit/>';
+  wsOpts += '<SplitHorizontal>5</SplitHorizontal><TopRowBottomPane>5</TopRowBottomPane>';
+  wsOpts += '<SplitVertical>1</SplitVertical><LeftColumnRightPane>1</LeftColumnRightPane>';
+  wsOpts += '<ActivePane>0</ActivePane>';
+  wsOpts += '<Print>';
+  wsOpts += '<Orientation>Landscape</Orientation>';
+  wsOpts += '<PaperSizeIndex>9</PaperSizeIndex>';
+  wsOpts += '<FitHeight>1</FitHeight>';
+  wsOpts += '<FitWidth>0</FitWidth>';
+  wsOpts += '<LeftMargin>0.4</LeftMargin><RightMargin>0.4</RightMargin>';
+  wsOpts += '<TopMargin>0.4</TopMargin><BottomMargin>0.4</BottomMargin>';
+  wsOpts += '</Print>';
+  wsOpts += '</WorksheetOptions>';
+
+  xml += wsOpts + '\n</Worksheet>\n</Workbook>';
+
+  _btvDownload(year + '_Calendar_' + new Date().toISOString().slice(0, 10) + '.xls', xml, 'application/vnd.ms-excel');
+}
+window.btvExportCalendarXLS = btvExportCalendarXLS;
+
+function btvPrintPDF(rangeMode) {
+  var allWeeks;
+  if (rangeMode === 'today') {
+    allWeeks = getThreeMonthWindowFromToday();
+  } else {
+    allWeeks = ALL_WEEKS.filter(function(w) { return w.quarter === rangeMode; });
+  }
+  if (!allWeeks.length) { alert('No weeks in this range.'); return; }
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fd(iso) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T00:00:00');
+    return d.getDate() + ' ' + MONTHS[d.getMonth()];
+  }
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
+  var year = yearTag ? yearTag[1] : '2026';
+
+  var SEC_BG = {global:'#d4d4d4',china:'#c47800',sea:'#c43030',nea:'#4a8eb5',
+    restocks:'#7a5a35',events:'#edecea',store_openings:'#d4d4d4'};
+  var SEC_FG = {global:'#2d2d2d',china:'#ffffff',sea:'#ffffff',nea:'#ffffff',
+    restocks:'#ffffff',events:'#2d2d2d',store_openings:'#2d2d2d'};
+
+  // ── Group weeks by month (each month = one PDF page) ──────────────────────
+  var pages = [];
+  var curMonth = null, curGroup = [];
+  allWeeks.forEach(function(w) {
+    if (w.month !== curMonth) {
+      if (curGroup.length) pages.push(curGroup);
+      curMonth = w.month;
+      curGroup = [w];
+    } else {
+      curGroup.push(w);
+    }
+  });
+  if (curGroup.length) pages.push(curGroup);
+
+  // ── Entry formatter ───────────────────────────────────────────────────────
+  function fmtEntry(sec, entry) {
+    var isDraft = entry.workflowStatus !== 'published';
+    var h = '<div class="entry">';
+    var title = esc(entry.launchTitle || entry.productTitle || entry.title || entry.storeName || '');
+    var dateStr = '';
+    if (entry.launchDate) dateStr = fd(entry.launchDate);
+    else if (entry.startDateISO) dateStr = fd(entry.startDateISO) + (entry.endDateISO && entry.endDateISO !== entry.startDateISO ? '–' + fd(entry.endDateISO) : '');
+    else if (entry.targetOpenDate) dateStr = fd(entry.targetOpenDate);
+    else if (entry.etaISO) dateStr = 'ETA ' + fd(entry.etaISO);
+    if (title) h += '<div class="et">' + title + (isDraft ? ' <span class="dr">[Draft]</span>' : '') + '</div>';
+    if (dateStr) h += '<div class="ed">' + esc(dateStr) + '</div>';
+    if (sec === 'global' || sec === 'china') {
+      (entry.lines || []).forEach(function(ln) {
+        var p = [ln.category,ln.productName,ln.colour,ln.price ? '$'+ln.price : ''].filter(Boolean).join(' · ');
+        if (p) h += '<div class="el">' + esc(p) + '</div>';
+      });
+      var skus = (entry.lines || []).reduce(function(n,l) { return n+(Number(l.skuCount)||0); },0);
+      var mkts = (entry.launchMarkets||[]).join(', ') || (entry.allMarkets ? 'All Mkts' : '');
+      var meta = [skus ? skus+' SKUs' : '', mkts ? 'Mkts: '+mkts : ''].filter(Boolean).join(' · ');
+      if (meta) h += '<div class="em">' + esc(meta) + '</div>';
+    } else if (sec === 'nea' || sec === 'sea') {
+      if (entry.optionType) h += '<div class="el">' + esc(entry.optionType) + '</div>';
+      if (entry.colour) h += '<div class="el">' + esc(entry.colour) + '</div>';
+      var mkts = entry.allMarkets ? (sec==='nea' ? 'CN, JP' : 'SG, TH, ID, PH') : (entry.countries||[]).join(', ');
+      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
+    } else if (sec === 'restocks') {
+      (entry.lines||[]).forEach(function(ln) {
+        if (ln.productTitle||ln.productName) h += '<div class="el">' + esc(ln.productTitle||ln.productName) + '</div>';
+      });
+      var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
+      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
+    } else if (sec === 'events') {
+      var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
+      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
+    } else if (sec === 'store_openings') {
+      if (entry.market) h += '<div class="em">' + esc(entry.market) + '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  // ── Markdown: build lane-based colspan rows for a given week group ────────
+  function buildMdRows(wks) {
+    var mdSpans = [];
+    Object.values(markdownState).forEach(function(md) {
+      if (!md || !md.startDate || !md.endDate) return;
+      var mdStart = new Date(md.startDate + 'T00:00:00');
+      var mdEnd   = new Date(md.endDate   + 'T00:00:00');
+      var firstIdx = -1, lastIdx = -1;
+      wks.forEach(function(w, idx) {
+        if (w.start <= mdEnd && w.end >= mdStart) {
+          if (firstIdx === -1) firstIdx = idx;
+          lastIdx = idx;
+        }
+      });
+      if (firstIdx !== -1) mdSpans.push({md:md, first:firstIdx, last:lastIdx});
+    });
+    mdSpans.sort(function(a,b) { return a.first - b.first; });
+
+    var lanes = [];
+    mdSpans.forEach(function(sp) {
+      var placed = false;
+      for (var l = 0; l < lanes.length; l++) {
+        if (lanes[l][lanes[l].length-1].last < sp.first) {
+          lanes[l].push(sp); sp.lane = l; placed = true; break;
+        }
+      }
+      if (!placed) { sp.lane = lanes.length; lanes.push([sp]); }
+    });
+    var numLanes = lanes.length || 1;
+
+    if (!mdSpans.length) {
+      var r = '<tr class="mr"><th class="lbl">Markdown</th>';
+      for (var c = 0; c < wks.length; c++) r += '<td></td>';
+      return r + '</tr>';
+    }
+    var rows = '';
+    lanes.forEach(function(lane, li) {
+      rows += '<tr class="mr">';
+      if (li === 0) rows += '<th class="lbl" rowspan="'+numLanes+'">Markdown</th>';
+      var ci = 0;
+      lane.forEach(function(sp) {
+        while (ci < sp.first) { rows += '<td></td>'; ci++; }
+        var span = sp.last - sp.first + 1;
+        rows += '<td colspan="'+span+'" class="md-span">'
+              + '<div class="mb"><strong>'+esc(sp.md.title||'Markdown')+'</strong>'
+              + '<br><span class="mb-d">'+esc(fd(sp.md.startDate))+'–'+esc(fd(sp.md.endDate))+'</span></div>'
+              + '</td>';
+        ci = sp.last + 1;
+      });
+      while (ci < wks.length) { rows += '<td></td>'; ci++; }
+      rows += '</tr>';
+    });
+    return rows;
+  }
+
+  // ── Build one table per month page ────────────────────────────────────────
+  function buildPageTable(wks, isLast) {
+    var n = wks.length;
+
+    // Quarter / month label for this page
+    var qLabel = wks[0].quarter + ' ' + year;
+    var mLabel = wks[0].month + ' ' + year;
+
+    var t = '<table>';
+    t += '<colgroup><col class="lbl-col">';
+    for (var c = 0; c < n; c++) t += '<col>';
+    t += '</colgroup>';
+
+    // THEAD
+    t += '<thead>';
+    t += '<tr class="hq"><th class="lbl"></th><th colspan="'+n+'">'+esc(qLabel)+'</th></tr>';
+    t += '<tr class="hm"><th class="lbl"></th><th colspan="'+n+'">'+esc(mLabel)+'</th></tr>';
+    t += '<tr class="hw"><th class="lbl">Week</th>';
+    wks.forEach(function(w) { t += '<th>Wk '+w.weekOfYear+'</th>'; });
+    t += '</tr><tr class="hd"><th class="lbl">Dates</th>';
+    wks.forEach(function(w) { t += '<th>'+esc(weekRangeLabel(w.start,w.end))+'</th>'; });
+    t += '</tr></thead>';
+
+    // TBODY
+    t += '<tbody>';
+    t += buildMdRows(wks);
+
+    SECTIONS.forEach(function(sec) {
+      var bg = SEC_BG[sec.key]||'#d4d4d4', fg = SEC_FG[sec.key]||'#2d2d2d';
+      t += '<tr><th class="lbl" style="background:'+bg+';color:'+fg+'">'
+         + esc(sec.label)+'</th>';
+      wks.forEach(function(w, wi) {
+        var entries = (state[sec.key]||{})[w.id]||[];
+        t += '<td class="'+(wi%2?'wb':'wa')+'">'
+           + entries.map(function(e){return fmtEntry(sec.key,e);}).join('')
+           + '</td>';
+      });
+      t += '</tr>';
+    });
+
+    t += '</tbody></table>';
+    // Page break after every page except the last
+    return '<div class="pg"' + (isLast ? '' : ' style="page-break-after:always"') + '>' + t + '</div>';
+  }
+
+  var rangeLabel = rangeMode==='today' ? 'Next 3 Months' : (rangeMode+' '+year);
+
+  // ── CSS ──────────────────────────────────────────────────────────────────
+  var css = [
+    '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}',
+    '*{box-sizing:border-box;margin:0;padding:0}',
+    'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:8pt;color:#111;background:#f7f6f4}',
+    'h1{font-size:10pt;font-weight:600;margin:0 0 6px;color:#3a3530;letter-spacing:.02em}',
+    // One table per page, fills page width
+    'table{border-collapse:collapse;table-layout:fixed;width:100%;background:#f7f6f4;margin-bottom:0}',
+    'thead{display:table-header-group}',
+    'th,td{border:1px solid #d6d2cc;padding:3px 5px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;font-size:8pt}',
+    'th{font-weight:600;text-align:left}',
+    // Fixed label column; week columns fill the rest equally
+    '.lbl-col{width:80pt}',
+    '.lbl{background:#f0ece6;color:#3a3530;border-right:2px solid #d6d2cc!important}',
+    // Alt week columns
+    '.wa{background:#ffffff}',
+    '.wb{background:#f3f2f0}',
+    // Header rows
+    '.hq th{background:#dbd5cc;text-align:center;font-size:8.5pt;font-weight:700;color:#3a3530;height:16pt}',
+    '.hm th{background:#e8e2d8;text-align:center;font-size:8pt;font-weight:700;color:#3a3530;height:14pt}',
+    '.hw th{background:#f4f2ef;text-align:center;font-size:7.5pt;color:#4a4a4a;height:13pt}',
+    '.hd th{background:#f7f6f3;text-align:center;font-size:7pt;color:#888;height:12pt}',
+    // Markdown row
+    '.mr th,.mr td{background:#fffdf7}',
+    '.mb{background:#f5df73;border:1px solid #d8b231;border-radius:5px;padding:3px 5px;font-size:7pt;color:#3a2a00;display:block;line-height:1.4;word-break:break-word}',
+    '.mb-d{font-size:6.5pt;font-weight:400;color:#6a4e00}',
+    // Entry cards matching .entry{background:#fffdfa;border:1px solid var(--grid);border-radius:18px}
+    '.entry{background:#fffdfa;border:1px solid #d6d2cc;border-radius:6px;padding:4px 5px;margin-bottom:3px;page-break-inside:avoid;break-inside:avoid}',
+    '.entry:last-child{margin-bottom:0}',
+    '.et{font-weight:600;font-size:8pt;line-height:1.3;color:#111}',
+    '.ed{font-size:7pt;color:#787470;margin-top:1px;font-weight:600}',
+    '.el{font-size:7pt;color:#444;margin-top:2px}',
+    '.em{font-size:6.5pt;color:#787470;margin-top:2px;font-style:italic}',
+    '.dr{font-weight:400;color:#b07050;font-size:6.5pt}',
+    '.pg{padding-bottom:0}',
+    // Prevent any row from being cut mid-row at a page boundary
+    'tr{page-break-inside:avoid;break-inside:avoid}',
+    '@media print{',
+    '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}',
+    '@page{size:A4 landscape;margin:8mm 8mm}',
+    'h1{margin:0 0 4px}',
+    'thead{display:table-header-group}',
+    'tr{page-break-inside:avoid;break-inside:avoid}',
+    '}'
+  ].join('');
+
+  // ── Assemble full HTML document ───────────────────────────────────────────
+  var bodyContent = pages.map(function(wks, idx) {
+    return buildPageTable(wks, idx === pages.length - 1);
+  }).join('');
+
+  var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">';
+  html += '<title>BTV Calendar ' + esc(rangeLabel) + '</title>';
+  html += '<style>' + css + '</style>';
+  html += '</head><body>';
+  html += '<h1>BTV Calendar — ' + esc(rangeLabel) + '</h1>';
+  html += bodyContent;
+  html += '<script>window.addEventListener("load",function(){window.print();});<\/script>';
+  html += '</body></html>';
+
+  var win = window.open('','_blank');
+  if (win) { win.document.write(html); win.document.close(); }
+  else { alert('Please allow pop-ups to export PDF.'); }
+}
+window.btvPrintPDF = btvPrintPDF;
 // ─────────────────────────────────────────────────────────────────────────────
 </script>
 
