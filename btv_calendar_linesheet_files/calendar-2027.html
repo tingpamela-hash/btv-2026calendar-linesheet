@@ -7029,6 +7029,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 (() => {
 
 const STORAGE_KEY = "calendar-2027-working-v5";
+  window._btvStorageKey = STORAGE_KEY;
 var _publishedIds = new Set(); // populated async by _btvLoadPublished
 
 const HISTORY_KEY = "calendar-2027-working-v5-history";
@@ -8587,6 +8588,7 @@ function buildWeeks(){
 const ALL_WEEKS = buildWeeks();
 
 const state = loadState();
+  window._btvState = state;
 
 function migrateLegacyWorkflowStatus(){
 
@@ -13390,7 +13392,7 @@ function _bindPubButtons() {
 
 function _btvLoadPublished() {
   if (!window._btvSb) return;
-  var yr = parseInt((STORAGE_KEY.match(/calendar-(\d{4})-/) || [])[1] || '0');
+  var yr = parseInt(((window._btvStorageKey||'').match(/calendar-(\d{4})-/)||[])[1]||'0');
   window._btvSb.from('public_calendar_entries')
     .select('entry_id').eq('year', yr)
     .then(function(res) {
@@ -13401,8 +13403,9 @@ function _btvLoadPublished() {
 
 async function btvTogglePublish(entryId, weekId, section) {
   if (!window._btvSb) { alert('Sync not ready. Please wait and try again.'); return; }
-  var yr = parseInt((STORAGE_KEY.match(/calendar-(\d{4})-/) || [])[1] || '0');
-  var entry = (((state || {})[section] || {})[weekId] || []).find(function(e) { return e.id === entryId; });
+  var yr = parseInt(((window._btvStorageKey||'').match(/calendar-(\d{4})-/)||[])[1]||'0');
+  var _st = window._btvState || {};
+  var entry = ((_st[section] || {})[weekId] || []).find(function(e) { return e.id === entryId; });
   if (!entry) return;
 
   if (_publishedIds.has(entryId)) {
