@@ -12681,6 +12681,7 @@ function btvPrintPDF(rangeMode) {
   var yearTag = STORAGE_KEY.match(/calendar-(\d{4})-/);
   var year = yearTag ? yearTag[1] : '2026';
 
+  // Section label colours matching the live calendar CSS variables
   var SEC_BG = {global:'#d4d4d4',china:'#c47800',sea:'#c43030',nea:'#4a8eb5',
     restocks:'#7a5a35',events:'#edecea',store_openings:'#d4d4d4'};
   var SEC_FG = {global:'#2d2d2d',china:'#ffffff',sea:'#ffffff',nea:'#ffffff',
@@ -12694,8 +12695,8 @@ function btvPrintPDF(rangeMode) {
     if (entry.launchDate) dateStr = fd(entry.launchDate);
     else if (entry.startDateISO) dateStr = fd(entry.startDateISO) + (entry.endDateISO && entry.endDateISO !== entry.startDateISO ? '–' + fd(entry.endDateISO) : '');
     else if (entry.targetOpenDate) dateStr = fd(entry.targetOpenDate);
-    else if (entry.etaISO) dateStr = 'ETA ' + fd(entry.etaISO);
-    if (title) h += '<div class="et">' + title + (isDraft ? ' <span class="dr">[D]</span>' : '') + '</div>';
+    else if (entry.etaISO) dateStr = 'ETA ' + fd(entry.etaISO);
+    if (title) h += '<div class="et">' + title + (isDraft ? ' <span class="dr">[Draft]</span>' : '') + '</div>';
     if (dateStr) h += '<div class="ed">' + esc(dateStr) + '</div>';
     if (sec === 'global' || sec === 'china') {
       (entry.lines || []).forEach(function(ln) {
@@ -12703,23 +12704,23 @@ function btvPrintPDF(rangeMode) {
         if (p) h += '<div class="el">' + esc(p) + '</div>';
       });
       var skus = (entry.lines || []).reduce(function(n,l) { return n+(Number(l.skuCount)||0); },0);
-      var mkts = (entry.launchMarkets||[]).join(', ')||(entry.allMarkets?'All Mkts':'');
-      var meta = [skus?skus+' SKUs':'',mkts?'Mkts: '+mkts:''].filter(Boolean).join(' · ');
+      var mkts = (entry.launchMarkets||[]).join(', ') || (entry.allMarkets ? 'All Mkts' : '');
+      var meta = [skus ? skus+' SKUs' : '', mkts ? 'Mkts: '+mkts : ''].filter(Boolean).join(' · ');
       if (meta) h += '<div class="em">' + esc(meta) + '</div>';
     } else if (sec === 'nea' || sec === 'sea') {
       if (entry.optionType) h += '<div class="el">' + esc(entry.optionType) + '</div>';
       if (entry.colour) h += '<div class="el">' + esc(entry.colour) + '</div>';
-      var mkts = entry.allMarkets ? (sec==='nea'?'CN, JP':'SG, TH, ID, PH') : (entry.countries||[]).join(', ');
-      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
+      var mkts = entry.allMarkets ? (sec==='nea' ? 'CN, JP' : 'SG, TH, ID, PH') : (entry.countries||[]).join(', ');
+      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
     } else if (sec === 'restocks') {
       (entry.lines||[]).forEach(function(ln) {
         if (ln.productTitle||ln.productName) h += '<div class="el">' + esc(ln.productTitle||ln.productName) + '</div>';
       });
-      var mkts = entry.allMarkets?'All':(entry.markets||[]).join(', ');
-      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
+      var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
+      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
     } else if (sec === 'events') {
-      var mkts = entry.allMarkets?'All':(entry.markets||[]).join(', ');
-      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
+      var mkts = entry.allMarkets ? 'All' : (entry.markets||[]).join(', ');
+      if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
     } else if (sec === 'store_openings') {
       if (entry.market) h += '<div class="em">' + esc(entry.market) + '</div>';
     }
@@ -12727,55 +12728,119 @@ function btvPrintPDF(rangeMode) {
     return h;
   }
 
+  // ── Quarter / month merge runs ───────────────────────────────────────────
   var qRuns=[], mRuns=[];
   weeks.forEach(function(w) {
     var q=qRuns[qRuns.length-1]; if(!q||q.label!==w.quarter) qRuns.push({label:w.quarter,n:1}); else q.n++;
     var m=mRuns[mRuns.length-1]; if(!m||m.label!==w.month)   mRuns.push({label:w.month,n:1});   else m.n++;
   });
 
-  var mdByWeek={};
-  weeks.forEach(function(w) { mdByWeek[w.id]=[]; });
+  // ── Markdown: build lane-based colspan spans ─────────────────────────────
+  var mdSpans = [];
   Object.values(markdownState).forEach(function(md) {
-    if (!md||!md.startDate||!md.endDate) return;
-    weekIdsInRange(md.startDate, md.endDate).forEach(function(wid) {
-      if (mdByWeek[wid]!==undefined && mdByWeek[wid].indexOf(md)===-1) mdByWeek[wid].push(md);
+    if (!md || !md.startDate || !md.endDate) return;
+    var mdStart = new Date(md.startDate + 'T00:00:00');
+    var mdEnd   = new Date(md.endDate   + 'T00:00:00');
+    var firstIdx = -1, lastIdx = -1;
+    weeks.forEach(function(w, i) {
+      if (w.start <= mdEnd && w.end >= mdStart) {
+        if (firstIdx === -1) firstIdx = i;
+        lastIdx = i;
+      }
     });
+    if (firstIdx !== -1) mdSpans.push({md:md, first:firstIdx, last:lastIdx});
   });
+  mdSpans.sort(function(a,b) { return a.first - b.first; });
+
+  // Assign each span to the first lane where it doesn't collide
+  var lanes = []; // lanes[l] = [{first,last,...}, ...]
+  mdSpans.forEach(function(sp) {
+    var placed = false;
+    for (var l = 0; l < lanes.length; l++) {
+      var lane = lanes[l];
+      if (lane[lane.length-1].last < sp.first) {
+        lane.push(sp); sp.lane = l; placed = true; break;
+      }
+    }
+    if (!placed) { sp.lane = lanes.length; lanes.push([sp]); }
+  });
+  var numLanes = lanes.length || 1;
+
+  // Build one <tr> per lane for the markdown section
+  function buildMdRows() {
+    var rows = '';
+    if (!mdSpans.length) {
+      rows = '<tr class="mr"><th class="lbl" style="font-weight:700">Markdown</th>';
+      for (var c = 0; c < weeks.length; c++) rows += '<td></td>';
+      return rows + '</tr>';
+    }
+    lanes.forEach(function(lane, laneIdx) {
+      rows += '<tr class="mr">';
+      if (laneIdx === 0) {
+        rows += '<th class="lbl" rowspan="'+numLanes+'" style="font-weight:700">Markdown</th>';
+      }
+      var ci = 0;
+      lane.forEach(function(sp) {
+        while (ci < sp.first) { rows += '<td></td>'; ci++; }
+        var span = sp.last - sp.first + 1;
+        var label = esc(sp.md.title || 'Markdown');
+        var dates = esc(fd(sp.md.startDate)) + '–' + esc(fd(sp.md.endDate));
+        rows += '<td colspan="'+span+'" class="md-span">'
+              + '<div class="mb"><strong>'+label+'</strong><br><span class="mb-d">'+dates+'</span></div>'
+              + '</td>';
+        ci = sp.last + 1;
+      });
+      while (ci < weeks.length) { rows += '<td></td>'; ci++; }
+      rows += '</tr>';
+    });
+    return rows;
+  }
 
   var rangeLabel = rangeMode==='today' ? 'Next 3 Months' : (rangeMode+' '+year);
 
+  // ── CSS ──────────────────────────────────────────────────────────────────
   var css = [
     '*{box-sizing:border-box;margin:0;padding:0}',
-    'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:7pt;color:#1a1a1a;background:#fff}',
-    'h1{font-size:9pt;font-weight:700;margin:5px 0 5px;color:#3a3530;letter-spacing:.03em}',
-    'table{border-collapse:collapse;table-layout:fixed;width:100%}',
+    // Use the same warm off-white background as the calendar page
+    'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:7pt;color:#111;background:#f7f6f4}',
+    'h1{font-size:9pt;font-weight:600;margin:5px 0 5px;color:#3a3530;letter-spacing:.03em}',
+    // Fixed layout so all weeks fit on one A4 landscape width
+    'table{border-collapse:collapse;table-layout:fixed;width:100%;background:#f7f6f4}',
     'thead{display:table-header-group}',
-    'th,td{border:1px solid #d0ccc6;padding:2px 3px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;font-size:7pt}',
-    'th{font-weight:700;text-align:left}',
-    '.lbl{width:70pt}',
+    'th,td{border:1px solid #d6d2cc;padding:2px 3px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;font-size:7pt}',
+    'th{font-weight:600;text-align:left}',
+    // Label column
+    '.lbl{width:70pt;background:#f0ece6;color:#3a3530}',
+    // Alternating week columns matching --wkA / --wkB
+    '.wa{background:#ffffff}',
+    '.wb{background:#f3f2f0}',
+    // Header rows
     '.hq th{background:#dbd5cc;text-align:center;font-size:7.5pt;font-weight:700;color:#3a3530;height:14pt}',
     '.hm th{background:#e8e2d8;text-align:center;font-size:7pt;font-weight:700;color:#3a3530;height:12pt}',
     '.hw th{background:#f4f2ef;text-align:center;font-size:6.5pt;color:#4a4a4a;height:11pt}',
     '.hd th{background:#f7f6f3;text-align:center;font-size:6pt;color:#888;height:10pt}',
-    '.mr th,.mr td{background:#fffdf5}',
-    '.mr th{font-style:italic;color:#6a5020;font-size:6.5pt}',
-    '.mb{background:#f5df73;border:1px solid #d8b231;border-radius:3px;padding:0 3px;margin:1px 0;font-size:5.5pt;font-weight:700;color:#3a2a00;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:15pt}',
-    'tr{page-break-inside:avoid}',
-    '.entry{border-bottom:1px solid #ece8e2;padding:2px 0;margin-bottom:1px}',
-    '.entry:last-child{border-bottom:none;margin-bottom:0}',
-    '.et{font-weight:700;font-size:7pt;line-height:1.3}',
-    '.ed{font-size:6pt;color:#555;margin-top:1px}',
+    // Markdown row
+    '.mr th,.mr td{background:#fffdf7}',
+    '.mb{background:#f5df73;border:1px solid #d8b231;border-radius:4px;padding:2px 4px;font-size:6pt;color:#3a2a00;display:block;line-height:1.4;white-space:normal;word-break:break-word}',
+    '.mb-d{font-size:5.5pt;font-weight:400;color:#6a4e00}',
+    // Entry cards – matching .entry{background:#fffdfa; border:1px solid var(--grid); border-radius:18px}
+    '.entry{background:#fffdfa;border:1px solid #d6d2cc;border-radius:5px;padding:3px 4px;margin-bottom:2px}',
+    '.entry:last-child{margin-bottom:0}',
+    '.et{font-weight:600;font-size:7pt;line-height:1.3;color:#111}',
+    '.ed{font-size:6pt;color:#787470;margin-top:1px;font-weight:600}',
     '.el{font-size:6pt;color:#444;margin-top:1px}',
-    '.em{font-size:5.5pt;color:#888;margin-top:1px;font-style:italic}',
+    '.em{font-size:5.5pt;color:#787470;margin-top:1px;font-style:italic}',
     '.dr{font-weight:400;color:#b07050;font-size:5.5pt}',
+    // Allow section rows to break across pages naturally (Fix 3)
+    'thead tr{page-break-inside:avoid}',
     '@media print{',
     '@page{size:A4 landscape;margin:8mm 8mm}',
     'h1{margin:0 0 4px}',
     'thead{display:table-header-group}',
-    'tr{page-break-inside:avoid}',
     '}'
   ].join('');
 
+  // ── Build HTML ────────────────────────────────────────────────────────────
   var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">';
   html += '<title>BTV Calendar ' + esc(rangeLabel) + '</title>';
   html += '<style>' + css + '</style>';
@@ -12783,8 +12848,10 @@ function btvPrintPDF(rangeMode) {
   html += '<h1>BTV Calendar — ' + esc(rangeLabel) + '</h1>';
   html += '<table><colgroup><col style="width:70pt">';
   weeks.forEach(function() { html += '<col>'; });
-  html += '</colgroup><thead>';
+  html += '</colgroup>';
 
+  // THEAD
+  html += '<thead>';
   html += '<tr class="hq"><th class="lbl"></th>';
   qRuns.forEach(function(r) { html += '<th colspan="'+r.n+'">'+esc(r.label)+' '+year+'</th>'; });
   html += '</tr><tr class="hm"><th class="lbl"></th>';
@@ -12793,23 +12860,22 @@ function btvPrintPDF(rangeMode) {
   weeks.forEach(function(w) { html += '<th>Wk '+w.weekOfYear+'</th>'; });
   html += '</tr><tr class="hd"><th class="lbl">Dates</th>';
   weeks.forEach(function(w) { html += '<th>'+esc(weekRangeLabel(w.start,w.end))+'</th>'; });
-  html += '</tr></thead><tbody>';
+  html += '</tr></thead>';
 
-  html += '<tr class="mr"><th class="lbl">Markdown</th>';
-  weeks.forEach(function(w) {
-    var bars = (mdByWeek[w.id]||[]).map(function(md) {
-      return '<span class="mb">'+esc(md.title||'Markdown')+' · '+esc(fd(md.startDate))+'–'+esc(fd(md.endDate))+'</span>';
-    }).join('');
-    html += '<td>' + bars + '</td>';
-  });
-  html += '</tr>';
+  // TBODY
+  html += '<tbody>';
 
+  // Markdown rows (lane-based colspan)
+  html += buildMdRows();
+
+  // Section rows – allow natural page breaks (no page-break-inside:avoid on tr)
   SECTIONS.forEach(function(sec) {
     var bg = SEC_BG[sec.key]||'#d4d4d4', fg = SEC_FG[sec.key]||'#2d2d2d';
-    html += '<tr><th class="lbl" style="background:'+bg+';color:'+fg+'">'+esc(sec.label)+'</th>';
-    weeks.forEach(function(w) {
+    html += '<tr><th class="lbl" style="background:'+bg+';color:'+fg+';font-weight:700">'+esc(sec.label)+'</th>';
+    weeks.forEach(function(w, i) {
       var entries = (state[sec.key]||{})[w.id]||[];
-      html += '<td>' + entries.map(function(e){return fmtEntry(sec.key,e);}).join('') + '</td>';
+      var cls = i%2 ? 'wb' : 'wa';
+      html += '<td class="'+cls+'">' + entries.map(function(e){return fmtEntry(sec.key,e);}).join('') + '</td>';
     });
     html += '</tr>';
   });
