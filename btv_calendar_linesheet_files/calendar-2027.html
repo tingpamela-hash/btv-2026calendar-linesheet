@@ -7029,6 +7029,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 (() => {
 
 const STORAGE_KEY = "calendar-2027-working-v5";
+var _publishedIds = new Set(); // populated async by _btvLoadPublished
 
 const HISTORY_KEY = "calendar-2027-working-v5-history";
 
@@ -13371,7 +13372,7 @@ function btvPrintPDF(rangeMode) {
 }
 window.btvPrintPDF = btvPrintPDF;
 // ── Public Calendar: Publish / Unpublish ─────────────────────────────────────
-var _publishedIds = new Set();
+// _publishedIds declared early (after STORAGE_KEY) to avoid render-time TypeError
 
 function _btvLoadPublished() {
   if (!window._btvSb) return;

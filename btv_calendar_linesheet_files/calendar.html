@@ -7029,6 +7029,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
 (() => {
 
 const STORAGE_KEY = "calendar-2026-working-v5";
+var _publishedIds = new Set(); // populated async by _btvLoadPublished
 
 const HISTORY_KEY = "calendar-2026-working-v5-history";
 
@@ -13473,7 +13474,7 @@ function btvImportCSV(input) {
   reader.readAsText(file, 'UTF-8');
 }
 // ── Public Calendar: Publish / Unpublish ─────────────────────────────────────
-var _publishedIds = new Set();
+// _publishedIds declared early (after STORAGE_KEY) to avoid render-time TypeError
 
 function _btvLoadPublished() {
   if (!window._btvSb) return;
