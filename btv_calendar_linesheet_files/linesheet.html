@@ -1853,26 +1853,24 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
     font-family: 'Everett', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
   }
 
-/* ── Public Launch Calendar tab ─────────────────────────────────────────── */
-.pub-yr-tabs{display:flex;gap:5px}
-.pub-yr-tab{padding:4px 16px;border:1px solid #d6d2cc;border-radius:20px;font-size:12px;font-weight:700;background:#fff;color:#888;cursor:pointer;letter-spacing:.04em;transition:background .12s,color .12s,border-color .12s}
-.pub-yr-tab.active{background:#3a3530;color:#fff;border-color:#3a3530}
-.pub-cal-legend{display:flex;flex-wrap:wrap;gap:6px;padding:9px 20px;border-bottom:1px solid #e8e4dc;background:#faf9f7}
-.pub-cal-legend-item{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#666;padding:2px 8px;border-radius:10px;background:#f0ede8}
-.pcl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.pub-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px}
-.pub-month{background:#fff;border:1px solid #e0d8cc;border-radius:9px;overflow:hidden}
-.pub-month-hd{background:#f4f2ef;padding:7px 11px;font-size:10.5px;font-weight:800;color:#3a3530;text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid #e8e4dc}
-.pub-month-body{padding:7px}
-.pub-month-empty{padding:10px 6px;text-align:center;font-size:12px;color:#cac6c0;font-style:italic}
-.pub-wk{margin-bottom:5px;border-radius:6px;overflow:hidden;border:1px solid #ede9e3}
-.pub-wk-hd{background:#faf9f7;padding:3px 8px;font-size:9.5px;font-weight:700;color:#a09890;letter-spacing:.03em;border-bottom:1px solid #ede9e3}
-.pub-wk-entries{display:flex;flex-direction:column;gap:4px;padding:5px 5px}
-.pub-ec{border-left:3px solid #ccc;padding:4px 7px;border-radius:0 5px 5px 0;background:#fdfcfb}
-.pub-ec .pec-badge{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;padding:1px 5px;border-radius:3px;margin-bottom:3px;text-transform:uppercase}
-.pub-ec .pec-title{font-size:11.5px;font-weight:700;color:#111;line-height:1.3}
-.pub-ec .pec-date{font-size:10px;color:#787470;font-weight:600;margin-top:2px}
-.pub-ec .pec-meta{font-size:10px;color:#888;margin-top:1px}
+/* ── Launch Calendar tab ─────────────────────────────────────────────────── */
+.lc-yr-tabs{display:flex;gap:5px}
+.lc-yr-tab{padding:4px 16px;border:1px solid #d6d2cc;border-radius:20px;font-size:12px;font-weight:700;background:#fff;color:#888;cursor:pointer;letter-spacing:.04em;transition:background .12s,color .12s,border-color .12s}
+.lc-yr-tab.active{background:#3a3530;color:#fff;border-color:#3a3530}
+.lc-grid{padding:14px 20px;display:flex;flex-direction:column;gap:10px}
+.lc-section{border-radius:10px;overflow:hidden;border:1px solid #e0d8cc}
+.lc-sec-hd{padding:9px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em}
+.lc-sec-body{background:#fff;padding:10px 12px}
+.lc-empty{padding:8px 4px;color:#ccc;font-style:italic;font-size:12px;text-align:center}
+.lc-mon-hd{font-size:10px;font-weight:700;color:#b0ada8;text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px;padding-top:6px;border-top:1px solid #f0ede8}
+.lc-mon-hd:first-child{margin-top:0;border-top:none;padding-top:0}
+.lc-wk{display:flex;align-items:flex-start;gap:8px;padding:4px 6px;border-radius:6px;margin-bottom:2px;background:#fdfcfb;border:1px solid #f0ede8}
+.lc-wk-lbl{font-size:9.5px;color:#b0ada8;white-space:nowrap;min-width:82px;padding-top:2px;font-weight:600;letter-spacing:.02em}
+.lc-wk-entries{display:flex;flex-direction:column;gap:3px;flex:1}
+.lc-entry{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.lc-entry-title{font-size:12px;font-weight:700;color:#111}
+.lc-entry-date{font-size:10.5px;color:#787470;white-space:nowrap}
+.lc-entry-meta{font-size:10px;color:#999;font-style:italic}
 </style>
 </head>
 
@@ -5068,34 +5066,14 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
   <!-- Toolbar -->
   <div style="padding:11px 20px 9px;border-bottom:1px solid var(--grid,#e0d8cc);display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff;position:sticky;top:0;z-index:10">
     <span style="font-size:15px;font-weight:700;color:#3a3530;letter-spacing:.01em">Launch Calendar</span>
-    <div class="pub-yr-tabs">
-      <button class="pub-yr-tab active" id="pubYr2026" onclick="pubSetYear(2026)">2026</button>
-      <button class="pub-yr-tab" id="pubYr2027" onclick="pubSetYear(2027)">2027</button>
+    <div class="lc-yr-tabs">
+      <button class="lc-yr-tab active" id="lcYr2026" onclick="lcSetYear(2026)">2026</button>
+      <button class="lc-yr-tab" id="lcYr2027" onclick="lcSetYear(2027)">2027</button>
     </div>
-    <select id="pubCalSection" onchange="renderPublicCalendar()" style="padding:5px 8px;border:1px solid #d6d2cc;border-radius:6px;font-size:12px;font-weight:600;background:#fff;cursor:pointer">
-      <option value="">All Sections</option>
-      <option value="global">Global</option>
-      <option value="sea">SEA</option>
-      <option value="nea">NEA</option>
-      <option value="china">China</option>
-      <option value="restocks">Restocks</option>
-      <option value="events">Events</option>
-      <option value="store_openings">Store Openings</option>
-    </select>
-    <button onclick="renderPublicCalendar()" style="padding:5px 12px;border:1px solid #d6d2cc;border-radius:6px;font-size:12px;font-weight:600;background:#fff;cursor:pointer">&#8635; Refresh</button>
+    <button onclick="renderLaunchCalendar()" style="padding:5px 12px;border:1px solid #d6d2cc;border-radius:6px;font-size:12px;font-weight:600;background:#fff;cursor:pointer">&#8635; Refresh</button>
   </div>
-  <!-- Section legend -->
-  <div class="pub-cal-legend">
-    <span class="pub-cal-legend-item"><span class="pcl-dot" style="background:#d4d4d4"></span>Global</span>
-    <span class="pub-cal-legend-item"><span class="pcl-dot" style="background:#c43030"></span>SEA</span>
-    <span class="pub-cal-legend-item"><span class="pcl-dot" style="background:#4a8eb5"></span>NEA</span>
-    <span class="pub-cal-legend-item"><span class="pcl-dot" style="background:#c47800"></span>China</span>
-    <span class="pub-cal-legend-item"><span class="pcl-dot" style="background:#7a5a35"></span>Restocks</span>
-    <span class="pub-cal-legend-item"><span class="pcl-dot" style="background:#a0b84a"></span>Events</span>
-    <span class="pub-cal-legend-item"><span class="pcl-dot" style="background:#6a80b0"></span>Store Openings</span>
-  </div>
-  <!-- Calendar grid -->
-  <div id="pubCalGrid" style="flex:1;overflow:auto">
+  <!-- Calendar body -->
+  <div id="lcGrid" style="flex:1;overflow:auto">
     <p style="color:#aaa;font-size:13px;padding:20px">Switch to this tab to load the launch calendar.</p>
   </div>
 </div>
@@ -7893,8 +7871,8 @@ function switchView(view){
   if (view === 'form' && _fvGid && typeof _btvLsApplyFieldLocks === 'function') {
     _btvLsApplyFieldLocks(_fvGid);
   }
-  if (view === 'pub-cal' && typeof renderPublicCalendar === 'function') {
-    setTimeout(renderPublicCalendar, 60);
+  if (view === 'pub-cal' && typeof renderLaunchCalendar === 'function') {
+    setTimeout(renderLaunchCalendar, 60);
   }
 
 
@@ -18794,132 +18772,142 @@ window.btvReloadAndRender = function() {
   };
 
 
-// ── Public Launch Calendar ────────────────────────────────────────────────────
-var _pubYear = 2026;
-function pubSetYear(yr) {
-  _pubYear = yr;
-  document.querySelectorAll('.pub-yr-tab').forEach(function(b) { b.classList.remove('active'); });
-  var btn = document.getElementById('pubYr' + yr);
+// ── Launch Calendar (public read-only view) ──────────────────────────────────
+var _lcYear = 2026;
+function lcSetYear(yr) {
+  _lcYear = yr;
+  document.querySelectorAll('.lc-yr-tab').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.getElementById('lcYr' + yr);
   if (btn) btn.classList.add('active');
-  renderPublicCalendar();
+  renderLaunchCalendar();
 }
-window.pubSetYear = pubSetYear;
+window.lcSetYear = lcSetYear;
 
-function renderPublicCalendar() {
-  var grid = document.getElementById('pubCalGrid');
+function renderLaunchCalendar() {
+  var grid = document.getElementById('lcGrid');
   if (!grid) return;
   if (!window._btvSb) {
     grid.innerHTML = '<p style="color:#aaa;font-size:13px;padding:20px">Waiting for sync…</p>';
-    setTimeout(renderPublicCalendar, 800);
+    setTimeout(renderLaunchCalendar, 800);
     return;
   }
   grid.innerHTML = '<p style="color:#aaa;font-size:13px;padding:20px">Loading…</p>';
 
-  var year = _pubYear || 2026;
-  var secFilter = ((document.getElementById('pubCalSection') || {}).value || '').trim();
+  var year = _lcYear || 2026;
 
-  var query = window._btvSb.from('public_calendar_entries')
-    .select('*').eq('year', year).order('week_id', {ascending: true});
-  if (secFilter) query = query.eq('section', secFilter);
-
-  query.then(function(res) {
-    if (res.error) {
-      grid.innerHTML = '<p style="color:#c00;font-size:13px;padding:20px">Error: ' + res.error.message + '</p>';
-      return;
-    }
-    var rows = res.data || [];
-
-    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    var MON_S  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var SEC_BG = {global:'#d4d4d4',china:'#c47800',sea:'#c43030',nea:'#4a8eb5',restocks:'#7a5a35',events:'#a0b84a',store_openings:'#6a80b0'};
-    var SEC_FG = {global:'#2d2d2d',china:'#fff',sea:'#fff',nea:'#fff',restocks:'#fff',events:'#fff',store_openings:'#fff'};
-    var SEC_LBL = {global:'Global',china:'China',sea:'SEA',nea:'NEA',restocks:'Restock',events:'Event',store_openings:'Store Opening'};
-
-    // Build month map — always 12 months pre-populated
-    var monthsMap = {};
-    for (var m = 1; m <= 12; m++) {
-      monthsMap[year + '-' + String(m).padStart(2,'0')] = {};
-    }
-    rows.forEach(function(row) {
-      var d = new Date(row.week_id + 'T00:00:00');
-      var mk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-      if (!monthsMap[mk]) monthsMap[mk] = {};
-      if (!monthsMap[mk][row.week_id]) monthsMap[mk][row.week_id] = [];
-      monthsMap[mk][row.week_id].push(row);
-    });
-
-    function fmtD(iso) {
-      if (!iso) return '';
-      var d = new Date(iso + 'T00:00:00');
-      return d.getDate() + ' ' + MON_S[d.getMonth()];
-    }
-    function fmtWk(wid) {
-      var d = new Date(wid + 'T00:00:00');
-      var e = new Date(d); e.setDate(d.getDate() + 6);
-      return fmtD(wid) + ' – ' + e.getDate() + ' ' + MON_S[e.getMonth()];
-    }
-    function esc(v) {
-      return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-    function renderEntry(row) {
-      var e = row.entry_data || {};
-      var sec = row.section || 'global';
-      var bg = SEC_BG[sec] || '#d4d4d4';
-      var fg = SEC_FG[sec] || '#2d2d2d';
-      var lbl = SEC_LBL[sec] || sec;
-      var title = e.launchTitle || e.productTitle || e.title || e.storeName || '(Untitled)';
-      var dateStr = '';
-      if (e.launchDate) dateStr = fmtD(e.launchDate);
-      else if (e.startDateISO) dateStr = fmtD(e.startDateISO) + (e.endDateISO && e.endDateISO !== e.startDateISO ? ' – ' + fmtD(e.endDateISO) : '');
-      else if (e.targetOpenDate) dateStr = fmtD(e.targetOpenDate);
-      var mkts = '';
-      if (sec === 'global') mkts = (e.noLaunchMarkets || []).join(', ') || (e.allMarkets ? 'All Markets' : '');
-      else if (sec === 'china') mkts = 'CN';
-      else if (sec === 'sea') mkts = e.allMarkets ? 'SG, TH, ID, PH' : (e.countries || []).join(', ');
-      else if (sec === 'nea') mkts = e.allMarkets ? 'CN, JP' : (e.countries || []).join(', ');
-      else mkts = ((e.noLaunchMarkets || e.markets) || []).join(', ') || (e.allMarkets ? 'All' : '');
-      var prods = (e.lines || []).filter(function(l){return l.productName;}).map(function(l){return esc(l.productName||'');}).join(', ');
-      var skus  = (e.lines || []).reduce(function(n,l){return n+(Number(l.skuCount)||0);},0);
-      var meta  = [mkts ? esc(mkts) : '', skus ? skus+' SKUs' : ''].filter(Boolean).join(' · ');
-      return (
-        '<div class="pub-ec" style="border-left-color:' + bg + '">' +
-        '<div class="pec-badge" style="background:' + bg + ';color:' + fg + '">' + esc(lbl) + '</div>' +
-        '<div class="pec-title">' + esc(title) + '</div>' +
-        (dateStr ? '<div class="pec-date">' + esc(dateStr) + '</div>' : '') +
-        (prods   ? '<div class="pec-meta">' + prods + '</div>' : '') +
-        (meta    ? '<div class="pec-meta">' + meta + '</div>' : '') +
-        '</div>'
-      );
-    }
-
-    var html = '<div class="pub-grid">';
-    Object.keys(monthsMap).sort().forEach(function(mk) {
-      var weeks = monthsMap[mk];
-      var mDate = new Date(mk + '-01T00:00:00');
-      var mLabel = MONTHS[mDate.getMonth()];
-      var hasEntries = Object.keys(weeks).some(function(w){return weeks[w].length > 0;});
-      html += '<div class="pub-month">';
-      html += '<div class="pub-month-hd">' + esc(mLabel) + '</div>';
-      html += '<div class="pub-month-body">';
-      if (!hasEntries) {
-        html += '<div class="pub-month-empty">–</div>';
-      } else {
-        Object.keys(weeks).sort().forEach(function(wid) {
-          if (!weeks[wid].length) return;
-          html += '<div class="pub-wk">';
-          html += '<div class="pub-wk-hd">Wk ' + esc(fmtWk(wid)) + '</div>';
-          html += '<div class="pub-wk-entries">';
-          weeks[wid].forEach(function(row){ html += renderEntry(row); });
-          html += '</div></div>';
-        });
+  window._btvSb.from('public_calendar_entries')
+    .select('*').eq('year', year).order('week_id', {ascending: true})
+    .then(function(res) {
+      if (res.error) {
+        grid.innerHTML = '<p style="color:#c00;font-size:13px;padding:20px">Error: ' + res.error.message + '</p>';
+        return;
       }
-      html += '</div></div>';
+      var rows = res.data || [];
+
+      // Section definitions — matches BTV Calendar order and colours
+      var SECTIONS = [
+        {key:'global',        label:'Global',                bg:'#d4d4d4', fg:'#2d2d2d'},
+        {key:'china',         label:'China',                 bg:'#c47800', fg:'#fff'},
+        {key:'sea',           label:'SEA',                   bg:'#c43030', fg:'#fff'},
+        {key:'nea',           label:'NEA',                   bg:'#4a8eb5', fg:'#fff'},
+        {key:'restocks',      label:'Restocks',              bg:'#7a5a35', fg:'#fff'},
+        {key:'events',        label:'Events / Activations',  bg:'#edecea', fg:'#2d2d2d'},
+        {key:'store_openings',label:'Store Openings',        bg:'#d4d4d4', fg:'#2d2d2d'}
+      ];
+
+      var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      var MON_S  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+      // Group rows by section → month → week_id
+      var bySection = {};
+      SECTIONS.forEach(function(s) { bySection[s.key] = {}; });
+      rows.forEach(function(row) {
+        var sec = row.section || 'global';
+        if (!bySection[sec]) bySection[sec] = {};
+        var d = new Date(row.week_id + 'T00:00:00');
+        var mk = String(d.getMonth()); // 0-11
+        if (!bySection[sec][mk]) bySection[sec][mk] = {};
+        if (!bySection[sec][mk][row.week_id]) bySection[sec][mk][row.week_id] = [];
+        bySection[sec][mk][row.week_id].push(row);
+      });
+
+      function fmtD(iso) {
+        if (!iso) return '';
+        var d = new Date(iso + 'T00:00:00');
+        return d.getDate() + ' ' + MON_S[d.getMonth()];
+      }
+      function fmtWk(wid) {
+        var d = new Date(wid + 'T00:00:00');
+        var e = new Date(d); e.setDate(d.getDate() + 6);
+        return fmtD(wid) + ' – ' + e.getDate() + ' ' + MON_S[e.getMonth()];
+      }
+      function esc(v) {
+        return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+      function renderEntry(row) {
+        var e = row.entry_data || {};
+        var sec = row.section || 'global';
+        var title = e.launchTitle || e.productTitle || e.title || e.storeName || '(Untitled)';
+        var dateStr = '';
+        if (e.launchDate) dateStr = fmtD(e.launchDate);
+        else if (e.startDateISO) dateStr = fmtD(e.startDateISO) + (e.endDateISO && e.endDateISO !== e.startDateISO ? ' – ' + fmtD(e.endDateISO) : '');
+        else if (e.targetOpenDate) dateStr = fmtD(e.targetOpenDate);
+        var mkts = '';
+        if (sec === 'global') mkts = (e.noLaunchMarkets || []).join(', ') || (e.allMarkets ? 'All Markets' : '');
+        else if (sec === 'china') mkts = 'CN';
+        else if (sec === 'sea') mkts = e.allMarkets ? 'SG, TH, ID, PH' : (e.countries || []).join(', ');
+        else if (sec === 'nea') mkts = e.allMarkets ? 'CN, JP' : (e.countries || []).join(', ');
+        else mkts = ((e.noLaunchMarkets || e.markets) || []).join(', ') || (e.allMarkets ? 'All' : '');
+        var prods = (e.lines || []).filter(function(l){return l.productName;}).map(function(l){return esc(l.productName||'');}).join(', ');
+        var skus  = (e.lines || []).reduce(function(n,l){return n+(Number(l.skuCount)||0);},0);
+        var meta  = [mkts ? esc(mkts) : '', prods, skus ? skus + ' SKUs' : ''].filter(Boolean).join(' · ');
+        return (
+          '<div class="lc-entry">' +
+          '<span class="lc-entry-title">' + esc(title) + '</span>' +
+          (dateStr ? '<span class="lc-entry-date">' + esc(dateStr) + '</span>' : '') +
+          (meta    ? '<span class="lc-entry-meta">' + meta + '</span>' : '') +
+          '</div>'
+        );
+      }
+
+      var html = '<div class="lc-grid">';
+      SECTIONS.forEach(function(sec) {
+        var secData = bySection[sec.key] || {};
+        var hasEntries = Object.keys(secData).some(function(mk) {
+          return Object.keys(secData[mk]).some(function(wid) { return secData[mk][wid].length > 0; });
+        });
+
+        html += '<div class="lc-section">';
+        html += '<div class="lc-sec-hd" style="background:' + sec.bg + ';color:' + sec.fg + '">' + esc(sec.label) + '</div>';
+        html += '<div class="lc-sec-body">';
+
+        if (!hasEntries) {
+          html += '<div class="lc-empty">Nothing published yet</div>';
+        } else {
+          // Sort months 0-11
+          Object.keys(secData).map(Number).sort(function(a,b){return a-b;}).forEach(function(mIdx) {
+            var weeks = secData[String(mIdx)];
+            html += '<div class="lc-mon-hd">' + esc(MONTHS[mIdx]) + '</div>';
+            Object.keys(weeks).sort().forEach(function(wid) {
+              if (!weeks[wid].length) return;
+              html += '<div class="lc-wk">';
+              html += '<div class="lc-wk-lbl">Wk ' + esc(fmtWk(wid)) + '</div>';
+              html += '<div class="lc-wk-entries">';
+              weeks[wid].forEach(function(row) { html += renderEntry(row); });
+              html += '</div></div>';
+            });
+          });
+        }
+
+        html += '</div></div>';
+      });
+      html += '</div>';
+      grid.innerHTML = html;
     });
-    html += '</div>';
-    grid.innerHTML = html;
-  });
 }
-window.renderPublicCalendar = renderPublicCalendar;
+window.renderLaunchCalendar  = renderLaunchCalendar;
+// Keep old name as alias in case anything references it
+window.renderPublicCalendar = renderLaunchCalendar;
 // ─────────────────────────────────────────────────────────────────────────────
 
 })();
