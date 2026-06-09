@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BTV Calendar</title>
+  <style>
+    :root {
+      --bg:      #f5f3ef;
+      --card:    #ffffff;
+      --border:  #e0d8cc;
+      --border2: #ede9e3;
+      --text:    #2d2d2d;
+      --muted:   #787470;
+      --faint:   #b0ada8;
+      --font:    'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 13px;
+    }
+
+    /* ── Toolbar ─────────────────────────────────────────────────────────── */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .toolbar-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #3a3530;
+      letter-spacing: .01em;
+    }
+    .yr-tabs { display: flex; gap: 5px; }
+    .yr-tab {
+      padding: 4px 15px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 700;
+      background: #fff;
+      color: #888;
+      cursor: pointer;
+      letter-spacing: .04em;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .yr-tab.active { background: #3a3530; color: #fff; border-color: #3a3530; }
+    .yr-tab:hover:not(.active) { background: #f4f2ef; }
+    .refresh-btn {
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+    }
+    .refresh-btn:hover { background: #f4f2ef; }
+
+    /* ── Body / loading ──────────────────────────────────────────────────── */
+    .cal-body  { padding: 16px 20px 40px; }
+    .msg       { color: #aaa; font-size: 13px; padding: 20px 4px; }
+    .err       { color: #c00; padding: 20px 4px; }
+
+    /* ── Month header ────────────────────────────────────────────────────── */
+    .month-hd {
+      font-size: 13px;
+      font-weight: 800;
+      color: #3a3530;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin: 24px 0 8px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--border);
+    }
+    .month-hd:first-child { margin-top: 0; }
+    .month-empty {
+      color: #ccc;
+      font-style: italic;
+      font-size: 12px;
+      padding: 8px 2px 4px;
+    }
+
+    /* ── Week block ──────────────────────────────────────────────────────── */
+    .wk-block  { margin-bottom: 6px; }
+    .wk-lbl {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--faint);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 4px;
+    }
+    .wk-entries { display: flex; flex-direction: column; gap: 5px; }
+
+    /* ── Entry card ──────────────────────────────────────────────────────── */
+    .entry-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 7px 10px;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-left-width: 3px;
+      border-radius: 8px;
+    }
+    .entry-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .entry-info    { flex: 1; min-width: 0; }
+    .entry-title   { font-size: 12px; font-weight: 700; color: #111; line-height: 1.35; }
+    .entry-date    { font-size: 10.5px; color: var(--muted); margin-top: 2px; font-weight: 600; }
+    .entry-meta    { font-size: 10px; color: #999; margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <span class="toolbar-title">BTV Calendar</span>
+    <div class="yr-tabs">
+      <button class="yr-tab active" id="yr2026" onclick="setYear(2026)">2026</button>
+      <button class="yr-tab"        id="yr2027" onclick="setYear(2027)">2027</button>
+    </div>
+    <button class="refresh-btn" onclick="loadCalendar()">&#8635; Refresh</button>
+  </div>
+
+  <div id="calBody" class="cal-body">
+    <p class="msg">Loading&hellip;</p>
+  </div>
+
+<script>
+  var _year = 2026;
+  var _sb   = null;
+  var _loaded = false;
+
+  /* ── Section definitions — same order & colours as BTV Management Calendar ── */
+  var SECTIONS = [
+    { key:'global',         label:'Global',              bg:'#d4d4d4', fg:'#2d2d2d', bc:'#bcbcbc'  },
+    { key:'china',          label:'China',               bg:'#c47800', fg:'#ffffff', bc:'#c47800'  },
+    { key:'sea',            label:'SEA',                 bg:'#c43030', fg:'#ffffff', bc:'#c43030'  },
+    { key:'nea',            label:'NEA',                 bg:'#4a8eb5', fg:'#ffffff', bc:'#4a8eb5'  },
+    { key:'restocks',       label:'Restocks',            bg:'#7a5a35', fg:'#ffffff', bc:'#7a5a35'  },
+    { key:'events',         label:'Events',              bg:'#edecea', fg:'#2d2d2d', bc:'#a0b84a'  },
+    { key:'store_openings', label:'Store Openings',      bg:'#d4d4d4', fg:'#2d2d2d', bc:'#6a80b0'  }
+  ];
+  var SEC_MAP = {};
+  SECTIONS.forEach(function(s) { SEC_MAP[s.key] = s; });
+
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var MON_S  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  /* ── Helpers ─────────────────────────────────────────────────────────────── */
+  function fmtD(iso) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T00:00:00');
+    return d.getDate() + ' ' + MON_S[d.getMonth()];
+  }
+  function fmtWk(wid) {
+    var d = new Date(wid + 'T00:00:00');
+    var e = new Date(d);
+    e.setDate(d.getDate() + 6);
+    return fmtD(wid) + '–' + e.getDate() + ' ' + MON_S[e.getMonth()];
+  }
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ── Entry card renderer ─────────────────────────────────────────────────── */
+  function renderCard(row) {
+    var e   = row.entry_data || {};
+    var sec = SEC_MAP[row.section] || SEC_MAP['global'];
+
+    var title = e.launchTitle || e.productTitle || e.title || e.storeName || '(Untitled)';
+
+    var dateStr = '';
+    if (e.launchDate)      dateStr = fmtD(e.launchDate);
+    else if (e.startDateISO) {
+      dateStr = fmtD(e.startDateISO);
+      if (e.endDateISO && e.endDateISO !== e.startDateISO)
+        dateStr += ' – ' + fmtD(e.endDateISO);
+    } else if (e.targetOpenDate) {
+      dateStr = fmtD(e.targetOpenDate);
+    }
+
+    var sk   = row.section || 'global';
+    var mkts = '';
+    if      (sk === 'global')  mkts = (e.noLaunchMarkets || []).join(', ') || (e.allMarkets ? 'All Markets' : '');
+    else if (sk === 'china')   mkts = 'CN';
+    else if (sk === 'sea')     mkts = e.allMarkets ? 'SG, TH, ID, PH' : (e.countries || []).join(', ');
+    else if (sk === 'nea')     mkts = e.allMarkets ? 'CN, JP'          : (e.countries || []).join(', ');
+    else                       mkts = ((e.noLaunchMarkets || e.markets) || []).join(', ') || (e.allMarkets ? 'All' : '');
+
+    var prods = (e.lines || []).filter(function(l) { return l.productName; })
+                               .map(function(l)    { return esc(l.productName || ''); })
+                               .join(', ');
+    var skus  = (e.lines || []).reduce(function(n,l) { return n + (Number(l.skuCount) || 0); }, 0);
+    var meta  = [mkts ? esc(mkts) : null, prods || null, skus ? skus + ' SKUs' : null]
+                  .filter(Boolean).join(' · ');
+
+    return (
+      '<div class="entry-card" style="border-left-color:' + sec.bc + '">' +
+        '<span class="entry-badge" style="background:' + sec.bg + ';color:' + sec.fg + '">' + esc(sec.label) + '</span>' +
+        '<div class="entry-info">' +
+          '<div class="entry-title">'  + esc(title)   + '</div>' +
+          (dateStr ? '<div class="entry-date">' + esc(dateStr) + '</div>' : '') +
+          (meta    ? '<div class="entry-meta">' + meta         + '</div>' : '') +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  /* ── Year tab switcher ───────────────────────────────────────────────────── */
+  function setYear(yr) {
+    _year = yr;
+    document.getElementById('yr2026').classList.toggle('active', yr === 2026);
+    document.getElementById('yr2027').classList.toggle('active', yr === 2027);
+    loadCalendar();
+  }
+
+  /* ── Main render ─────────────────────────────────────────────────────────── */
+  function loadCalendar() {
+    var body = document.getElementById('calBody');
+    if (!_sb) {
+      body.innerHTML = '<p class="msg">Waiting for connection&hellip;</p>';
+      return;
+    }
+
+    body.innerHTML = '<p class="msg">Loading&hellip;</p>';
+
+    _sb.from('public_calendar_entries')
+      .select('*')
+      .eq('year', _year)
+      .order('week_id', { ascending: true })
+      .then(function(res) {
+        if (res.error) {
+          body.innerHTML = '<p class="err">Error: ' + esc(res.error.message) + '</p>';
+          return;
+        }
+        var rows = res.data || [];
+
+        /* Group: monthIndex(0-11) → week_id → rows[] */
+        var monthMap = {};
+        for (var m = 0; m < 12; m++) { monthMap[m] = {}; }
+
+        rows.forEach(function(row) {
+          var d    = new Date(row.week_id + 'T00:00:00');
+          var mIdx = d.getMonth();
+          if (!monthMap[mIdx][row.week_id]) monthMap[mIdx][row.week_id] = [];
+          monthMap[mIdx][row.week_id].push(row);
+        });
+
+        var html = '';
+        for (var mIdx = 0; mIdx < 12; mIdx++) {
+          var weeks    = monthMap[mIdx];
+          var weekKeys = Object.keys(weeks).sort();
+          html += '<div class="month-hd">' + esc(MONTHS[mIdx]) + '</div>';
+
+          if (!weekKeys.length) {
+            html += '<div class="month-empty">Nothing published yet</div>';
+          } else {
+            weekKeys.forEach(function(wid) {
+              html += '<div class="wk-block">';
+              html += '<div class="wk-lbl">Week of ' + esc(fmtWk(wid)) + '</div>';
+              html += '<div class="wk-entries">';
+              weeks[wid].forEach(function(row) { html += renderCard(row); });
+              html += '</div></div>';
+            });
+          }
+        }
+
+        body.innerHTML = html;
+      });
+  }
+
+  /* ── Auth bridge — called by parent index.html via btvSyncStart ─────────── */
+  function btvSyncStart(session, parentSb) {
+    if (parentSb) {
+      _sb = parentSb;
+      window._btvSb = parentSb;
+    }
+    if (!_loaded) { _loaded = true; loadCalendar(); }
+  }
+
+  /* No-op so _bypassFramePasscode in parent doesn't throw */
+  window.plannerUnlockWith = function() {};
+
+  /* Expose globals */
+  window.btvSyncStart  = btvSyncStart;
+  window.setYear       = setYear;
+  window.loadCalendar  = loadCalendar;
+</script>
+</body>
+</html>

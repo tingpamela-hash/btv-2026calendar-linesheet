@@ -268,11 +268,12 @@ html, body {
 <!-- Top navigation -->
 <nav class="top-nav">
   <span class="top-nav-brand">BTV Planner</span>
-  <button class="top-nav-btn active" data-frame="cal" onclick="showFrame('cal')">BTV Calendar</button>
+  <button class="top-nav-btn active" data-frame="cal" onclick="showFrame('cal')">BTV Management Calendar</button>
   <div id="calYearPicker" class="cal-year-picker">
     <button id="yearBtn2026" class="year-btn active-year" onclick="setCalYear('2026')">2026</button>
     <button id="yearBtn2027" class="year-btn" onclick="setCalYear('2027')">2027</button>
   </div>
+  <button class="top-nav-btn" data-frame="pubcal" onclick="showFrame('pubcal')">BTV Calendar</button>
   <button class="top-nav-btn" data-frame="creative" onclick="showFrame('creative')">Creative Calendar</button>
   <button class="top-nav-btn" data-frame="ls" onclick="showFrame('ls')">Linesheet</button>
   <div class="nav-right">
@@ -295,6 +296,7 @@ html, body {
   <iframe id="frame-cal-2026" class="frame active" title="Calendar 2026" data-src="./btv_calendar_linesheet_files/calendar.html" allow="downloads"></iframe>
   <iframe id="frame-cal-2027" class="frame" title="Calendar 2027" data-src="./btv_calendar_linesheet_files/calendar-2027.html" allow="downloads"></iframe>
   <iframe id="frame-creative" class="frame" title="Creative Calendar" data-src="./btv_calendar_linesheet_files/creative-calendar.html" allow="downloads"></iframe>
+  <iframe id="frame-pubcal" class="frame" title="BTV Calendar" data-src="./btv_calendar_linesheet_files/btv-pub-cal.html" allow="downloads"></iframe>
   <iframe id="frame-ls" class="frame" title="Linesheet Manager" data-src="./btv_calendar_linesheet_files/linesheet.html" allow="downloads"></iframe>
 </div>
 
@@ -303,22 +305,10 @@ html, body {
   <div class="module-login-card">
     <div class="module-login-eyebrow">BTV Planner</div>
 
-    <!-- Step 1: Module choice -->
-    <div id="moduleChoiceStep">
-      <div class="module-login-title">Welcome back</div>
-      <div class="module-login-copy" style="margin-bottom:22px">Where would you like to go?</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button id="modChoiceBtn-cal" style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#111;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('cal')">BTV Calendar</button>
-        <button id="modChoiceBtn-creative" style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#3a3a3a;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('creative')">Creative Calendar</button>
-        <button id="modChoiceBtn-ls" style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#555;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('ls')">Linesheet</button>
-      </div>
-    </div>
-
-    <!-- Step 2: Login form -->
-    <div id="moduleLoginForm" style="display:none">
-      <button type="button" class="login-link-btn" style="margin-bottom:14px" onclick="btvBackToModuleChoice()">&#8592; Back</button>
+    <!-- Login form -->
+    <div id="moduleLoginForm">
       <div class="module-login-title" id="moduleLoginTitle">Welcome back</div>
-      <div class="module-login-copy" id="moduleLoginCopy">Sign in to access the Calendar.</div>
+      <div class="module-login-copy" id="moduleLoginCopy">Sign in to BTV Planner.</div>
       <div class="login-field">
         <label for="moduleLoginInput">Email address</label>
         <input type="email" id="moduleLoginInput" class="login-inp" placeholder="you@beyondthevines.com" autocomplete="email" inputmode="email">
@@ -399,9 +389,9 @@ html, body {
     window.BTV_SUPABASE_CONFIG.anonKey
   );
 
-  const MODULE_LABELS = { cal: 'BTV Calendar', creative: 'Creative Calendar', ls: 'Linesheet' };
+  const MODULE_LABELS = { cal: 'BTV Management Calendar', pubcal: 'BTV Calendar', creative: 'Creative Calendar', ls: 'Linesheet' };
   let _currentModule = 'cal';
-  let _moduleChosen = false;
+  let _moduleChosen = true;
   let _session = null;
   let _profile = null;
 
@@ -558,6 +548,7 @@ html, body {
     _startSyncInFrame('frame-cal-2027', session);
     _startSyncInFrame('frame-creative', session);
     _startSyncInFrame('frame-ls', session);
+    _startSyncInFrame('frame-pubcal', session);
   }
 
   async function boot() {
@@ -569,10 +560,12 @@ html, body {
       _updateNavButtons(true);
       _setupPresence(session);
       _startSyncInCalFrame(session);
-      // Auto-unlock accessible modules — no need to re-enter credentials if session exists
-      if (_canAccess('cal'))      _setUnlocked('cal');
-      if (_canAccess('creative')) _setUnlocked('creative');
-      if (_canAccess('ls'))       _setUnlocked('ls');
+      // Auto-unlock all accessible modules and navigate to the first one
+      var _BOOT_MODS = ['cal', 'pubcal', 'creative', 'ls'];
+      _BOOT_MODS.forEach(function(m) { if (_canAccess(m)) _setUnlocked(m); });
+      var _firstMod = _BOOT_MODS.find(function(m) { return _canAccess(m); }) || 'cal';
+      _currentModule = _firstMod;
+      showFrame(_firstMod);
     }
 
     _sb.auth.onAuthStateChange(async function (event, session) {
@@ -615,7 +608,7 @@ html, body {
   function _refreshTabVisibility() {
     // When profile is loaded, hide tabs the user cannot access.
     // When no profile (logged out / not yet loaded), show all tabs.
-    var MODS = ['cal', 'creative', 'ls'];
+    var MODS = ['cal', 'pubcal', 'creative', 'ls'];
     MODS.forEach(function(mod) {
       var allowed = !_profile || _canAccess(mod);
       // Top nav tab button
@@ -651,26 +644,16 @@ html, body {
   function _canAccess(mod) {
     if (!_profile) return true; // no profile yet → show everything until we know
     if (mod === 'cal')      return _profile.can_access_cal !== false;
+    if (mod === 'pubcal')   return _profile.can_access_pub_cal !== false;
     if (mod === 'creative') return _profile.can_access_creative !== false;
     return _profile.can_access_ls !== false;
   }
 
   function _refreshOverlay() {
     const overlay = document.getElementById('moduleLoginOverlay');
-    if (!_moduleChosen) {
-      document.getElementById('moduleChoiceStep').style.display = '';
-      document.getElementById('moduleLoginForm').style.display  = 'none';
-      overlay.classList.add('show');
-      return;
-    }
     const locked = !_isUnlocked(_currentModule);
     overlay.classList.toggle('show', locked);
     if (locked) {
-      document.getElementById('moduleChoiceStep').style.display = 'none';
-      document.getElementById('moduleLoginForm').style.display  = '';
-      document.getElementById('moduleLoginCopy').textContent =
-        'Sign in to access the ' + MODULE_LABELS[_currentModule] + '.';
-      document.getElementById('moduleLoginTitle').textContent = 'Welcome back';
       setTimeout(function () {
         const e = document.getElementById('moduleLoginInput');
         if (e) e.focus();
@@ -679,29 +662,14 @@ html, body {
   }
 
   function btvSelectModule(name) {
-    _currentModule = name;
-    _moduleChosen  = true;
-    document.getElementById('moduleChoiceStep').style.display = 'none';
-    document.getElementById('moduleLoginForm').style.display  = '';
-    document.getElementById('moduleLoginCopy').textContent =
-      'Sign in to access the ' + MODULE_LABELS[name] + '.';
-    document.getElementById('moduleLoginTitle').textContent = 'Welcome back';
-    document.getElementById('moduleLoginError').textContent = '';
-    document.getElementById('moduleLoginInput').value = '';
-    document.getElementById('moduleLoginPwd').value   = '';
-    if (!_isUnlocked(name)) {
-      setTimeout(function () { document.getElementById('moduleLoginInput').focus(); }, 50);
-    } else {
+    // Legacy: kept for any residual calls; just show the frame if unlocked
+    if (_isUnlocked(name)) {
       document.getElementById('moduleLoginOverlay').classList.remove('show');
       showFrame(name);
     }
   }
 
-  function btvBackToModuleChoice() {
-    _moduleChosen = false;
-    document.getElementById('moduleChoiceStep').style.display = '';
-    document.getElementById('moduleLoginForm').style.display  = 'none';
-  }
+  function btvBackToModuleChoice() { /* module choice removed */ }
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
@@ -740,13 +708,13 @@ html, body {
           ' module. Contact your admin.';
         return;
       }
-      _setUnlocked(_currentModule);
-      // Unlock all permitted modules so the user never re-enters credentials when switching tabs
-      if (_canAccess('cal'))      _setUnlocked('cal');
-      if (_canAccess('creative')) _setUnlocked('creative');
-      if (_canAccess('ls'))       _setUnlocked('ls');
+      // Unlock all accessible modules, then navigate to the first one
+      var _LOGIN_MODS = ['cal', 'pubcal', 'creative', 'ls'];
+      _LOGIN_MODS.forEach(function(m) { if (_canAccess(m)) _setUnlocked(m); });
+      var _loginFirst = _LOGIN_MODS.find(function(m) { return _canAccess(m); }) || 'cal';
+      _currentModule = _loginFirst;
       document.getElementById('moduleLoginOverlay').classList.remove('show');
-      showFrame(_currentModule);
+      showFrame(_loginFirst);
       _startSyncInCalFrame(data.session);
     } finally {
       btn.disabled    = false;
@@ -954,9 +922,10 @@ html, body {
       var bg = i % 2 === 0 ? 'background:#f8f6f2' : '';
       return '<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;' + bg + '">'
         + '<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (u.email || '') + '">' + (u.email || u.id.substring(0, 8) + '…') + '</span>'
-        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_cal ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_cal\',this.checked)"> Cal</label>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_cal !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_cal\',this.checked)"> Mgmt Cal</label>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_pub_cal !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_pub_cal\',this.checked)"> BTV Cal</label>'
         + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_creative !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_creative\',this.checked)"> Creative</label>'
-        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_ls ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_ls\',this.checked)"> LS</label>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_ls !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_ls\',this.checked)"> LS</label>'
         + '</div>';
     }).join('');
   }

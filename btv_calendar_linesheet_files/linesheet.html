@@ -1853,24 +1853,8 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
     font-family: 'Everett', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
   }
 
-/* ── Launch Calendar tab ─────────────────────────────────────────────────── */
-.lc-yr-tabs{display:flex;gap:5px}
-.lc-yr-tab{padding:4px 16px;border:1px solid #d6d2cc;border-radius:20px;font-size:12px;font-weight:700;background:#fff;color:#888;cursor:pointer;letter-spacing:.04em;transition:background .12s,color .12s,border-color .12s}
-.lc-yr-tab.active{background:#3a3530;color:#fff;border-color:#3a3530}
-.lc-grid{padding:14px 20px;display:flex;flex-direction:column;gap:10px}
-.lc-section{border-radius:10px;overflow:hidden;border:1px solid #e0d8cc}
-.lc-sec-hd{padding:9px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em}
-.lc-sec-body{background:#fff;padding:10px 12px}
-.lc-empty{padding:8px 4px;color:#ccc;font-style:italic;font-size:12px;text-align:center}
-.lc-mon-hd{font-size:10px;font-weight:700;color:#b0ada8;text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px;padding-top:6px;border-top:1px solid #f0ede8}
-.lc-mon-hd:first-child{margin-top:0;border-top:none;padding-top:0}
-.lc-wk{display:flex;align-items:flex-start;gap:8px;padding:4px 6px;border-radius:6px;margin-bottom:2px;background:#fdfcfb;border:1px solid #f0ede8}
 .lc-wk-lbl{font-size:9.5px;color:#b0ada8;white-space:nowrap;min-width:82px;padding-top:2px;font-weight:600;letter-spacing:.02em}
 .lc-wk-entries{display:flex;flex-direction:column;gap:3px;flex:1}
-.lc-entry{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.lc-entry-title{font-size:12px;font-weight:700;color:#111}
-.lc-entry-date{font-size:10.5px;color:#787470;white-space:nowrap}
-.lc-entry-meta{font-size:10px;color:#999;font-style:italic}
 </style>
 </head>
 
@@ -1982,7 +1966,6 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <button class="nav-btn" onclick="switchView(&#39;pub-cal&#39;)">Launch Calendar</button>
 
 
 
@@ -5062,21 +5045,6 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-<div id="view-pub-cal" class="view" style="display:flex;flex-direction:column;min-height:0;overflow:auto">
-  <!-- Toolbar -->
-  <div style="padding:11px 20px 9px;border-bottom:1px solid var(--grid,#e0d8cc);display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff;position:sticky;top:0;z-index:10">
-    <span style="font-size:15px;font-weight:700;color:#3a3530;letter-spacing:.01em">Launch Calendar</span>
-    <div class="lc-yr-tabs">
-      <button class="lc-yr-tab active" id="lcYr2026" onclick="lcSetYear(2026)">2026</button>
-      <button class="lc-yr-tab" id="lcYr2027" onclick="lcSetYear(2027)">2027</button>
-    </div>
-    <button onclick="renderLaunchCalendar()" style="padding:5px 12px;border:1px solid #d6d2cc;border-radius:6px;font-size:12px;font-weight:600;background:#fff;cursor:pointer">&#8635; Refresh</button>
-  </div>
-  <!-- Calendar body -->
-  <div id="lcGrid" style="flex:1;overflow:auto">
-    <p style="color:#aaa;font-size:13px;padding:20px">Switch to this tab to load the launch calendar.</p>
-  </div>
-</div>
 
 </div>
 
@@ -7871,9 +7839,7 @@ function switchView(view){
   if (view === 'form' && _fvGid && typeof _btvLsApplyFieldLocks === 'function') {
     _btvLsApplyFieldLocks(_fvGid);
   }
-  if (view === 'pub-cal' && typeof renderLaunchCalendar === 'function') {
-    setTimeout(renderLaunchCalendar, 60);
-  }
+
 
 
 
@@ -7903,7 +7869,7 @@ function switchView(view){
 
 
 
-  const map = {form:0, master:1, linesheet:2, dashboard:3, 'pub-cal':4};
+  const map = {form:0, master:1, linesheet:2, dashboard:3};
 
 
 
@@ -18772,143 +18738,7 @@ window.btvReloadAndRender = function() {
   };
 
 
-// ── Launch Calendar (public read-only view) ──────────────────────────────────
-var _lcYear = 2026;
-function lcSetYear(yr) {
-  _lcYear = yr;
-  document.querySelectorAll('.lc-yr-tab').forEach(function(b) { b.classList.remove('active'); });
-  var btn = document.getElementById('lcYr' + yr);
-  if (btn) btn.classList.add('active');
-  renderLaunchCalendar();
-}
-window.lcSetYear = lcSetYear;
 
-function renderLaunchCalendar() {
-  var grid = document.getElementById('lcGrid');
-  if (!grid) return;
-  if (!window._btvSb) {
-    grid.innerHTML = '<p style="color:#aaa;font-size:13px;padding:20px">Waiting for sync…</p>';
-    setTimeout(renderLaunchCalendar, 800);
-    return;
-  }
-  grid.innerHTML = '<p style="color:#aaa;font-size:13px;padding:20px">Loading…</p>';
-
-  var year = _lcYear || 2026;
-
-  window._btvSb.from('public_calendar_entries')
-    .select('*').eq('year', year).order('week_id', {ascending: true})
-    .then(function(res) {
-      if (res.error) {
-        grid.innerHTML = '<p style="color:#c00;font-size:13px;padding:20px">Error: ' + res.error.message + '</p>';
-        return;
-      }
-      var rows = res.data || [];
-
-      // Section definitions — matches BTV Calendar order and colours
-      var SECTIONS = [
-        {key:'global',        label:'Global',                bg:'#d4d4d4', fg:'#2d2d2d'},
-        {key:'china',         label:'China',                 bg:'#c47800', fg:'#fff'},
-        {key:'sea',           label:'SEA',                   bg:'#c43030', fg:'#fff'},
-        {key:'nea',           label:'NEA',                   bg:'#4a8eb5', fg:'#fff'},
-        {key:'restocks',      label:'Restocks',              bg:'#7a5a35', fg:'#fff'},
-        {key:'events',        label:'Events / Activations',  bg:'#edecea', fg:'#2d2d2d'},
-        {key:'store_openings',label:'Store Openings',        bg:'#d4d4d4', fg:'#2d2d2d'}
-      ];
-
-      var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      var MON_S  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-      // Group rows by section → month → week_id
-      var bySection = {};
-      SECTIONS.forEach(function(s) { bySection[s.key] = {}; });
-      rows.forEach(function(row) {
-        var sec = row.section || 'global';
-        if (!bySection[sec]) bySection[sec] = {};
-        var d = new Date(row.week_id + 'T00:00:00');
-        var mk = String(d.getMonth()); // 0-11
-        if (!bySection[sec][mk]) bySection[sec][mk] = {};
-        if (!bySection[sec][mk][row.week_id]) bySection[sec][mk][row.week_id] = [];
-        bySection[sec][mk][row.week_id].push(row);
-      });
-
-      function fmtD(iso) {
-        if (!iso) return '';
-        var d = new Date(iso + 'T00:00:00');
-        return d.getDate() + ' ' + MON_S[d.getMonth()];
-      }
-      function fmtWk(wid) {
-        var d = new Date(wid + 'T00:00:00');
-        var e = new Date(d); e.setDate(d.getDate() + 6);
-        return fmtD(wid) + ' – ' + e.getDate() + ' ' + MON_S[e.getMonth()];
-      }
-      function esc(v) {
-        return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      }
-      function renderEntry(row) {
-        var e = row.entry_data || {};
-        var sec = row.section || 'global';
-        var title = e.launchTitle || e.productTitle || e.title || e.storeName || '(Untitled)';
-        var dateStr = '';
-        if (e.launchDate) dateStr = fmtD(e.launchDate);
-        else if (e.startDateISO) dateStr = fmtD(e.startDateISO) + (e.endDateISO && e.endDateISO !== e.startDateISO ? ' – ' + fmtD(e.endDateISO) : '');
-        else if (e.targetOpenDate) dateStr = fmtD(e.targetOpenDate);
-        var mkts = '';
-        if (sec === 'global') mkts = (e.noLaunchMarkets || []).join(', ') || (e.allMarkets ? 'All Markets' : '');
-        else if (sec === 'china') mkts = 'CN';
-        else if (sec === 'sea') mkts = e.allMarkets ? 'SG, TH, ID, PH' : (e.countries || []).join(', ');
-        else if (sec === 'nea') mkts = e.allMarkets ? 'CN, JP' : (e.countries || []).join(', ');
-        else mkts = ((e.noLaunchMarkets || e.markets) || []).join(', ') || (e.allMarkets ? 'All' : '');
-        var prods = (e.lines || []).filter(function(l){return l.productName;}).map(function(l){return esc(l.productName||'');}).join(', ');
-        var skus  = (e.lines || []).reduce(function(n,l){return n+(Number(l.skuCount)||0);},0);
-        var meta  = [mkts ? esc(mkts) : '', prods, skus ? skus + ' SKUs' : ''].filter(Boolean).join(' · ');
-        return (
-          '<div class="lc-entry">' +
-          '<span class="lc-entry-title">' + esc(title) + '</span>' +
-          (dateStr ? '<span class="lc-entry-date">' + esc(dateStr) + '</span>' : '') +
-          (meta    ? '<span class="lc-entry-meta">' + meta + '</span>' : '') +
-          '</div>'
-        );
-      }
-
-      var html = '<div class="lc-grid">';
-      SECTIONS.forEach(function(sec) {
-        var secData = bySection[sec.key] || {};
-        var hasEntries = Object.keys(secData).some(function(mk) {
-          return Object.keys(secData[mk]).some(function(wid) { return secData[mk][wid].length > 0; });
-        });
-
-        html += '<div class="lc-section">';
-        html += '<div class="lc-sec-hd" style="background:' + sec.bg + ';color:' + sec.fg + '">' + esc(sec.label) + '</div>';
-        html += '<div class="lc-sec-body">';
-
-        if (!hasEntries) {
-          html += '<div class="lc-empty">Nothing published yet</div>';
-        } else {
-          // Sort months 0-11
-          Object.keys(secData).map(Number).sort(function(a,b){return a-b;}).forEach(function(mIdx) {
-            var weeks = secData[String(mIdx)];
-            html += '<div class="lc-mon-hd">' + esc(MONTHS[mIdx]) + '</div>';
-            Object.keys(weeks).sort().forEach(function(wid) {
-              if (!weeks[wid].length) return;
-              html += '<div class="lc-wk">';
-              html += '<div class="lc-wk-lbl">Wk ' + esc(fmtWk(wid)) + '</div>';
-              html += '<div class="lc-wk-entries">';
-              weeks[wid].forEach(function(row) { html += renderEntry(row); });
-              html += '</div></div>';
-            });
-          });
-        }
-
-        html += '</div></div>';
-      });
-      html += '</div>';
-      grid.innerHTML = html;
-    });
-}
-window.renderLaunchCalendar  = renderLaunchCalendar;
-// Keep old name as alias in case anything references it
-window.renderPublicCalendar = renderLaunchCalendar;
-// ─────────────────────────────────────────────────────────────────────────────
 
 })();
 </script>
