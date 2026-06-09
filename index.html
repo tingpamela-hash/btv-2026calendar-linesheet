@@ -308,9 +308,9 @@ html, body {
       <div class="module-login-title">Welcome back</div>
       <div class="module-login-copy" style="margin-bottom:22px">Where would you like to go?</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#111;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('cal')">BTV Calendar</button>
-        <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#3a3a3a;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('creative')">Creative Calendar</button>
-        <button style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#555;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('ls')">Linesheet</button>
+        <button id="modChoiceBtn-cal" style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#111;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('cal')">BTV Calendar</button>
+        <button id="modChoiceBtn-creative" style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#3a3a3a;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('creative')">Creative Calendar</button>
+        <button id="modChoiceBtn-ls" style="flex:1;min-width:120px;padding:14px;border:none;border-radius:11px;background:#555;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s" onclick="btvSelectModule('ls')">Linesheet</button>
       </div>
     </div>
 
@@ -609,6 +609,33 @@ html, body {
   function _updateNavButtons(loggedIn) {
     document.getElementById('navChangePwdBtn').style.display = loggedIn ? '' : 'none';
     document.getElementById('navSignOutBtn').style.display   = loggedIn ? '' : 'none';
+    _refreshTabVisibility();
+  }
+
+  function _refreshTabVisibility() {
+    // When profile is loaded, hide tabs the user cannot access.
+    // When no profile (logged out / not yet loaded), show all tabs.
+    var MODS = ['cal', 'creative', 'ls'];
+    MODS.forEach(function(mod) {
+      var allowed = !_profile || _canAccess(mod);
+      // Top nav tab button
+      var navBtn = document.querySelector('.top-nav-btn[data-frame="' + mod + '"]');
+      if (navBtn) navBtn.style.display = allowed ? '' : 'none';
+      // Module choice button (on the landing overlay)
+      var choiceBtn = document.getElementById('modChoiceBtn-' + mod);
+      if (choiceBtn) choiceBtn.style.display = allowed ? '' : 'none';
+    });
+    // If the currently active module is now inaccessible, switch to first allowed one
+    if (_profile && !_canAccess(_currentModule)) {
+      var first = ['cal', 'creative', 'ls'].find(function(m) { return _canAccess(m); });
+      if (first) {
+        _currentModule = first;
+        // Don't call showFrame here (avoids re-triggering overlay); just update active nav button
+        document.querySelectorAll('.top-nav-btn').forEach(function(b) { b.classList.remove('active'); });
+        var b = document.querySelector('.top-nav-btn[data-frame="' + first + '"]');
+        if (b) b.classList.add('active');
+      }
+    }
   }
 
   // ── Module selection & overlay ─────────────────────────────────────────────
@@ -622,8 +649,9 @@ html, body {
   }
 
   function _canAccess(mod) {
-    if (!_profile) return true; // no profile yet → authenticated users get through
-    if (mod === 'cal' || mod === 'creative') return _profile.can_access_cal !== false;
+    if (!_profile) return true; // no profile yet → show everything until we know
+    if (mod === 'cal')      return _profile.can_access_cal !== false;
+    if (mod === 'creative') return _profile.can_access_creative !== false;
     return _profile.can_access_ls !== false;
   }
 
@@ -927,6 +955,7 @@ html, body {
       return '<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;' + bg + '">'
         + '<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (u.email || '') + '">' + (u.email || u.id.substring(0, 8) + '…') + '</span>'
         + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_cal ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_cal\',this.checked)"> Cal</label>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_creative !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_creative\',this.checked)"> Creative</label>'
         + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_ls ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_ls\',this.checked)"> LS</label>'
         + '</div>';
     }).join('');
