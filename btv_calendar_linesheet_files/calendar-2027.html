@@ -12945,15 +12945,21 @@ function btvExportCalendarXLS() {
         if (ln.colour) p += '  ' + ln.colour;
         lines.push('  ' + p);
       });
-      var mkts = (entry.launchMarkets || []).join(', ') || (entry.allMarkets ? 'All Mkts' : '');
+      var mkts = (entry.noLaunchMarkets || []).join(', ') || (entry.allMarkets ? 'All Mkts' : '');
       var skuCount = (entry.lines || []).reduce(function(n, l) { return n + (Number(l.skuCount) || 0); }, 0);
       var meta = [skuCount ? skuCount + ' SKUs' : '', mkts ? 'Mkts: ' + mkts : ''].filter(Boolean).join('  |  ');
       if (meta) lines.push(meta);
+      var chans = (entry.noLaunchChannelsCollapsed || []).map(function(item) {
+        return item.market + ': ' + (item.stores && item.stores.length ? item.stores.join(', ') : '—');
+      }).join(' | ');
+      if (chans) lines.push('  Ch: ' + chans);
     } else if (sec === 'nea' || sec === 'sea') {
       lines.push((entry.optionType ? entry.optionType + ': ' : '') + (entry.productTitle || entry.launchTitle || '') + status);
       if (entry.colour) lines.push('  ' + entry.colour);
       var mkts = entry.allMarkets ? (sec === 'nea' ? 'CN, JP' : 'SG, TH, ID, PH') : (entry.countries || []).join(', ');
       if (mkts) lines.push('  Mkts: ' + mkts);
+      if (entry.stores && entry.stores.length) lines.push('  Ch: ' + entry.stores.join(', '));
+      if (entry.mechanics) lines.push('  Mech: ' + entry.mechanics);
     } else if (sec === 'restocks') {
       lines.push((entry.productTitle || entry.title || 'Restock') + (entry.etaISO ? '  ETA ' + fd(entry.etaISO) : '') + status);
       (entry.lines || []).forEach(function(ln) { if (ln.productTitle || ln.productName) lines.push('  ' + (ln.productTitle || ln.productName)); });
@@ -13152,14 +13158,20 @@ function btvPrintPDF(rangeMode) {
         if (p) h += '<div class="el">' + esc(p) + '</div>';
       });
       var skus = (entry.lines || []).reduce(function(n,l) { return n+(Number(l.skuCount)||0); },0);
-      var mkts = (entry.launchMarkets||[]).join(', ') || (entry.allMarkets ? 'All Mkts' : '');
+      var mkts = (entry.noLaunchMarkets||[]).join(', ') || (entry.allMarkets ? 'All Mkts' : '');
       var meta = [skus ? skus+' SKUs' : '', mkts ? 'Mkts: '+mkts : ''].filter(Boolean).join(' · ');
       if (meta) h += '<div class="em">' + esc(meta) + '</div>';
+      var chans = (entry.noLaunchChannelsCollapsed||[]).map(function(item){
+        return esc(item.market)+': '+(item.stores&&item.stores.length ? esc(item.stores.join(', ')) : '\u2014');
+      }).join(' | ');
+      if (chans) h += '<div class="em">Ch: ' + chans + '</div>';
     } else if (sec === 'nea' || sec === 'sea') {
       if (entry.optionType) h += '<div class="el">' + esc(entry.optionType) + '</div>';
       if (entry.colour) h += '<div class="el">' + esc(entry.colour) + '</div>';
       var mkts = entry.allMarkets ? (sec==='nea' ? 'CN, JP' : 'SG, TH, ID, PH') : (entry.countries||[]).join(', ');
       if (mkts) h += '<div class="em">Mkts: ' + esc(mkts) + '</div>';
+      if (entry.stores && entry.stores.length) h += '<div class="em">Ch: ' + esc((entry.stores||[]).join(', ')) + '</div>';
+      if (entry.mechanics) h += '<div class="em">Mech: ' + esc(entry.mechanics) + '</div>';
     } else if (sec === 'restocks') {
       (entry.lines||[]).forEach(function(ln) {
         if (ln.productTitle||ln.productName) h += '<div class="el">' + esc(ln.productTitle||ln.productName) + '</div>';
