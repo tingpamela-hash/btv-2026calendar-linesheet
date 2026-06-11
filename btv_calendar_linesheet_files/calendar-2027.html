@@ -10243,7 +10243,18 @@ render();
 
 // ---- BTV Teams Notifications ----
 
-var BTV_MGMT_WEBHOOK_URL = (function(){ try{ return localStorage.getItem('btvMgmtWebhook')||'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }catch(e){ return 'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }})();
+var BTV_MGMT_WEBHOOK_URL = (function(){ try{ return localStorage.getItem('btvMgmtWebhook')||'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }catch(e){ return 'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }
+  window.btvSetPublishedIds = function(ids) { _publishedIds = new Set(ids); render(); };
+  window.btvLoadPublished = function() { 
+    if (!window._btvSb) return;
+    var yr = parseInt(((window._btvStorageKey||'').match(/calendar-(\d{4})-/)||[])[1]||'0');
+    window._btvSb.from('public_calendar_entries')
+      .select('entry_id').eq('year', yr)
+      .then(function(res){
+        if(window.btvSetPublishedIds) window.btvSetPublishedIds((res.data||[]).map(function(r){ return r.entry_id; }));
+      });
+  };
+})();
 
 function btvNotifyChange(url, source, product, field, fromVal, toVal){
 
@@ -13406,13 +13417,14 @@ function _bindPubButtons() {
 // _publishedIds declared early (after STORAGE_KEY) to avoid render-time TypeError
 
 function _btvLoadPublished() {
+  if (window.btvLoadPublished) { window.btvLoadPublished(); return; }
   if (!window._btvSb) return;
   var yr = parseInt(((window._btvStorageKey||'').match(/calendar-(\d{4})-/)||[])[1]||'0');
   window._btvSb.from('public_calendar_entries')
     .select('entry_id').eq('year', yr)
     .then(function(res) {
-      _publishedIds = new Set((res.data || []).map(function(r) { return r.entry_id; }));
-      render();
+      var ids = (res.data||[]).map(function(r){ return r.entry_id; });
+      if (window.btvSetPublishedIds) window.btvSetPublishedIds(ids);
     });
 }
 

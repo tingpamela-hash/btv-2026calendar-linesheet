@@ -463,9 +463,7 @@
 
   .entry-preview{
 
-    max-height:150px;
-
-    overflow:hidden;
+    /* all fields always visible in public calendar */
 
   }
 
@@ -2811,7 +2809,52 @@ body.btv-dashboard-mode .toolbar{display:none!important;}
     .dot.brand{background:#6a80b0}
     .dot.revenue{background:#f2a114}
     .dot.both{background:#27ae60}
-  </style>
+  
+/* ─── Entry Detail Modal ────────────────────────────── */
+.clickable-entry { cursor: pointer; }
+.clickable-entry:hover { box-shadow: 0 0 0 2px #b09a6e; }
+#entry-detail-modal {
+  display: none;
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.55);
+  align-items: center; justify-content: center;
+}
+.edm-wrap {
+  background: #fff; border-radius: 10px;
+  width: min(520px, 92vw); max-height: 85vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  font-family: inherit;
+}
+.edm-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid #e5ddd1;
+}
+.edm-header-title { font-weight: 700; font-size: 13px; color: #4a3728; letter-spacing: .5px; }
+.edm-close {
+  background: none; border: none; cursor: pointer;
+  font-size: 20px; color: #888; padding: 0 4px; line-height: 1;
+}
+.edm-close:hover { color: #333; }
+.edm-scroll { overflow-y: auto; padding: 14px 18px 18px; flex: 1; }
+.edm-section-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: #9c7c54; margin-bottom: 10px;
+}
+.edm-row { font-size: 12px; color: #333; margin-bottom: 7px; line-height: 1.5; }
+.edm-label { font-weight: 600; color: #666; margin-right: 4px; }
+.edm-divider { border-top: 1px solid #ece5da; margin: 10px 0; }
+.edm-group { margin-bottom: 6px; }
+.edm-cat { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #9c7c54; margin-bottom: 4px; }
+.edm-prod { font-size: 12px; color: #333; margin-bottom: 5px; }
+.edm-pname { font-weight: 600; }
+.edm-price { color: #666; font-size: 11px; }
+.edm-pmeta { color: #888; font-size: 11px; margin-top: 1px; }
+.edm-status { font-weight: 600; }
+.edm-delay { color: #c0392b; }
+.edm-ontime { color: #27ae60; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -2992,7 +3035,12 @@ function populateMonthSelect(){
 }
 
 /* ── Entry card renderers (read-only — no Edit/Publish buttons) ─────────────── */
+/* ─── Render functions (read-only — click to open detail popup) ─────────── */
+
+var _pubEntries = {};
+
 function renderGlobal(entry){
+  _pubEntries[entry.id] = entry;
   var grouped = {};
   (entry.lines||[]).forEach(function(line){
     if(!(line.category||line.productName||line.colour||line.size||line.price)) return;
@@ -3001,70 +3049,96 @@ function renderGlobal(entry){
     grouped[cat].push(line);
   });
   var groups = Object.keys(grouped).map(function(cat){
-    return '<div class="group"><div class="cat">' + esc(cat) + '</div><div>' +
+    return '<div class="group"><div class="cat">'+esc(cat)+'</div><div>'+
       grouped[cat].map(function(line){
-        return '<div class="prod">' +
-          '<div class="prod-top">' +
-            '<div class="prod-name">' + esc(line.productName||'') + '</div>' +
-            '<div class="prod-price">' + (line.price ? '$'+esc(line.price) : '') + '</div>' +
-          '</div>' +
-          '<div class="prod-meta">' + esc(line.colour||'') + '</div>' +
+        return '<div class="prod">'+
+          '<div class="prod-top">'+
+            '<div class="prod-name">'+esc(line.productName||'')+'</div>'+
+            '<div class="prod-price">'+(line.price?'$'+esc(line.price):'')+'</div>'+
+          '</div>'+
+          '<div class="prod-meta">'+esc(line.colour||'')+'</div>'+
+          '<div class="prod-size prod-meta">'+esc(line.size||'')+'</div>'+
         '</div>';
-      }).join('') +
+      }).join('')+
     '</div></div>';
   }).join('');
   var dotCls = ((KEY_DOTS[entry.keyLevel]||KEY_DOTS.brand)||{}).cls||'brand';
-  var skus   = countEntrySkus(entry)||(entry.skuCount||0);
-  var mktStr = (entry.noLaunchMarkets||[]).join(', ')||(entry.allMarkets?'All Markets':'');
-  return '<div class="entry ' + globalCategoryClass(entry) + '">' +
-    '<div class="entry-preview">' +
-      '<div class="title-row">' +
-        '<div class="title-left">' +
-          '<div class="dot ' + dotCls + '"></div>' +
-          '<div>' +
-            '<div class="entry-date">' + fmtDDMMM(entry.launchDate) + (entry.launchDate?' ('+dayNameFromISO(entry.launchDate)+')':'') + '</div>' +
-            '<div class="entry-title">' + esc(entry.launchTitle||'') + '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-      groups +
-      (mktStr ? '<div class="entry-info"><span class="label">Markets:</span> ' + esc(mktStr) + '</div>' : '') +
-      (skus   ? '<div class="entry-info"><span class="label">SKUs:</span> ' + skus + '</div>' : '') +
-      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
-    '</div>' +
+  var delay  = (entry.launchStatus==='delay'&&(entry.delayMarkets||[]).length)
+    ? '<div class="entry-info"><span class="label">Delay Mkt:</span> '+(entry.delayMarkets||[]).map(function(x){return esc(x.market)+' '+fmtDDMMM(x.eta);}).join(', ')+'</div>'
+    : '';
+  var noLaunchChannel = (entry.noLaunchChannelsCollapsed||[]).map(function(item){
+    var stores = item.stores&&item.stores.length ? item.stores.join(', ') : '—';
+    return item.market+': '+stores;
+  }).join(' | ');
+  var skus = countEntrySkus(entry)||(entry.skuCount||0);
+  var delayCls  = entry.launchStatus==='delay' ? 'delay ' : '';
+  var statusCls = getEntryStatus(entry)==='published' ? 'published-entry' : 'draft-entry';
+  return '<div class="entry '+delayCls+globalCategoryClass(entry)+' '+statusCls+' clickable-entry" data-eid="'+entry.id+'" onclick="openEntryDetail(\''+entry.id+'\')">'+
+    '<div class="entry-preview">'+
+      '<div class="title-row">'+
+        '<div class="title-left">'+
+          '<div class="dot '+dotCls+'"></div>'+
+          '<div>'+
+            '<div class="entry-date">'+fmtDDMMM(entry.launchDate)+(entry.launchDate?' ('+dayNameFromISO(entry.launchDate)+')':'')+'</div>'+
+            '<div class="entry-title">'+esc(entry.launchTitle||'')+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      groups+
+      '<div class="entry-info"><span class="label">No. of SKUs:</span> '+(skus||0)+'</div>'+
+      '<div class="entry-info"><span class="label">Launch (Mkt):</span> '+((entry.noLaunchMarkets||[]).length?esc((entry.noLaunchMarkets||[]).join(', ')):'—')+'</div>'+
+      '<div class="entry-info"><span class="label">Launch (Channel):</span> '+(noLaunchChannel||'—')+'</div>'+
+      '<div style="margin-top:10px"></div>'+
+      '<div class="launch-status"><span class="label">Launch Status:</span> '+(entry.launchStatus==='delay'?'Delay Flagged':'On Time')+'</div>'+
+      delay+
+      '<div class="entry-info">'+statusBadge(getEntryStatus(entry))+'</div>'+
+    '</div>'+
   '</div>';
 }
 
 function renderRegional(entry){
+  _pubEntries[entry.id] = entry;
   var dotCls     = ((KEY_DOTS[entry.keyLevel]||KEY_DOTS.brand)||{}).cls||'brand';
   var displayDate= entry.launchDate||entry.startDateISO||'';
   var dateStr    = displayDate ? fmtDDMMM(displayDate)+' ('+dayNameFromISO(displayDate)+')' : (entry.startDate||'');
   var marketStr  = (entry.allMarkets||false) ? 'All' : esc((entry.countries||[]).join(', ')||'—');
   var colour     = entry.colour||(entry.colorSize&&!entry.colorSize.includes(' / ')?entry.colorSize:(entry.colorSize||'').split(' / ')[0])||'';
-  return '<div class="entry">' +
-    '<div class="entry-preview">' +
-      '<div class="title-row">' +
-        '<div class="title-left">' +
-          '<div class="dot ' + dotCls + '"></div>' +
-          '<div>' +
-            '<div class="entry-date">' + dateStr + '</div>' +
-            '<div class="entry-title">' + esc(entry.launchTitle||entry.optionType||'') + '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="group"><div class="cat">' + esc(entry.optionType||'') + '</div>' +
-        '<div><div class="prod"><div class="prod-top">' +
-          '<div class="prod-name">' + esc(entry.productTitle||'—') + '</div>' +
-          '<div class="prod-price">' + (entry.price?'$'+esc(entry.price):'') + '</div>' +
-        '</div><div class="prod-meta">' + esc(colour) + '</div></div></div></div>' +
-      '<div class="entry-info"><span class="label">Markets:</span> ' + marketStr + '</div>' +
-      (entry.stores&&entry.stores.length ? '<div class="entry-info"><span class="label">Stores:</span> ' + esc(entry.stores.join(', ')) + '</div>' : '') +
-      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
-    '</div>' +
+  var size       = entry.size||(entry.colorSize&&entry.colorSize.includes(' / ')?entry.colorSize.split(' / ').slice(1).join(' / '):'');
+  var dateRange  = entry.startDate ? (entry.startDate+(entry.endDate?' → '+entry.endDate:'')) : '';
+  var bottomInfo = entry.optionType==='GWP'
+    ? '<div class="entry-info"><span class="label">Mechanics:</span> '+esc(entry.mechanics||'—')+'</div>'
+    : '<div class="entry-info"><span class="label">Stores:</span> '+esc((entry.stores||[]).join(', ')||'—')+'</div>';
+  var statusCls = getEntryStatus(entry)==='published' ? 'published-entry' : 'draft-entry';
+  return '<div class="entry '+statusCls+' clickable-entry" data-eid="'+entry.id+'" onclick="openEntryDetail(\''+entry.id+'\')">'+
+    '<div class="entry-preview">'+
+      '<div class="title-row">'+
+        '<div class="title-left">'+
+          '<div class="dot '+dotCls+'"></div>'+
+          '<div>'+
+            '<div class="entry-date">'+dateStr+'</div>'+
+            '<div class="entry-title">'+esc(entry.launchTitle||entry.optionType||'')+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="group"><div class="cat">'+esc(entry.optionType||'')+'</div>'+
+        '<div><div class="prod">'+
+          '<div class="prod-top">'+
+            '<div class="prod-name">'+esc(entry.productTitle||'—')+'</div>'+
+            '<div class="prod-price">'+(entry.price?'$'+esc(entry.price):'')+'</div>'+
+          '</div>'+
+          '<div class="prod-meta">'+esc(colour)+'</div>'+
+          '<div class="prod-size prod-meta">'+esc(size)+'</div>'+
+        '</div></div></div>'+
+      '<div class="entry-info"><span class="label">Markets:</span> '+marketStr+'</div>'+
+      (dateRange?'<div class="entry-info"><span class="label">Dates:</span> '+esc(dateRange)+'</div>':'')+
+      bottomInfo+
+      '<div class="entry-info">'+statusBadge(getEntryStatus(entry))+'</div>'+
+    '</div>'+
   '</div>';
 }
 
 function renderRestock(entry){
+  _pubEntries[entry.id] = entry;
   var dotCls = ((KEY_DOTS[entry.keyLevel]||KEY_DOTS.brand)||{}).cls||'brand';
   var dateStr= entry.etaISO ? 'ETA '+fmtDDMMM(entry.etaISO)+' ('+dayNameFromISO(entry.etaISO)+')' : (entry.eta?'ETA '+entry.eta:'');
   var lines  = (entry.lines&&entry.lines.length) ? entry.lines : [{productTitle:entry.productTitle||'',colour:'',colors:entry.colors||''}];
@@ -3072,49 +3146,164 @@ function renderRestock(entry){
   var marketStr = (entry.allMarkets||false) ? 'All Markets' : esc((entry.markets||[]).join(', ')||'—');
   var lineHTML = lines.filter(function(l){return l.productTitle||l.colour||l.colors;}).map(function(line){
     var col = line.colour||(line.colors&&!line.colors.includes(' / ')?line.colors:(line.colors||'').split(' / ')[0])||'';
-    return '<div class="prod"><div class="prod-name">' + esc(line.productTitle||'—') + '</div>' +
-      (col?'<div class="prod-meta">'+esc(col)+'</div>':'') + '</div>';
+    var siz = line.size||(line.colors&&line.colors.includes(' / ')?line.colors.split(' / ').slice(1).join(' / '):'');
+    return '<div class="prod"><div class="prod-top"><div class="prod-name">'+esc(line.productTitle||'—')+'</div></div>'+
+      '<div class="prod-meta">'+esc(col)+'</div>'+
+      '<div class="prod-size prod-meta">'+esc(siz)+'</div></div>';
   }).join('');
-  return '<div class="entry">' +
-    '<div class="entry-preview">' +
-      '<div class="title-row"><div class="title-left">' +
-        '<div class="dot ' + dotCls + '"></div>' +
-        '<div><div class="entry-date">' + dateStr + '</div>' +
-          '<div class="entry-title">' + esc(displayTitle) + '</div></div>' +
-      '</div></div>' +
-      '<div class="group"><div class="cat">Restock</div><div>' + lineHTML + '</div></div>' +
-      '<div class="entry-info"><span class="label">Markets:</span> ' + marketStr + '</div>' +
-      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
+  var statusCls = getEntryStatus(entry)==='published' ? 'published-entry' : 'draft-entry';
+  return '<div class="entry '+statusCls+' clickable-entry" data-eid="'+entry.id+'" onclick="openEntryDetail(\''+entry.id+'\')">'+
+    '<div class="entry-preview">'+
+      '<div class="title-row"><div class="title-left">'+
+        '<div class="dot '+dotCls+'"></div>'+
+        '<div><div class="entry-date">'+dateStr+'</div>'+
+          '<div class="entry-title">'+esc(displayTitle)+'</div></div>'+
+      '</div></div>'+
+      '<div class="group"><div class="cat">Restock</div><div>'+lineHTML+'</div></div>'+
+      '<div class="entry-info"><span class="label">Markets:</span> '+marketStr+'</div>'+
+      '<div class="entry-info">'+statusBadge(getEntryStatus(entry))+'</div>'+
     '</div></div>';
 }
 
 function renderStoreOpening(entry){
-  return '<div class="entry">' +
-    '<div class="entry-preview">' +
-      '<div class="title-row"><div>' +
-        '<div class="entry-title">' + esc(entry.storeName||'') + '</div>' +
-        '<div class="entry-date">' + (entry.targetOpenDate?'Target '+fmtDDMMM(entry.targetOpenDate):'') + '</div>' +
-      '</div></div>' +
-      '<div class="entry-info"><span class="label">Market:</span> ' + esc(entry.market||'—') + '</div>' +
-      '<div class="entry-info"><span class="label">Store Size:</span> ' + esc(entry.storeSize||'—') + '</div>' +
-      (entry.storeAddress?'<div class="entry-info"><span class="label">Address:</span> '+esc(entry.storeAddress)+'</div>':'') +
-      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
+  _pubEntries[entry.id] = entry;
+  var statusCls = getEntryStatus(entry)==='published' ? 'published-entry' : 'draft-entry';
+  return '<div class="entry '+statusCls+' clickable-entry" data-eid="'+entry.id+'" onclick="openEntryDetail(\''+entry.id+'\')">'+
+    '<div class="entry-preview">'+
+      '<div class="title-row"><div>'+
+        '<div class="entry-title">'+esc(entry.storeName||'')+'</div>'+
+        '<div class="entry-date">'+(entry.targetOpenDate?'Target '+fmtDDMMM(entry.targetOpenDate):'')+'</div>'+
+      '</div></div>'+
+      '<div class="entry-info"><span class="label">Market:</span> '+esc(entry.market||'—')+'</div>'+
+      '<div class="entry-info"><span class="label">Store Size:</span> '+esc(entry.storeSize||'—')+'</div>'+
+      '<div class="entry-info"><span class="label">Address:</span> '+esc(entry.storeAddress||'—')+'</div>'+
+      '<div class="entry-info">'+statusBadge(getEntryStatus(entry))+'</div>'+
     '</div></div>';
 }
 
 function renderEvent(entry){
-  return '<div class="entry">' +
-    '<div class="entry-preview">' +
-      '<div class="title-row"><div>' +
-        '<div class="entry-title">' + esc(entry.title||'') + '</div>' +
-        '<div class="entry-date">' + (entry.startDate||'') + (entry.endDate?' to '+entry.endDate:'') + '</div>' +
-      '</div></div>' +
-      '<div class="entry-info"><span class="label">Markets:</span> ' +
-        ((entry.allMarkets||false)?'All':esc((entry.markets||[]).join(', ')||'—')) + '</div>' +
-      (entry.anthemIncluded !== undefined ? '<div class="entry-info"><span class="label">Anthem:</span> '+(entry.anthemIncluded?'Yes':'No')+'</div>' : '') +
-      (entry.notes ? '<div class="entry-info muted">'+esc(entry.notes)+'</div>' : '') +
-      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
+  _pubEntries[entry.id] = entry;
+  var statusCls = getEntryStatus(entry)==='published' ? 'published-entry' : 'draft-entry';
+  return '<div class="entry '+statusCls+' clickable-entry" data-eid="'+entry.id+'" onclick="openEntryDetail(\''+entry.id+'\')">'+
+    '<div class="entry-preview">'+
+      '<div class="title-row"><div>'+
+        '<div class="entry-title">'+esc(entry.title||'')+'</div>'+
+        '<div class="entry-date">'+(entry.startDate||'')+(entry.endDate?' to '+entry.endDate:'')+'</div>'+
+      '</div></div>'+
+      '<div class="entry-info"><span class="label">Markets:</span> '+
+        ((entry.allMarkets||false)?'All':esc((entry.markets||[]).join(', ')||'—'))+'</div>'+
+      (entry.anthemIncluded!==undefined?'<div class="entry-info"><span class="label">Anthem:</span> '+(entry.anthemIncluded?'Yes':'No')+'</div>':'')+
+      (entry.notes?'<div class="entry-info muted">'+esc(entry.notes)+'</div>':'')+
+      '<div class="entry-info">'+statusBadge(getEntryStatus(entry))+'</div>'+
     '</div></div>';
+}
+
+function openEntryDetail(id){
+  var entry = _pubEntries[id];
+  if(!entry) return;
+  var sec = (entry.section||'').toLowerCase();
+  var html = '';
+  if(sec==='global'||sec==='china'||(( sec==='nea'||sec==='sea')&&entry.lines&&entry.lines.length)){
+    var grouped = {};
+    (entry.lines||[]).forEach(function(line){
+      if(!(line.category||line.productName||line.colour||line.size||line.price)) return;
+      var cat=line.category||'';
+      if(!grouped[cat]) grouped[cat]=[];
+      grouped[cat].push(line);
+    });
+    var groups = Object.keys(grouped).map(function(cat){
+      return '<div class="edm-group"><div class="edm-cat">'+esc(cat)+'</div>'+
+        grouped[cat].map(function(line){
+          return '<div class="edm-prod">'+
+            '<span class="edm-pname">'+esc(line.productName||'—')+'</span>'+
+            (line.price?'<span class="edm-price"> $'+esc(line.price)+'</span>':'')+
+            (line.colour?'<div class="edm-pmeta">'+esc(line.colour)+(line.size?' / '+esc(line.size):'')+'</div>':'')+
+          '</div>';
+        }).join('')+
+      '</div>';
+    }).join('');
+    var noLaunchChannel = (entry.noLaunchChannelsCollapsed||[]).map(function(item){
+      var stores=item.stores&&item.stores.length?item.stores.join(', '):'—';
+      return item.market+': '+stores;
+    }).join(' | ');
+    var delay = (entry.launchStatus==='delay'&&(entry.delayMarkets||[]).length)
+      ? '<div class="edm-row"><span class="edm-label">Delay Mkt:</span> '+(entry.delayMarkets||[]).map(function(x){return esc(x.market)+' '+fmtDDMMM(x.eta);}).join(', ')+'</div>'
+      : '';
+    var skus = countEntrySkus(entry)||(entry.skuCount||0);
+    html = '<div class="edm-section-label">Global Launch</div>'+
+      '<div class="edm-row"><span class="edm-label">Launch Date:</span> '+fmtDDMMM(entry.launchDate)+(entry.launchDate?' ('+dayNameFromISO(entry.launchDate)+')':'')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Title:</span> '+esc(entry.launchTitle||'—')+'</div>'+
+      '<div class="edm-divider"></div>'+
+      groups+
+      '<div class="edm-divider"></div>'+
+      '<div class="edm-row"><span class="edm-label">No. of SKUs:</span> '+(skus||0)+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Launch (Mkt):</span> '+((entry.noLaunchMarkets||[]).length?esc((entry.noLaunchMarkets||[]).join(', ')):'—')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Launch (Channel):</span> '+(noLaunchChannel||'—')+'</div>'+
+      '<div class="edm-row edm-status '+(entry.launchStatus==='delay'?'edm-delay':'edm-ontime')+'"><span class="edm-label">Launch Status:</span> '+(entry.launchStatus==='delay'?'Delay Flagged':'On Time')+'</div>'+
+      delay;
+  } else if(sec==='nea'||sec==='sea'){
+    var colour2  = entry.colour||(entry.colorSize&&!entry.colorSize.includes(' / ')?entry.colorSize:(entry.colorSize||'').split(' / ')[0])||'';
+    var size2    = entry.size||(entry.colorSize&&entry.colorSize.includes(' / ')?entry.colorSize.split(' / ').slice(1).join(' / '):'');
+    var displayDate2 = entry.launchDate||entry.startDateISO||'';
+    var dateStr2 = displayDate2 ? fmtDDMMM(displayDate2)+' ('+dayNameFromISO(displayDate2)+')' : (entry.startDate||'');
+    var dateRange2 = entry.startDate?(entry.startDate+(entry.endDate?' → '+entry.endDate:'')):'';
+    html = '<div class="edm-section-label">Regional Launch</div>'+
+      '<div class="edm-row"><span class="edm-label">Date:</span> '+dateStr2+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Title:</span> '+esc(entry.launchTitle||entry.optionType||'—')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Type:</span> '+esc(entry.optionType||'—')+'</div>'+
+      '<div class="edm-divider"></div>'+
+      '<div class="edm-group">'+
+        '<div class="edm-prod"><span class="edm-pname">'+esc(entry.productTitle||'—')+'</span>'+
+          (entry.price?'<span class="edm-price"> $'+esc(entry.price)+'</span>':'')+
+          ((colour2||size2)?'<div class="edm-pmeta">'+esc(colour2)+(size2?' / '+esc(size2):'')+'</div>':'')+
+        '</div>'+
+      '</div>'+
+      '<div class="edm-divider"></div>'+
+      '<div class="edm-row"><span class="edm-label">Markets:</span> '+((entry.allMarkets)?'All':esc((entry.countries||[]).join(', ')||'—'))+'</div>'+
+      (dateRange2?'<div class="edm-row"><span class="edm-label">Date Range:</span> '+esc(dateRange2)+'</div>':'')+
+      (entry.optionType==='GWP'
+        ?'<div class="edm-row"><span class="edm-label">Mechanics:</span> '+esc(entry.mechanics||'—')+'</div>'
+        :'<div class="edm-row"><span class="edm-label">Stores:</span> '+esc((entry.stores||[]).join(', ')||'—')+'</div>');
+  } else if(sec==='restocks'){
+    var rlines = (entry.lines&&entry.lines.length)?entry.lines:[{productTitle:entry.productTitle||'',colour:'',colors:entry.colors||''}];
+    var rlineHTML = rlines.filter(function(l){return l.productTitle||l.colour||l.colors;}).map(function(line){
+      var col3=line.colour||(line.colors&&!line.colors.includes(' / ')?line.colors:(line.colors||'').split(' / ')[0])||'';
+      var siz3=line.size||(line.colors&&line.colors.includes(' / ')?line.colors.split(' / ').slice(1).join(' / '):'');
+      return '<div class="edm-prod"><span class="edm-pname">'+esc(line.productTitle||'—')+'</span>'+
+        ((col3||siz3)?'<div class="edm-pmeta">'+esc(col3)+(siz3?' / '+esc(siz3):'')+'</div>':'')+
+      '</div>';
+    }).join('');
+    html = '<div class="edm-section-label">Restock</div>'+
+      '<div class="edm-row"><span class="edm-label">ETA:</span> '+(entry.etaISO?fmtDDMMM(entry.etaISO)+' ('+dayNameFromISO(entry.etaISO)+')':entry.eta||'—')+'</div>'+
+      '<div class="edm-divider"></div>'+
+      '<div class="edm-group">'+rlineHTML+'</div>'+
+      '<div class="edm-divider"></div>'+
+      '<div class="edm-row"><span class="edm-label">Markets:</span> '+((entry.allMarkets)?'All Markets':esc((entry.markets||[]).join(', ')||'—'))+'</div>';
+  } else if(sec==='store_openings'){
+    html = '<div class="edm-section-label">Store Opening</div>'+
+      '<div class="edm-row"><span class="edm-label">Store:</span> '+esc(entry.storeName||'—')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Target Open:</span> '+(entry.targetOpenDate?fmtDDMMM(entry.targetOpenDate):'—')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Market:</span> '+esc(entry.market||'—')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Store Size:</span> '+esc(entry.storeSize||'—')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Address:</span> '+esc(entry.storeAddress||'—')+'</div>';
+  } else if(sec==='events'){
+    html = '<div class="edm-section-label">Event</div>'+
+      '<div class="edm-row"><span class="edm-label">Title:</span> '+esc(entry.title||'—')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Dates:</span> '+(entry.startDate||'—')+(entry.endDate?' to '+entry.endDate:'')+'</div>'+
+      '<div class="edm-row"><span class="edm-label">Markets:</span> '+((entry.allMarkets)?'All':esc((entry.markets||[]).join(', ')||'—'))+'</div>'+
+      (entry.anthemIncluded!==undefined?'<div class="edm-row"><span class="edm-label">Anthem Included:</span> '+(entry.anthemIncluded?'Yes':'No')+'</div>':'')+
+      (entry.notes?'<div class="edm-row"><span class="edm-label">Notes:</span> '+esc(entry.notes)+'</div>':'');
+  } else {
+    html = '<div class="edm-row">'+esc(sec)+'</div>';
+  }
+  // append published badge
+  html += '<div class="edm-divider"></div><div class="edm-row">'+statusBadge(getEntryStatus(entry))+'</div>';
+  document.getElementById('edm-body').innerHTML = html;
+  document.getElementById('entry-detail-modal').style.display = 'flex';
+}
+
+function closeEntryDetail(){
+  document.getElementById('entry-detail-modal').style.display = 'none';
 }
 
 function renderEntry(section, entry){
@@ -3127,6 +3316,7 @@ function renderEntry(section, entry){
 
 /* ── Grid builder ───────────────────────────────────────────────────────────── */
 function renderGrid(){
+  _pubEntries = {};
   var table = e('calendar');
   if(!table) return;
 
@@ -3243,10 +3433,23 @@ function btvSyncStart(session, parentSb){
   }
 }
 
-window.plannerUnlockWith = function(){};
-window.btvSyncStart      = btvSyncStart;
-window.setYear           = setYear;
-window.loadCalendar      = loadCalendar;
+window.plannerUnlockWith  = function(){};
+window.btvSyncStart       = btvSyncStart;
+window.setYear            = setYear;
+window.loadCalendar       = loadCalendar;
+window.openEntryDetail    = openEntryDetail;
+window.closeEntryDetail   = closeEntryDetail;
 </script>
+
+<!-- Entry Detail Modal (read-only) -->
+<div id="entry-detail-modal" onclick="if(event.target===this)closeEntryDetail()">
+  <div class="edm-wrap">
+    <div class="edm-header">
+      <span class="edm-header-title">Launch Details</span>
+      <button class="edm-close" onclick="closeEntryDetail()">&#x2715;</button>
+    </div>
+    <div class="edm-scroll" id="edm-body"></div>
+  </div>
+</div>
 </body>
 </html>
