@@ -158,6 +158,7 @@
   var _year = 2026;
   var _sb   = null;
   var _loaded = false;
+  var _rtChannel = null;
 
   /* ── Section definitions — same order & colours as BTV Management Calendar ── */
   var SECTIONS = [
@@ -305,7 +306,20 @@
       _sb = parentSb;
       window._btvSb = parentSb;
     }
-    if (!_loaded) { _loaded = true; loadCalendar(); }
+    if (!_loaded) {
+      _loaded = true;
+      loadCalendar();
+      // Real-time subscription: reload whenever public_calendar_entries changes
+      _rtChannel = _sb.channel('btv_pubcal_entries_rt')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'public_calendar_entries'
+        }, function() {
+          loadCalendar();
+        })
+        .subscribe();
+    }
   }
 
   /* No-op so _bypassFramePasscode in parent doesn't throw */
