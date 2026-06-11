@@ -10357,7 +10357,9 @@ function btvSendTeamsSummary(url, message){
 
     };
 
-    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(err){ console.warn('BTV Calendar Teams summary webhook failed', err); });
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(function(r){ if(!r.ok) console.warn('[BTV Webhook] Server returned', r.status, r.statusText); })
+      .catch(function(err){ console.warn('[BTV Webhook] POST failed:', err); if(typeof showToast==='function') showToast('\u26a0\ufe0f Webhook failed: ' + (err.message||err), 6000); });
 
   }catch(e){ console.warn('BTV Calendar Teams summary webhook error', e); }
 
@@ -10424,7 +10426,12 @@ function btvConfigCalWebhook(){
   v = (v || '').trim();
   try{ localStorage.setItem('btvMgmtWebhook', v); }catch(e){}
   BTV_MGMT_WEBHOOK_URL = v;
-  alert(v ? 'Calendar webhook saved.' : 'Calendar webhook disabled.');
+  if(v) {
+    var doTest = window.confirm('Webhook saved. Send a test message now?');
+    if(doTest) btvSendTeamsSummary(v, '**BTV Calendar Webhook Test**\n' + new Date().toLocaleString('en-SG') + '\nWebhook is connected successfully.');
+  } else {
+    alert('Calendar webhook disabled.');
+  }
 }
 function btvConfigWebhook(key,label){
   btvConfigCalWebhook();
@@ -12158,7 +12165,7 @@ e("saveVersionBtn").addEventListener("click", () => { try {
 
   renderDashboard();
 
-  if (BTV_MGMT_WEBHOOK_URL && flat.length > 0) {
+  if (BTV_MGMT_WEBHOOK_URL) {
     btvSendTeamsSummary(BTV_MGMT_WEBHOOK_URL, teamsText);
   }
 
