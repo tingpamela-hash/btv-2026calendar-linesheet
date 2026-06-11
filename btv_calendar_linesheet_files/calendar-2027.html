@@ -2779,6 +2779,13 @@ select, input[type='text'], input[type='date'], input[type='number'], textarea {
 
 /* BTV patch: hide all Calendar toolbar buttons/controls when KPI Dashboard is active */
 body.btv-dashboard-mode .toolbar{display:none!important;}
+  /* ── Viewer mode: hide edit controls ──────────────────────────────────── */
+  body.view-only .add-btn,
+  body.view-only .pub-btn,
+  body.view-only [data-pub-id]
+  { display: none !important; }
+  body.view-only [draggable="true"] { cursor: default !important; }
+  /* ───────────────────────────────────────────────────────────────────────── */
 </style>
 
 
@@ -10063,6 +10070,7 @@ function actions(existing){
 
 
 function bindDragDrop(){
+  if (window._btvCanEdit === false) return;
 
   let dragData = null;
 
@@ -13440,6 +13448,20 @@ window.btvTogglePublish = btvTogglePublish;
   else { setTimeout(_waitForSb, 600); }
 })();
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Apply viewer mode when edit permission is resolved ───────────────────────
+(function _btvApplyViewMode() {
+  function _apply() {
+    if (window._btvCanEdit === false) document.body.classList.add('view-only');
+  }
+  if (window._btvCanEdit !== undefined) { _apply(); }
+  else {
+    var _vmi = setInterval(function () {
+      if (window._btvCanEdit !== undefined) { clearInterval(_vmi); _apply(); }
+    }, 300);
+  }
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 </script>

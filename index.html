@@ -523,13 +523,13 @@ html, body {
 
   // ── Session bootstrap ──────────────────────────────────────────────────────
 
-  function _startSyncInFrame(frameId, session) {
+  function _startSyncInFrame(frameId, session, canEdit) {
     var frame = document.getElementById(frameId);
     if (!frame) return;
     function tryStart() {
       try {
         if (frame.contentWindow && typeof frame.contentWindow.btvSyncStart === 'function') {
-          frame.contentWindow.btvSyncStart(session, _sb);
+          frame.contentWindow.btvSyncStart(session, _sb, canEdit !== false);
           return true;
         }
       } catch (e) { console.error('[BTV] _startSyncInFrame error (' + frameId + '):', e); }
@@ -544,11 +544,14 @@ html, body {
   }
 
   function _startSyncInCalFrame(session) {
-    _startSyncInFrame('frame-cal-2026', session);
-    _startSyncInFrame('frame-cal-2027', session);
-    _startSyncInFrame('frame-creative', session);
-    _startSyncInFrame('frame-ls', session);
-    _startSyncInFrame('frame-pubcal', session);
+    var _ec = _profile && _profile.can_edit_cal      !== false;
+    var _ee = _profile && _profile.can_edit_creative !== false;
+    var _el = _profile && _profile.can_edit_ls       !== false;
+    _startSyncInFrame('frame-cal-2026', session, _ec);
+    _startSyncInFrame('frame-cal-2027', session, _ec);
+    _startSyncInFrame('frame-creative', session, _ee);
+    _startSyncInFrame('frame-ls',       session, _el);
+    _startSyncInFrame('frame-pubcal',   session, false); // always read-only
   }
 
   async function boot() {
@@ -923,9 +926,12 @@ html, body {
       return '<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;' + bg + '">'
         + '<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (u.email || '') + '">' + (u.email || u.id.substring(0, 8) + '…') + '</span>'
         + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_cal !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_cal\',this.checked)"> Mgmt Cal</label>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#777"><input type="checkbox"' + (u.can_edit_cal !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_edit_cal\',this.checked)"> edit</label>'
         + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_pub_cal !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_pub_cal\',this.checked)"> BTV Cal</label>'
         + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_creative !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_creative\',this.checked)"> Creative</label>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#777"><input type="checkbox"' + (u.can_edit_creative !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_edit_creative\',this.checked)"> edit</label>'
         + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox"' + (u.can_access_ls !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_ls\',this.checked)"> LS</label>'
+        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#777"><input type="checkbox"' + (u.can_edit_ls !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_edit_ls\',this.checked)"> edit</label>'
         + '</div>';
     }).join('');
   }

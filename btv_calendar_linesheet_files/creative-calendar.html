@@ -240,6 +240,9 @@ html,body{height:100%;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
   font-weight:800!important;letter-spacing:.15em!important;text-transform:uppercase!important;
   padding:4px 10px!important;cursor:default!important;border-top:3px solid #000!important}
 .mkt-group-header td:hover{background:#111!important}
+  /* ── Viewer mode ─────────────────────────────────────────────────── */
+  body.view-only .add-btn { display: none !important; }
+  /* ────────────────────────────────────────────────────────────────── */
 </style>
 </head>
 <body>
@@ -1135,6 +1138,7 @@ function buildWeekOpts(sel,blank){
 }
 
 function openAddModal(market,rowKey,week,dateIso){
+  if (window._btvCanEdit === false) return;
   modalEntry=null;
   document.getElementById('modalTitle').textContent='Add Entry';
   document.getElementById('modalSub').textContent=`${market||''} · ${(rowKey||'').replace(/_/g,' ')} · ${week?'Wk '+week:''}`;
@@ -1257,6 +1261,19 @@ if(!hasData){ seedData(false); }
   if(stsGrp) stsGrp.style.display='';
 })();
 renderGlobal();
+// ── Apply viewer mode ────────────────────────────────────────────────────────
+(function _btvApplyViewMode() {
+  function _apply() {
+    if (window._btvCanEdit === false) document.body.classList.add('view-only');
+  }
+  if (window._btvCanEdit !== undefined) { _apply(); }
+  else {
+    var _vmi = setInterval(function () {
+      if (window._btvCanEdit !== undefined) { clearInterval(_vmi); _apply(); }
+    }, 300);
+  }
+})();
+
 </script>
 </body>
 </html>

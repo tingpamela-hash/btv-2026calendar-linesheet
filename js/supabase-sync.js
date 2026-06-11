@@ -520,7 +520,9 @@
 
   // ── btvSyncStart ──────────────────────────────────────────────────────────
 
-  window.btvSyncStart = async function (session, parentSb) {
+  window.btvSyncStart = async function (session, parentSb, canEdit) {
+    // Store edit permission before anything else; default true for back-compat
+    window._btvCanEdit = (canEdit !== false);
     if (_started) {
       console.log('[BTV Sync] Already started, skipping.');
       return;

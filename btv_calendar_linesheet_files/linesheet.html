@@ -1837,6 +1837,9 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
   box-shadow:inset 4px 0 0 rgba(0,0,0,.08);
 }
 
+
+  /* Viewer mode */
+  body.view-only #navBtnForm { display: none !important; }
 </style>
 
 
@@ -1926,7 +1929,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <button class="nav-btn active" onclick="switchView(&#39;form&#39;)">Product Form</button>
+        <button id="navBtnForm" class="nav-btn active" onclick="switchView(&#39;form&#39;)">Product Form</button>
 
 
 
@@ -7869,6 +7872,7 @@ function switchView(view){
 
 
 
+  if (view === 'form' && window._btvCanEdit === false) view = 'master';
   const map = {form:0, master:1, linesheet:2, dashboard:3};
 
 
@@ -18740,6 +18744,22 @@ window.btvReloadAndRender = function() {
 
 
 
+})();
+
+// ── Apply viewer mode ────────────────────────────────────────────────────────
+(function _btvApplyViewMode() {
+  function _apply() {
+    if (window._btvCanEdit === false) {
+      document.body.classList.add('view-only');
+      if (typeof switchView === 'function') switchView('master');
+    }
+  }
+  if (window._btvCanEdit !== undefined) { _apply(); }
+  else {
+    var _vmi = setInterval(function () {
+      if (window._btvCanEdit !== undefined) { clearInterval(_vmi); _apply(); }
+    }, 300);
+  }
 })();
 </script>
 </body></html>
