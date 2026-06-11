@@ -4,331 +4,3249 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BTV Calendar</title>
+<style>
+
+  :root{
+
+    --bg:#f7f6f4;
+
+    --panel:#ffffff;
+
+    --grid:#d6d2cc;
+
+    --text:#111111;
+
+    --muted:#787470;
+
+
+
+    /* brand deck aligned */
+
+    --global:#d4d4d4;
+
+    --nea:#4a8eb5;
+
+    --sea:#c43030;
+
+    --china:#c47800;
+
+    --restocks:#7a5a35;
+
+    --events:#edecea;
+
+
+
+    --wkA:#ffffff;
+
+    --wkB:#f3f2f0;
+
+    --btn:#f0efed;
+
+    --delay:#DB6256;
+
+    --delay-border:#b03020;
+
+  }
+
+
+
+  *{box-sizing:border-box}
+
+  body{
+
+    margin:0;
+
+    font-family: 'Everett', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+    background:var(--bg);
+
+    color:var(--text);
+
+  }
+
+
+
+  .app{padding:12px}
+
+  .page-title{
+
+    font-size:30px;
+
+    line-height:1.1;
+
+    margin:0 0 12px 0;
+
+    font-weight:400;
+
+    letter-spacing:.01em;
+
+  }
+
+
+
+  .toolbar{
+
+    position:sticky;
+
+    top:0;
+
+    z-index:20;
+
+    display:flex;
+
+    gap:8px;
+
+    flex-wrap:wrap;
+
+    align-items:end;
+
+    background:rgba(246,241,232,.97);
+
+    backdrop-filter:blur(8px);
+
+    border:1px solid var(--grid);
+
+    border-radius:14px;
+
+    padding:10px 12px;
+
+    margin-bottom:12px;
+
+  }
+
+  .btv-dl-menu{
+
+    display:none;position:absolute;top:calc(100% + 4px);left:0;
+
+    background:#fff;border:1.5px solid #d6d2cc;border-radius:10px;
+
+    box-shadow:0 6px 24px rgba(0,0,0,.13);z-index:100;min-width:220px;overflow:hidden;
+
+  }
+
+  .btv-dl-menu button{
+
+    display:block;width:100%;padding:10px 14px;border:none;background:none;
+
+    text-align:left;font:inherit;font-size:12px;font-weight:600;color:#111;
+
+    cursor:pointer;letter-spacing:.03em;transition:background .1s;white-space:nowrap;
+
+  }
+
+  .btv-dl-menu button:hover{background:#f5f3ef;}
+
+  .btv-dl-menu button+button{border-top:1px solid #f0ede8;}
+
+
+
+  .control label,.field label,.product-label{
+
+    display:block;
+
+    font-size:12px;
+
+    font-weight:600;
+
+    color:var(--muted);
+
+    text-transform:uppercase;
+
+    letter-spacing:.04em;
+
+    margin-bottom:4px
+
+  }
+
+
+
+  select,button,input,textarea{font:inherit}
+
+  select,input[type="text"],input[type="date"],input[type="number"],textarea{
+
+    width:100%;
+
+    padding:8px 10px;
+
+    border:1px solid var(--grid);
+
+    border-radius:10px;
+
+    background:#fffdfa;
+
+    color:var(--text)
+
+  }
+
+  textarea{resize:vertical}
+
+
+
+  button{
+
+    padding:9px 12px;
+
+    border:1px solid #b8a689;
+
+    border-radius:10px;
+
+    background:var(--btn);
+
+    cursor:pointer;
+
+    font-weight:600;
+
+    color:var(--text)
+
+  }
+
+
+
+  .small-add{
+
+    font-size:13px;
+
+    padding:6px 10px;
+
+    line-height:1.1;
+
+  }
+
+
+
+  .table-wrap{
+
+    border:1px solid var(--grid);
+
+    border-radius:16px;
+
+    overflow:auto;
+
+    background:var(--panel);
+
+    max-height:calc(100vh - 220px)
+
+  }
+
+
+
+  table{
+
+    border-collapse:separate;
+
+    border-spacing:0;
+
+    min-width:100%;
+
+    width:max-content;
+
+  }
+
+
+
+  th,td{
+
+    border-right:1px solid var(--grid);
+
+    border-bottom:1px solid var(--grid);
+
+    vertical-align:top
+
+  }
+
+
+
+  thead th{
+
+    background:#e8e2d8;
+
+    text-align:center;
+
+    padding:8px 6px;
+
+    font-weight:600
+
+  }
+
+
+
+  .corner{
+
+    position:sticky;
+
+    left:0;
+
+    z-index:6;
+
+    background:#e8e2d8;
+
+    text-align:left;
+
+    width:138px;
+
+    min-width:138px;
+
+    max-width:138px;
+
+    padding:8px 10px;
+
+    white-space:nowrap
+
+  }
+
+
+
+  .rowhead{
+
+    position:sticky;
+
+    left:0;
+
+    z-index:5;
+
+    width:138px;
+
+    min-width:138px;
+
+    max-width:138px;
+
+    padding:12px 12px;
+
+    font-weight:600;
+
+    white-space:normal;
+
+    word-break:break-word;
+
+    text-align:left;
+
+    font-size:18px;
+
+    line-height:1.15;
+
+    color:#fff;
+
+  }
+
+
+
+  .bg-global{background:var(--global); color:#2d2d2d}
+
+  .bg-nea{background:var(--nea)}
+
+  .bg-sea{background:var(--sea)}
+
+  .bg-china{background:var(--china)}
+
+  .bg-restocks{background:var(--restocks)}
+
+  .bg-events{background:var(--events); color:#2d2d2d}
+
+
+
+  .wk{
+
+    width:196px;
+
+    min-width:196px;
+
+    padding:6px;
+
+    text-align:center;
+
+    background:var(--wkA)
+
+  }
+
+  .wk.alt{background:var(--wkB)}
+
+
+
+  body.focus-month .corner,
+
+  body.focus-month .rowhead{
+
+    width:104px;
+
+    min-width:104px;
+
+    max-width:104px;
+
+    font-size:16px;
+
+  }
+
+  body.focus-month .wk{
+
+    width:144px;
+
+    min-width:144px;
+
+  }
+
+
+
+  body.focus-quarter .corner,
+
+  body.focus-quarter .rowhead{
+
+    width:116px;
+
+    min-width:116px;
+
+    max-width:116px;
+
+    font-size:17px;
+
+  }
+
+  body.focus-quarter .wk{
+
+    width:126px;
+
+    min-width:126px;
+
+  }
+
+
+
+  .cell{
+
+    min-height:180px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:8px;
+
+    align-items:stretch
+
+  }
+
+
+
+
+
+  .entry{
+
+    background:#fffdfa;
+
+    border:1px solid var(--grid);
+
+    border-radius:18px;
+
+    padding:12px;
+
+    text-align:left;
+
+    position:relative;
+
+    transition:box-shadow .15s ease, transform .15s ease;
+
+  }
+
+  .entry.delay{
+
+    background:var(--delay);
+
+    border-color:var(--delay-border);
+
+    box-shadow:inset 0 0 0 1px rgba(211,103,93,.15);
+
+  }
+  .entry.delay,.entry.delay .entry-title,.entry.delay .entry-date,.entry.delay .cat,
+  .entry.delay .prod-name,.entry.delay .prod-price,.entry.delay .prod-meta,
+  .entry.delay .label,.entry.delay .launch-status,.entry.delay .muted{color:#111!important}
+  .entry.delay .published-badge{background:#27ae60;color:#fff!important;border-color:#27ae60}
+  .entry.delay .draft-badge{background:#888;color:#fff!important;border-color:#888}
+
+  .entry-preview{
+
+    max-height:150px;
+
+    overflow:hidden;
+
+  }
+
+  .entry:hover,
+
+  .entry.expanded{
+
+    z-index:15;
+
+    box-shadow:0 10px 28px rgba(0,0,0,.16);
+
+    transform:translateY(-1px);
+
+  }
+
+  .entry:hover .entry-preview,
+
+  .entry.expanded .entry-preview{
+
+    max-height:none;
+
+    overflow:visible;
+
+  }
+
+
+
+  .title-row{
+
+    display:flex;
+
+    gap:8px;
+
+    align-items:flex-start;
+
+    justify-content:space-between
+
+  }
+
+  .title-left{
+
+    display:flex;
+
+    gap:10px;
+
+    align-items:flex-start;
+
+    min-width:0
+
+  }
+
+
+
+  .dot{
+
+    width:14px;
+
+    height:14px;
+
+    border-radius:50%;
+
+    margin-top:6px;
+
+    border:1px solid rgba(0,0,0,.15);
+
+    flex:0 0 auto
+
+  }
+
+  .dot.high{background:#c92323}
+
+  .dot.medium{background:#f2a114}
+
+  .dot.low{background:#f2d148}
+
+
+
+  .entry-title{
+
+    font-weight:600;
+
+    line-height:1.15;
+
+    font-size:13px;
+
+    white-space:normal;
+
+    word-break:break-word;
+
+    overflow:hidden;
+
+  }
+
+
+
+  .entry-date{
+
+    font-size:13px;
+
+    color:var(--muted);
+
+    font-weight:600;
+
+    margin-bottom:4px;
+
+    line-height:1.05;
+
+  }
+
+
+
+  .group{
+
+    display:grid;
+
+    grid-template-columns:64px 1fr;
+
+    gap:12px;
+
+    margin-top:10px
+
+  }
+
+
+
+  .cat{
+
+    font-weight:600;
+
+    font-size:10px;
+
+  }
+
+
+
+  .prod{
+
+    margin-bottom:10px
+
+  }
+
+
+
+  .prod-top{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    gap:10px;
+
+    align-items:flex-start;
+
+  }
+
+
+
+  .prod-name{
+
+    font-weight:600;
+
+    min-width:0;
+
+    flex:1 1 auto;
+
+    line-height:1.15;
+
+    font-size:12px;
+
+    white-space:normal;
+
+    word-break:break-word;
+
+    overflow:hidden;
+
+  }
+
+
+
+  .prod-price{
+
+    white-space:nowrap;
+
+    font-weight:600;
+
+    flex:0 0 auto;
+
+    font-size:12px;
+
+  }
+
+
+
+  .prod-meta{
+
+    white-space:pre-line;
+
+    margin-top:2px;
+
+    line-height:1.08;
+
+    font-size:12px;
+
+  }
+
+  .prod-size{display:none!important}
+
+
+
+  .launch-status{
+
+    margin-top:12px;
+
+    padding-top:8px;
+
+    font-size:12px;
+
+    line-height:1.08;
+
+  }
+
+
+
+  .muted{color:var(--muted)}
+
+  .label{font-weight:600;font-size:12px}
+
+  .small-btn{padding:5px 9px;border-radius:8px;font-size:13px}
+
+
+
+  .modal{
+
+    position:fixed;
+
+    inset:0;
+
+    background:rgba(0,0,0,.28);
+
+    display:none;
+
+    align-items:flex-start;
+
+    justify-content:center;
+
+    padding:18px;
+
+    overflow:auto;
+
+    z-index:100
+
+  }
+
+  .modal.show{display:flex}
+
+
+
+  .card{
+
+    width:min(1040px,100%);
+
+    background:#fbf8f1;
+
+    border:1px solid var(--grid);
+
+    border-radius:18px;
+
+    padding:16px
+
+  }
+
+  .card h2{margin:0 0 14px 0;font-weight:600}
+
+
+
+  .grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(12,1fr);
+
+    gap:10px
+
+  }
+
+  .span12{grid-column:span 12}
+
+  .span8{grid-column:span 8}
+
+  .span6{grid-column:span 6}
+
+  .span5{grid-column:span 5}
+
+  .span4{grid-column:span 4}
+
+  .span3{grid-column:span 3}
+
+  .span2{grid-column:span 2}
+
+
+
+  .product-editor,.box,.market-box{
+
+    border:1px solid var(--grid);
+
+    border-radius:12px;
+
+    padding:10px;
+
+    background:#fffdfa
+
+  }
+
+
+
+  .checks{
+
+    display:flex;
+
+    gap:8px;
+
+    flex-wrap:wrap
+
+  }
+
+
+
+  .check{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:6px;
+
+    padding:6px 10px;
+
+    border:1px solid var(--grid);
+
+    border-radius:999px;
+
+    background:#fffdfa
+
+  }
+
+
+
+  .market-box{margin-bottom:8px}
+
+  .market-head{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:8px
+
+  }
+
+  .market-box h4{
+
+    margin:0;
+
+    font-size:13px;
+
+    text-transform:uppercase;
+
+    font-weight:600
+
+  }
+
+
+
+  .delay-row{
+
+    display:grid;
+
+    grid-template-columns:1fr 170px;
+
+    gap:8px;
+
+    margin-bottom:8px
+
+  }
+
+
+
+  .actions{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    gap:10px;
+
+    align-items:center;
+
+    margin-top:16px
+
+  }
+
+  .right{
+
+    display:flex;
+
+    gap:8px;
+
+    flex-wrap:wrap
+
+  }
+
+
+
+  .hidden{display:none!important}
+
+
+
+  .inline-three{
+
+    display:grid;
+
+    grid-template-columns:2.2fr 1.5fr .9fr;
+
+    gap:12px;
+
+    align-items:end;
+
+  }
+
+
+
+  .event-inline{
+
+    display:grid;
+
+    grid-template-columns:minmax(0,1.5fr) 150px 150px;
+
+    gap:10px;
+
+    align-items:end;
+
+  }
+
+
+
+  .dragging{opacity:.55}
+
+  .drop-target{
+
+    outline:2px dashed #8f7f67;
+
+    outline-offset:-4px;
+
+    background:rgba(143,127,103,.08);
+
+  }
+
+
+
+  @page{
+
+    size:landscape;
+
+    margin:8mm;
+
+  }
+
+
+
+  @media (max-width:900px){
+
+    .grid{grid-template-columns:repeat(2,1fr)}
+
+    .span12,.span8,.span6,.span5,.span4,.span3,.span2{grid-column:span 2}
+
+    .inline-three,.event-inline,.delay-row{grid-template-columns:1fr}
+
+    .prod-top{display:block}
+
+    .prod-price{margin-top:2px}
+
+  }
+
+
+
+  @media print{
+
+    html,body{width:100%;height:auto;background:#fff}
+
+    .toolbar,.modal,.small-btn,.add-btn{display:none!important}
+
+    .app{
+
+      padding:0;
+
+      transform:scale(.72);
+
+      transform-origin:top left;
+
+      width:138%;
+
+    }
+
+    .table-wrap{border:none;overflow:visible}
+
+    table{
+
+      width:100%!important;
+
+      min-width:0!important;
+
+      table-layout:fixed;
+
+    }
+
+    .corner,.rowhead{
+
+      width:60px!important;
+
+      min-width:60px!important;
+
+      max-width:60px!important;
+
+      font-size:10px!important;
+
+      padding:4px!important;
+
+    }
+
+    .wk{
+
+      width:auto!important;
+
+      min-width:0!important;
+
+      max-width:none!important;
+
+      padding:3px!important;
+
+      font-size:9px!important;
+
+    }
+
+    .entry{
+
+      padding:5px!important;
+
+      border-radius:8px!important;
+
+      box-shadow:none!important;
+
+      transform:none!important;
+
+    }
+
+    .entry-preview{
+
+      max-height:none!important;
+
+      overflow:visible!important;
+
+    }
+
+    .entry-title{font-size:10px!important}
+
+    .entry-date,.cat,.prod-name,.prod-price,.prod-meta,.label,.launch-status{
+
+      font-size:8px!important;
+
+      line-height:1.1!important;
+
+    }
+
+    .group{
+
+      grid-template-columns:34px 1fr!important;
+
+      gap:4px!important;
+
+      margin-top:4px!important;
+
+    }
+
+  }
+
+
+
+  .tabs{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+
+  .tab-btn.active{background:#e8e2d8}
+
+  .view-panel.hidden{display:none!important}
+
+  .dashboard-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:8px}
+
+  .dash-card{background:#fffdfa;border:1px solid var(--grid);border-radius:10px;padding:8px 10px}
+
+  .dash-card h3{margin:0 0 5px 0;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#7a6a55}
+
+  .dash-list{margin:0;padding-left:18px}
+
+  .summary-sub{font-size:12px;color:var(--muted);margin:-4px 0 10px 0}
+
+  .archive-wrap{margin-top:10px}
+
+  .clear-inline{padding:4px 8px;font-size:12px;position:static;z-index:2;justify-self:end;align-self:end}
+
+  .product-editor.line-wrap{padding-top:10px}
+
+  .product-editor.line-wrap .inline-three{align-items:end;grid-template-columns:2.1fr 1.4fr .8fr auto}
+
+  .product-editor{position:relative}
+
+  .remove-delay-line{padding:4px 8px;font-size:12px}
+
+  .summary-group{margin:0 0 10px 0}
+
+  .summary-group-title{font-weight:700;margin-bottom:4px}
+
+  .hidden-archive{display:none}
+
+  .dash-kpi{font-size:28px;font-weight:700;margin:6px 0 10px 0}
+
+  .mini-table{width:100%;border-collapse:collapse;font-size:11px}
+
+  .mini-table th,.mini-table td{border:1px solid var(--grid);padding:2px 5px;text-align:left}
+
+  .toolbar-spacer{flex:1 1 auto}
+
+  .save-note{font-size:12px;color:var(--muted)}
+
+  .team-badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.04em;vertical-align:middle;margin-left:4px;text-transform:uppercase}
+
+  .team-badge.merch{background:#d4e6f1;color:#1a5276}
+
+  .team-badge.design{background:#fdebd0;color:#935116}
+
+  .team-badge.ops{background:#d5f5e3;color:#0e6251}
+
+  @media print{
+
+    *{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;}
+
+    .tabs{display:none!important}
+
+    .view-panel.hidden{display:none!important} #dashboardView.hidden{display:none!important}
+
+  }
+
+
+
+
+
+  .teams-box{margin-top:10px;background:#fffdfa;border:1px solid var(--grid);border-radius:12px;padding:10px}
+
+  .teams-box h4{margin:0 0 8px 0;font-size:14px}
+
+  .teams-box textarea{min-height:110px}
+
+
+
+
+
+  body.locked .app{display:none}
+
+  body.unlocked .app{display:block}
+
+  #plannerLock{
+
+    position:fixed; inset:0; z-index:99999;
+
+    display:flex; align-items:center; justify-content:center;
+
+    background:rgba(246,241,232,0.98);
+
+  }
+
+  body.unlocked #plannerLock{display:none}
+
+  .lock-card{
+
+    width:min(420px,92vw);
+
+    background:#fffdfa;
+
+    border:1px solid var(--grid);
+
+    border-radius:18px;
+
+    padding:20px;
+
+    box-shadow:0 12px 36px rgba(0,0,0,0.14);
+
+  }
+
+  .lock-card h2{margin:0 0 10px 0}
+
+  .lock-card p{margin:0 0 12px 0;color:var(--muted)}
+
+  .lock-actions{display:flex;gap:8px;margin-top:12px}
+
+  .lock-msg{min-height:16px;margin-top:10px;font-size:12px;color:#a23a2f}
+
+  .product-editor.line-wrap{
+
+    padding:14px 14px 16px 14px;
+
+    margin-bottom:14px;
+
+  }
+
+  .product-editor.line-wrap .inline-four{
+
+    display:grid;
+
+    grid-template-columns:0.95fr 1.15fr 0.55fr;
+
+    gap:12px;
+
+    align-items:end;
+
+  }
+
+  .product-editor.line-wrap label{margin-bottom:8px}
+
+  .product-editor.line-wrap .field-gap{margin-top:12px}
+
+  .clear-row{
+
+    display:flex;
+
+    justify-content:flex-end;
+
+    margin-top:10px;
+
+  }
+
+  .clear-inline{
+
+    position:static !important;
+
+    padding:4px 10px;
+
+    font-size:12px;
+
+  }
+
+
+
+
+
+  .product-editor.line-wrap{
+
+    padding:16px !important;
+
+    margin-bottom:16px !important;
+
+    border-radius:14px;
+
+  }
+
+  .product-editor.line-wrap .inline-four{
+
+    display:grid !important;
+
+    grid-template-columns:minmax(180px,0.9fr) minmax(220px,1.15fr) minmax(110px,0.45fr) !important;
+
+    gap:14px !important;
+
+    align-items:end !important;
+
+  }
+
+  .product-editor.line-wrap .inline-four > div{
+
+    min-width:0;
+
+  }
+
+  .product-editor.line-wrap .field-gap{
+
+    margin-top:14px !important;
+
+  }
+
+  .product-editor.line-wrap .clear-row{
+
+    display:flex !important;
+
+    justify-content:flex-end !important;
+
+    margin-top:12px !important;
+
+  }
+
+  .product-editor.line-wrap .clear-inline{
+
+    position:static !important;
+
+    display:inline-flex !important;
+
+    margin:0 !important;
+
+  }
+
+  .product-line-summary{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    cursor:pointer;
+    font-weight:700;
+    font-size:13px;
+    margin-bottom:12px;
+    list-style:none;
+  }
+
+  .product-line-summary::-webkit-details-marker{display:none}
+
+  .product-line-summary-main{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+  }
+
+  .product-line-summary-text{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .product-line-summary-text::before{
+    content:'›';
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    margin-right:8px;
+    width:24px;
+    height:24px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-size:18px;
+    font-weight:700;
+    line-height:1;
+    color:var(--text);
+    background:#fffdfa;
+  }
+
+  details[open] > .product-line-summary .product-line-summary-text::before{content:'⌄'}
+
+  .product-line-actions{
+    display:flex;
+    gap:6px;
+    flex-shrink:0;
+  }
+
+  .product-line-actions button{
+    border:1px solid var(--border);
+    background:#fffdfa;
+    color:var(--text);
+    font:inherit;
+    font-size:11px;
+    font-weight:700;
+    padding:4px 8px;
+    cursor:pointer;
+    border-radius:6px;
+    min-width:34px;
+    min-height:28px;
+  }
+
+  .product-line-actions button:hover{background:#f3eee6}
+
+  .product-line-delete{color:#9f2d20!important;border-color:#d8a29b!important}
+
+  .version-history-grid{
+    display:grid;
+    grid-template-columns:minmax(220px,.8fr) minmax(0,1.2fr);
+    gap:14px;
+    min-height:360px;
+  }
+
+  .version-history-list{
+    border:1px solid var(--border);
+    background:#fffdfa;
+    overflow:auto;
+    max-height:440px;
+  }
+
+  .version-history-item{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+    padding:10px 12px;
+    border-bottom:1px solid var(--grid);
+  }
+
+  .version-history-actions{display:flex;gap:6px;flex-shrink:0}
+
+  .version-history-actions button{
+    border:1px solid var(--border);
+    background:#fff;
+    font:inherit;
+    font-size:11px;
+    font-weight:700;
+    padding:5px 8px;
+    cursor:pointer;
+  }
+
+  #versionHistoryDetail{
+    width:100%;
+    min-height:360px;
+    border:1px solid var(--border);
+    background:#fffdfa;
+    padding:12px;
+    font:inherit;
+    font-size:12px;
+    line-height:1.55;
+  }
+
+  @media (max-width:900px){
+
+    .product-editor.line-wrap .inline-four{
+
+      grid-template-columns:1fr !important;
+
+    }
+
+    .version-history-grid{grid-template-columns:1fr}
+
+  }
+
+
+
+
+
+.inline-two{
+
+  display:grid;
+
+  grid-template-columns:1.5fr 0.6fr;
+
+  gap:12px;
+
+  align-items:end;
+
+}
+
+
+
+
+
+  .inline-two{
+
+    display:grid !important;
+
+    grid-template-columns:minmax(240px,1.35fr) minmax(120px,0.55fr) !important;
+
+    gap:14px !important;
+
+    align-items:end !important;
+
+  }
+
+  .product-details{
+
+    border:1px solid var(--grid);
+
+    border-radius:12px;
+
+    padding:14px;
+
+    background:#fffdfa;
+
+    margin-top:6px;
+
+  }
+
+  .product-details label{
+
+    display:block;
+
+    font-size:12px;
+
+    font-weight:600;
+
+    color:var(--muted);
+
+    text-transform:uppercase;
+
+    letter-spacing:.04em;
+
+    margin-bottom:8px;
+
+  }
+
+  .product-details .field-gap{
+
+    margin-top:12px !important;
+
+  }
+
+
+
+
+
+  .entry-info{
+
+    font-size:12px;
+
+    line-height:1.08;
+
+  }
+
+  .restock-details{
+
+    border:1px solid var(--grid);
+
+    border-radius:12px;
+
+    padding:14px;
+
+    background:#fffdfa;
+
+    margin-top:6px;
+
+  }
+
+  .restock-details label{
+
+    display:block;
+
+    font-size:12px;
+
+    font-weight:600;
+
+    color:var(--muted);
+
+    text-transform:uppercase;
+
+    letter-spacing:.04em;
+
+    margin-bottom:8px;
+
+  }
+
+  .restock-details .field-gap{
+
+    margin-top:12px !important;
+
+  }
+
+  .inline-restock{
+
+    display:grid;
+
+    grid-template-columns:minmax(240px,1.35fr) minmax(220px,1fr) minmax(140px,0.6fr);
+
+    gap:14px;
+
+    align-items:end;
+
+  }
+
+  @media (max-width:900px){
+
+    .inline-restock{grid-template-columns:1fr !important;}
+
+  }
+
+
+
+
+
+  .events-entry, 
+
+  .events-entry div,
+
+  .events-entry span{
+
+    font-size:12px !important;
+
+    line-height:1.08;
+
+  }
+
+
+
+
+
+  @media (max-width: 768px){
+
+    .calendar{
+
+      overflow-x:auto;
+
+    }
+
+    .wk{
+
+      min-width:140px;
+
+    }
+
+    .entry{
+
+      padding:6px;
+
+      font-size:12px;
+
+    }
+
+    .entry-title{
+
+      font-size:13px;
+
+    }
+
+    .prod-name,
+
+    .prod-price,
+
+    .prod-meta{
+
+      font-size:11px;
+
+    }
+
+    .cat{
+
+      font-size:10px;
+
+    }
+
+    .grid{
+
+      grid-template-columns:1fr !important;
+
+    }
+
+    .inline-four,
+
+    .inline-two,
+
+    .inline-restock{
+
+      grid-template-columns:1fr !important;
+
+    }
+
+    textarea, input, select{
+
+      font-size:14px;
+
+    }
+
+    .toolbar{
+
+      flex-wrap:wrap;
+
+      gap:6px;
+
+    }
+
+    .toolbar button{
+
+      flex:1 1 auto;
+
+      font-size:12px;
+
+    }
+
+  }
+
+
+
+
+
+  /* Unified calendar card typography */
+
+  .entry .entry-title{
+
+    font-size:14px !important;
+
+    line-height:1.08 !important;
+
+    font-weight:600 !important;
+
+  }
+
+  .entry .entry-date{
+
+    font-size:13px !important;
+
+    line-height:1.05 !important;
+
+    font-weight:600 !important;
+
+  }
+
+  .entry .cat{
+
+    font-size:10px !important;
+
+    line-height:1.08 !important;
+
+    font-weight:600 !important;
+
+  }
+
+  .entry .prod-name,
+
+  .entry .prod-price,
+
+  .entry .prod-meta,
+
+  .entry .launch-status,
+
+  .entry .entry-info,
+
+  .entry .entry-info *,
+
+  .entry .label,
+
+  .entry .muted{
+
+    font-size:12px !important;
+
+    line-height:1.08 !important;
+
+  }
+
+  .entry .prod-top{
+
+    align-items:flex-start !important;
+
+  }
+
+
+
+  /* Events / Activations aligned to same sizing */
+
+  .entry.events-entry,
+
+  .entry.events-entry *,
+
+  .entry[data-section="events"],
+
+  .entry[data-section="events"] *{
+
+    font-size:12px !important;
+
+    line-height:1.08 !important;
+
+  }
+
+
+
+  /* Keep product name + price on one line where possible */
+
+  .entry .prod-name{
+
+    white-space:nowrap;
+
+    overflow:hidden;
+
+    text-overflow:ellipsis;
+
+  }
+
+  .entry .prod-price{
+
+    white-space:nowrap;
+
+  }
+
+
+
+  /* Mobile mode / small screens */
+
+  @media (max-width: 768px){
+
+    .entry .entry-title{font-size:13px !important;}
+
+    .entry .entry-date{font-size:12px !important;}
+
+    .entry .cat{font-size:10px !important;}
+
+    .entry .prod-name,
+
+    .entry .prod-price,
+
+    .entry .prod-meta,
+
+    .entry .launch-status,
+
+    .entry .entry-info,
+
+    .entry .entry-info *,
+
+    .entry .label,
+
+    .entry .muted{
+
+      font-size:11px !important;
+
+    }
+
+  }
+
+
+
+
+
+  /* Regional cards aligned to Global calendar typography */
+
+  .entry[data-section="nea"] .entry-title,
+
+  .entry[data-section="sea"] .entry-title{
+
+    font-size:12px !important;
+
+    line-height:1.08 !important;
+
+    font-weight:600 !important;
+
+    white-space:nowrap;
+
+    overflow:hidden;
+
+    text-overflow:ellipsis;
+
+  }
+
+  .entry[data-section="nea"] .entry-date,
+
+  .entry[data-section="sea"] .entry-date{
+
+    font-size:12px !important;
+
+    line-height:1.05 !important;
+
+    font-weight:600 !important;
+
+  }
+
+  .entry[data-section="nea"] .entry-info,
+
+  .entry[data-section="sea"] .entry-info,
+
+  .entry[data-section="nea"] .entry-info *,
+
+  .entry[data-section="sea"] .entry-info *,
+
+  .entry[data-section="nea"] .prod-name,
+
+  .entry[data-section="sea"] .prod-name,
+
+  .entry[data-section="nea"] .prod-price,
+
+  .entry[data-section="sea"] .prod-price,
+
+  .entry[data-section="nea"] .prod-meta,
+
+  .entry[data-section="sea"] .prod-meta{
+
+    font-size:12px !important;
+
+    line-height:1.08 !important;
+
+  }
+
+
+
+
+
+  @page{
+
+    size:A4 landscape;
+
+    margin:6mm;
+
+  }
+
+  @media print{
+
+    html,body{
+
+      width:100%;
+
+      height:auto;
+
+      background:#fff !important;
+
+      -webkit-print-color-adjust:exact !important;
+
+      print-color-adjust:exact !important;
+
+    }
+
+    .toolbar,.modal,.small-btn,.add-btn,.tabs,#plannerLock{
+
+      display:none !important;
+
+    }
+
+    .app{
+
+      padding:0 !important;
+
+      transform:none !important;
+
+      width:100% !important;
+
+    }
+
+    .table-wrap{
+
+      border:none !important;
+
+      overflow:visible !important;
+
+    }
+
+    table{
+
+      width:100% !important;
+
+      min-width:0 !important;
+
+      table-layout:fixed !important;
+
+      font-size:8px !important;
+
+    }
+
+    .corner,.rowhead{
+
+      width:54px !important;
+
+      min-width:54px !important;
+
+      max-width:54px !important;
+
+      font-size:9px !important;
+
+      padding:3px !important;
+
+      line-height:1.05 !important;
+
+    }
+
+    .wk{
+
+      width:auto !important;
+
+      min-width:0 !important;
+
+      max-width:none !important;
+
+      padding:2px !important;
+
+      font-size:8px !important;
+
+      line-height:1.02 !important;
+
+    }
+
+    .cell{
+
+      min-height:88px !important;
+
+      gap:3px !important;
+
+    }
+
+    .entry{
+
+      padding:4px !important;
+
+      border-radius:7px !important;
+
+      box-shadow:none !important;
+
+      transform:none !important;
+
+      margin:0 !important;
+
+      page-break-inside:avoid !important;
+
+    }
+
+    .entry-preview{
+
+      max-height:none !important;
+
+      overflow:visible !important;
+
+    }
+
+    .entry .entry-title{
+
+      font-size:8px !important;
+
+      line-height:1.02 !important;
+
+      white-space:normal !important;
+
+      overflow:visible !important;
+
+      text-overflow:clip !important;
+
+    }
+
+    .entry .entry-date,
+
+    .entry .cat,
+
+    .entry .prod-name,
+
+    .entry .prod-price,
+
+    .entry .prod-meta,
+
+    .entry .launch-status,
+
+    .entry .entry-info,
+
+    .entry .entry-info *,
+
+    .entry .label,
+
+    .entry .muted{
+
+      font-size:7px !important;
+
+      line-height:1.02 !important;
+
+      white-space:normal !important;
+
+      overflow-wrap:anywhere !important;
+
+      word-break:break-word !important;
+
+    }
+
+    .entry .prod-name{
+
+      white-space:normal !important;
+
+    }
+
+    .group{
+
+      grid-template-columns:28px 1fr !important;
+
+      gap:3px !important;
+
+      margin-top:3px !important;
+
+    }
+
+    .prod{
+
+      margin-bottom:4px !important;
+
+    }
+
+    .prod-top{
+
+      display:block !important;
+
+    }
+
+    .dot{
+
+      width:8px !important;
+
+      height:8px !important;
+
+      margin-top:2px !important;
+
+    }
+
+  }
+
+
+
+
+
+  .field-inline{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end}
+
+  .field-inline-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+
+  .disabled-date{opacity:.5;pointer-events:none}
+
+  .restock-line{border:1px solid var(--grid);border-radius:12px;padding:12px;background:#fffdfa;margin-bottom:12px}
+
+  .restock-line .inline-restock-line{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;align-items:end}
+
+  @media (max-width:900px){
+
+    .field-inline,.field-inline-2,.restock-line .inline-restock-line{grid-template-columns:1fr !important;}
+
+  }
+
+
+
+
+
+  .disabled-date{opacity:.5;pointer-events:none}
+
+  .restock-line{border:1px solid var(--grid);border-radius:12px;padding:12px;background:#fffdfa;margin-bottom:12px}
+
+  .restock-line .inline-restock-line{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;align-items:end}
+
+  .clear-row-left{display:flex;justify-content:flex-start;margin-top:10px}
+
+  @media (max-width:900px){
+
+    .restock-line .inline-restock-line{grid-template-columns:1fr !important;}
+
+  }
+
+
+
+
+
+  /* Freeze panes */
+
+  thead th{
+
+    position:sticky;
+
+    z-index:12;
+
+  }
+
+  thead tr:nth-child(1) th{ top:0; }
+
+  thead tr:nth-child(2) th{ top:36px; }
+
+  thead tr:nth-child(3) th{ top:72px; }
+
+  thead tr:nth-child(4) th{ top:108px; }
+
+
+
+  /* Keep left header column frozen */
+
+  .corner{
+
+    position:sticky;
+
+    left:0;
+
+    z-index:14;
+
+    background:#e8e2d8;
+
+    box-shadow: 4px 0 0 rgba(0,0,0,0.06);
+
+  }
+
+  .rowhead{
+
+    position:sticky;
+
+    left:0;
+
+    z-index:8;
+
+    box-shadow: 4px 0 0 rgba(0,0,0,0.06);
+
+  }
+
+
+
+  /* Top-left stacked corner cells */
+
+  thead .corner{
+
+    z-index:16;
+
+    background:#e8e2d8;
+
+  }
+
+
+
+  /* Shadow divider below frozen header band */
+
+  thead tr:nth-child(4) th{
+
+    box-shadow: 0 4px 0 rgba(0,0,0,0.06);
+
+  }
+
+
+
+  /* Keep brand row colours visible while frozen */
+
+  .bg-global{background:var(--global) !important;color:#2d2d2d !important}
+
+  .bg-nea{background:var(--nea) !important;color:#fff !important}
+
+  .bg-sea{background:var(--sea) !important;color:#fff !important}
+
+  .bg-china{background:var(--china) !important;color:#fff !important}
+
+  .bg-restocks{background:var(--restocks) !important;color:#fff !important}
+
+  .bg-events{background:var(--events) !important;color:#2d2d2d !important}
+
+
+
+
+
+  .table-wrap{
+
+    overflow:auto;
+
+    box-shadow: inset 0 1px 0 rgba(0,0,0,0.03);
+
+  }
+
+  thead th{
+
+    border-bottom:1px solid var(--grid);
+
+  }
+
+
+
+
+
+  @media print{
+
+    .entry[data-section="restocks"] .entry-title,
+
+    .entry[data-section="events"] .entry-title,
+
+    .entry[data-section="store_openings"] .entry-title,
+
+    .entry[data-section="restocks"] .entry-date,
+
+    .entry[data-section="events"] .entry-date,
+
+    .entry[data-section="store_openings"] .entry-date,
+
+    .entry[data-section="restocks"] .prod-name,
+
+    .entry[data-section="events"] .prod-name,
+
+    .entry[data-section="store_openings"] .prod-name,
+
+    .entry[data-section="restocks"] .prod-price,
+
+    .entry[data-section="events"] .prod-price,
+
+    .entry[data-section="store_openings"] .prod-price,
+
+    .entry[data-section="restocks"] .prod-meta,
+
+    .entry[data-section="events"] .prod-meta,
+
+    .entry[data-section="store_openings"] .prod-meta,
+
+    .entry[data-section="restocks"] .entry-info,
+
+    .entry[data-section="events"] .entry-info,
+
+    .entry[data-section="store_openings"] .entry-info,
+
+    .entry[data-section="restocks"] .label,
+
+    .entry[data-section="events"] .label,
+
+    .entry[data-section="store_openings"] .label{
+
+      font-size:7px !important;
+
+      line-height:1.02 !important;
+
+      white-space:normal !important;
+
+      overflow-wrap:anywhere !important;
+
+      word-break:break-word !important;
+
+    }
+
+  }
+
+
+
+
+
+  /* Strong unified card typography */
+
+  .entry[data-section="nea"] .entry-title,
+
+  .entry[data-section="sea"] .entry-title,
+
+  .entry[data-section="events"] .entry-title,
+
+  .entry[data-section="store_openings"] .entry-title{
+
+    font-size:14px !important;
+
+    line-height:1.08 !important;
+
+    font-weight:600 !important;
+
+    white-space:nowrap;
+
+    overflow:hidden;
+
+    text-overflow:ellipsis;
+
+  }
+
+  .entry[data-section="nea"] .entry-date,
+
+  .entry[data-section="sea"] .entry-date,
+
+  .entry[data-section="events"] .entry-date,
+
+  .entry[data-section="store_openings"] .entry-date{
+
+    font-size:13px !important;
+
+    line-height:1.05 !important;
+
+    font-weight:600 !important;
+
+  }
+
+  .entry[data-section="nea"] .entry-info,
+
+  .entry[data-section="sea"] .entry-info,
+
+  .entry[data-section="events"] .entry-info,
+
+  .entry[data-section="store_openings"] .entry-info,
+
+  .entry[data-section="nea"] .entry-info *,
+
+  .entry[data-section="sea"] .entry-info *,
+
+  .entry[data-section="events"] .entry-info *,
+
+  .entry[data-section="store_openings"] .entry-info *,
+
+  .entry[data-section="nea"] .prod-name,
+
+  .entry[data-section="sea"] .prod-name,
+
+  .entry[data-section="events"] .prod-name,
+
+  .entry[data-section="store_openings"] .prod-name,
+
+  .entry[data-section="nea"] .prod-price,
+
+  .entry[data-section="sea"] .prod-price,
+
+  .entry[data-section="events"] .prod-price,
+
+  .entry[data-section="store_openings"] .prod-price,
+
+  .entry[data-section="nea"] .prod-meta,
+
+  .entry[data-section="sea"] .prod-meta,
+
+  .entry[data-section="events"] .prod-meta,
+
+  .entry[data-section="store_openings"] .prod-meta,
+
+  .entry[data-section="nea"] .label,
+
+  .entry[data-section="sea"] .label,
+
+  .entry[data-section="events"] .label,
+
+  .entry[data-section="store_openings"] .label{
+
+    font-size:12px !important;
+
+    line-height:1.08 !important;
+
+  }
+
+
+
+  /* PDF controls alignment */
+
+  #pdfControls{
+
+    margin-left:auto;
+
+  }
+
+
+
+  /* ── Publish to public calendar button ───────────────────────────────────── */
+  .pub-btn{display:block;width:100%;padding:2px 6px;margin-top:2px;border:1px solid #ccc;background:#f5f3ef;color:#888;font-size:10px;font-weight:700;letter-spacing:.03em;border-radius:6px;cursor:pointer;text-align:center;transition:background .15s,color .15s,border-color .15s}
+  .pub-btn:hover{background:#e8e4dc;color:#555;border-color:#aaa}
+  .pub-btn.pub-on{background:#2a6e2a;color:#fff;border-color:#1d4d1d}
+  .pub-btn.pub-on:hover{background:#1f5a1f}
+
+  @media print{
+
+    /* show left header column in print */
+
+    .corner,.rowhead{
+
+      display:table-cell !important;
+
+      visibility:visible !important;
+
+      opacity:1 !important;
+
+    }
+
+    /* keep printed fonts uniform across all sections */
+
+    .entry[data-section="nea"] .entry-title,
+
+    .entry[data-section="sea"] .entry-title,
+
+    .entry[data-section="events"] .entry-title,
+
+    .entry[data-section="store_openings"] .entry-title,
+
+    .entry[data-section="restocks"] .entry-title{
+
+      font-size:8px !important;
+
+      line-height:1.02 !important;
+
+      white-space:normal !important;
+
+      overflow:visible !important;
+
+      text-overflow:clip !important;
+
+    }
+
+    .entry[data-section="nea"] .entry-date,
+
+    .entry[data-section="sea"] .entry-date,
+
+    .entry[data-section="events"] .entry-date,
+
+    .entry[data-section="store_openings"] .entry-date,
+
+    .entry[data-section="restocks"] .entry-date,
+
+    .entry[data-section="nea"] .entry-info,
+
+    .entry[data-section="sea"] .entry-info,
+
+    .entry[data-section="events"] .entry-info,
+
+    .entry[data-section="store_openings"] .entry-info,
+
+    .entry[data-section="restocks"] .entry-info,
+
+    .entry[data-section="nea"] .entry-info *,
+
+    .entry[data-section="sea"] .entry-info *,
+
+    .entry[data-section="events"] .entry-info *,
+
+    .entry[data-section="store_openings"] .entry-info *,
+
+    .entry[data-section="restocks"] .entry-info *,
+
+    .entry[data-section="nea"] .prod-name,
+
+    .entry[data-section="sea"] .prod-name,
+
+    .entry[data-section="events"] .prod-name,
+
+    .entry[data-section="store_openings"] .prod-name,
+
+    .entry[data-section="restocks"] .prod-name,
+
+    .entry[data-section="nea"] .prod-price,
+
+    .entry[data-section="sea"] .prod-price,
+
+    .entry[data-section="events"] .prod-price,
+
+    .entry[data-section="store_openings"] .prod-price,
+
+    .entry[data-section="restocks"] .prod-price,
+
+    .entry[data-section="nea"] .prod-meta,
+
+    .entry[data-section="sea"] .prod-meta,
+
+    .entry[data-section="events"] .prod-meta,
+
+    .entry[data-section="store_openings"] .prod-meta,
+
+    .entry[data-section="restocks"] .prod-meta,
+
+    .entry[data-section="nea"] .label,
+
+    .entry[data-section="sea"] .label,
+
+    .entry[data-section="events"] .label,
+
+    .entry[data-section="store_openings"] .label,
+
+    .entry[data-section="restocks"] .label{
+
+      font-size:7px !important;
+
+      line-height:1.02 !important;
+
+      white-space:normal !important;
+
+      overflow-wrap:anywhere !important;
+
+      word-break:break-word !important;
+
+    }
+
+  }
+
+
+
+
+
+  .marketing-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px}
+
+  .marketing-table-wrap{border:1px solid var(--grid);border-radius:16px;overflow:auto;background:var(--panel)}
+
+  .marketing-table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content}
+
+  .marketing-table th,.marketing-table td{border-right:1px solid var(--grid);border-bottom:1px solid var(--grid);vertical-align:top;padding:8px}
+
+  .marketing-table thead th{background:#e8e2d8;text-align:center;position:sticky;top:0;z-index:4;min-width:180px}
+
+  .marketing-lefthead{position:sticky;left:0;z-index:5;background:#f2ece2;min-width:180px;max-width:180px;font-weight:600}
+
+  .marketing-card{border:1px solid var(--grid);border-radius:12px;background:#fffdfa;padding:8px;margin-bottom:8px;font-size:12px;line-height:1.2}
+
+  .marketing-card:last-child{margin-bottom:0}
+
+  .draft-badge{background:#fff8ea}
+
+  .published-badge{background:#eef8ef}
+
+  .market-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+
+
+
+
+
+  .required-star{color:#b63b2b;font-weight:700;margin-left:3px}
+
+  .markdown-bar{
+
+    border:2px dashed #8f7f67;
+
+    border-radius:12px;
+
+    background:rgba(255,247,223,.85);
+
+    padding:6px 8px;
+
+    margin-bottom:8px;
+
+    font-size:12px;
+
+    line-height:1.15;
+
+  }
+
+  .markdown-title{font-weight:700}
+
+  .entry.cat-bags{border-color:#7f5a3a!important; box-shadow: inset 0 0 0 1px rgba(127,90,58,.2)}
+
+  .entry.cat-mrtw,.entry.cat-wrtw,.entry.cat-krtw{border-color:#6fa8c2!important; box-shadow: inset 0 0 0 1px rgba(111,168,194,.2)}
+
+  .entry.cat-acc,.entry.cat-eyewear,.entry.cat-footwear,.entry.cat-lf,.entry.cat-pets{border-color:#7f7f7f!important; box-shadow: inset 0 0 0 1px rgba(127,127,127,.2)}
+
+  .dot.brand{background:#f2d148}
+
+  .dot.revenue{background:#6fa8c2}
+
+  .dot.both{background:#7dbb6d}
+
+  /* Priority borders on entry cards */
+  .entry[data-keylevel='brand']  { border-left:4px solid #f2d148 !important; }
+  .entry[data-keylevel='revenue']{ border-left:4px solid #6fa8c2 !important; }
+  .entry[data-keylevel='both']   { border-left:4px solid #7dbb6d !important; }
+
+
+
+
+
+  .required-star{color:#b63b2b;font-weight:700;margin-left:3px}
+
+  .markdown-span-cell{padding:0!important;background:transparent!important;vertical-align:top!important;position:relative!important}
+
+  .markdown-track{min-height:32px}
+
+  .markdown-bubble-span{position:relative;margin:3px 8px;border:2px dashed #8f7f67;border-radius:12px;background:rgba(255,247,223,.9);padding:4px 10px;font-size:12px;line-height:1.15}
+
+  .entry.cat-bags,.entry.cat-mrtw,.entry.cat-wrtw,.entry.cat-krtw,.entry.cat-acc,.entry.cat-eyewear,.entry.cat-footwear,.entry.cat-lf,.entry.cat-pets{border-width:3px!important}
+
+  .entry.cat-bags::before,.entry.cat-mrtw::before,.entry.cat-wrtw::before,.entry.cat-krtw::before,.entry.cat-acc::before,.entry.cat-eyewear::before,.entry.cat-footwear::before,.entry.cat-lf::before,.entry.cat-pets::before{content:"";position:absolute;left:0;top:0;right:0;height:6px;border-radius:16px 16px 0 0;background:currentColor;opacity:.95}
+
+  .entry.cat-bags{color:#7f5a3a}
+
+  .entry.cat-mrtw,.entry.cat-wrtw,.entry.cat-krtw{color:#2f7ea0}
+
+  .entry.cat-acc,.entry.cat-eyewear,.entry.cat-footwear,.entry.cat-lf,.entry.cat-pets{color:#676767}
+
+  .entry .entry-preview{padding-top:4px}
+
+  .workflow-buttons{display:flex;gap:8px;flex-wrap:wrap}
+
+  .workflow-buttons button.active{background:#e8e2d8}
+
+
+
+
+
+  .markdown-span-cell{padding:0!important;background:transparent!important;vertical-align:middle!important}
+
+  .markdown-track{position:relative;min-height:18px}
+
+  .markdown-bubble-span{
+
+    position:relative;margin:2px 6px;min-height:38px;
+
+    border:1.5px solid #d8b231;border-radius:10px;
+
+    background:#f5df73;padding:4px 8px;font-size:10px;line-height:1.3;
+
+    word-break:break-word
+
+  }
+
+  .markdown-bubble-span .small,.markdown-bubble-span button{display:none!important}
+
+  .markdown-title{font-weight:700}
+  .markdown-bubble-span.md-start{border-radius:999px 0 0 999px;margin-right:0;padding-right:2px;border-right:none}
+  .markdown-bubble-span.md-mid{border-radius:0;margin:2px 0;padding:0 4px;border-left:none;border-right:none}
+  .markdown-bubble-span.md-end{border-radius:0 999px 999px 0;margin-left:0;padding-left:4px;border-left:none}
+  .drag-insert-before{border-top:3px solid #4a8eb5!important}
+  .drag-insert-after{border-bottom:3px solid #4a8eb5!important}
+
+  .entry.draft-entry{border-style:dashed!important}
+
+  .entry.published-entry{border-style:solid!important}
+
+  .entry.cat-bags{color:#7d5fb2;border-color:#7d5fb2!important}
+
+  .entry.cat-mrtw,.entry.cat-wrtw,.entry.cat-krtw{color:#4e8fc7;border-color:#4e8fc7!important}
+
+  .entry.cat-acc,.entry.cat-eyewear,.entry.cat-footwear,.entry.cat-lf,.entry.cat-pets{color:#8a8a8a;border-color:#8a8a8a!important}
+
+
+
+
+
+  .markdown-track{position:relative;min-height:44px}
+
+  .markdown-bubble-span{min-height:24px;line-height:1.3}
+
+  .entry.cat-bags,.entry.cat-mrtw,.entry.cat-wrtw,.entry.cat-krtw,.entry.cat-acc,.entry.cat-eyewear,.entry.cat-footwear,.entry.cat-lf,.entry.cat-pets{color:#2d2d2d!important}
+
+  .entry.cat-bags{border-color:#7d5fb2!important}
+
+  .entry.cat-mrtw,.entry.cat-wrtw,.entry.cat-krtw{border-color:#4e8fc7!important}
+
+  .entry.cat-acc,.entry.cat-eyewear,.entry.cat-footwear,.entry.cat-lf,.entry.cat-pets{border-color:#8a8a8a!important}
+
+  .entry.cat-bags::before{background:#7d5fb2!important}
+
+  .entry.cat-mrtw::before,.entry.cat-wrtw::before,.entry.cat-krtw::before{background:#4e8fc7!important}
+
+  .entry.cat-acc::before,.entry.cat-eyewear::before,.entry.cat-footwear::before,.entry.cat-lf::before,.entry.cat-pets::before{background:#8a8a8a!important}
+
+
+
+
+
+/* -- BTV Brand Aesthetic -- */
+
+*, *::before, *::after { border-radius: 0 !important; }
+
+body, button, input, select, textarea { font-family: 'Everett', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+.toolbar { border-color: var(--grid); background: rgba(247,246,244,.97); }
+
+thead th, .corner { background: #eceae7; }
+
+button { background: #f0efed; border-color: #c8c5c0; }
+
+button:hover { background: #e8e7e5; }
+
+.entry { background: #ffffff; border-color: var(--grid); }
+
+.entry:hover, .entry.expanded { box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+
+select, input[type='text'], input[type='date'], input[type='number'], textarea {
+
+  background: #ffffff; border-color: var(--grid); }
+
+.page-title { font-size: 24px; letter-spacing: .12em; text-transform: uppercase; font-weight: 400; }
+
+.toolbar { border-radius: 0 !important; }
+
+
+/* BTV PATCH: current-view-only PDF */
+@media print{
+  @page{ size:A4 landscape; margin:3mm; }
+  html,body{ width:100%!important; height:auto!important; overflow:visible!important; background:#fff!important; }
+  .tabs,.toolbar,.modal,#plannerLock,#btvWebhookModal{ display:none!important; }
+  .view-panel.hidden{ display:none!important; }
+  body.btv-print-current .view-panel:not(.hidden){ display:block!important; }
+  body.btv-print-current .view-panel.hidden{ display:none!important; }
+  #calendarView:not(.hidden) .table-wrap,
+  #globalMarketingView:not(.hidden) .marketing-table-wrap,
+  #marketMarketingView:not(.hidden) .marketing-table-wrap{
+    width:100%!important; max-width:100%!important; overflow:visible!important; border:none!important;
+  }
+  #calendarView:not(.hidden) table,
+  #globalMarketingView:not(.hidden) table,
+  #marketMarketingView:not(.hidden) table{
+    width:100%!important; min-width:0!important; table-layout:fixed!important; font-size:6px!important;
+  }
+  #calendarView:not(.hidden) th,#calendarView:not(.hidden) td,
+  #globalMarketingView:not(.hidden) th,#globalMarketingView:not(.hidden) td,
+  #marketMarketingView:not(.hidden) th,#marketMarketingView:not(.hidden) td{
+    padding:1px!important; line-height:1.05!important; word-break:break-word!important; white-space:normal!important;
+  }
+  #calendarView:not(.hidden) .corner,#calendarView:not(.hidden) .rowhead{
+    width:42px!important; min-width:42px!important; max-width:42px!important; font-size:6px!important;
+  }
+  #calendarView:not(.hidden) .wk{ width:auto!important; min-width:0!important; max-width:none!important; }
+  #calendarView:not(.hidden) .cell{ min-height:46px!important; gap:1px!important; }
+  #calendarView:not(.hidden) .entry{ padding:2px!important; border-radius:4px!important; page-break-inside:avoid!important; }
+  #calendarView:not(.hidden) .entry-title,
+  #calendarView:not(.hidden) .entry-date,
+  #calendarView:not(.hidden) .cat,
+  #calendarView:not(.hidden) .prod-name,
+  #calendarView:not(.hidden) .prod-price,
+  #calendarView:not(.hidden) .prod-meta,
+  #calendarView:not(.hidden) .entry-info,
+  #calendarView:not(.hidden) .entry-info *,
+  #calendarView:not(.hidden) .label,
+  #calendarView:not(.hidden) .muted{
+    font-size:5.5px!important; line-height:1.02!important; white-space:normal!important; overflow:visible!important; text-overflow:clip!important;
+  }
+  #calendarView:not(.hidden) .group{ grid-template-columns:18px 1fr!important; gap:1px!important; margin-top:1px!important; }
+}
+
+
+/* BTV PATCH v3: print rows compact, keep natural column width */
+@media print{
+  body.btv-print-current table,
+  body.pdf-print-mode table{
+    width:max-content!important;
+    min-width:max-content!important;
+    table-layout:auto!important;
+    font-size:8px!important;
+  }
+  body.btv-print-current .table-wrap,
+  body.pdf-print-mode .table-wrap{
+    overflow:visible!important;
+    max-height:none!important;
+  }
+  body.btv-print-current .cell,
+  body.pdf-print-mode .cell{
+    min-height:56px!important;
+    gap:2px!important;
+  }
+  body.btv-print-current .entry,
+  body.pdf-print-mode .entry{
+    padding:3px!important;
+    margin:0 0 2px 0!important;
+    page-break-inside:avoid!important;
+  }
+  body.btv-print-current .wk,
+  body.pdf-print-mode .wk{
+    min-width:116px!important;
+    width:116px!important;
+    max-width:116px!important;
+  }
+}
+
+
+/* BTV patch: hide all Calendar toolbar buttons/controls when KPI Dashboard is active */
+body.btv-dashboard-mode .toolbar{display:none!important;}
+  /* ── Viewer mode: hide edit controls ──────────────────────────────────── */
+  body.view-only .add-btn,
+  body.view-only .pub-btn,
+  body.view-only [data-pub-id]
+  { display: none !important; }
+  body.view-only [draggable="true"] { cursor: default !important; }
+  /* ───────────────────────────────────────────────────────────────────────── */
+</style>
   <style>
-    :root {
-      --bg:      #f5f3ef;
-      --card:    #ffffff;
-      --border:  #e0d8cc;
-      --border2: #ede9e3;
-      --text:    #2d2d2d;
-      --muted:   #787470;
-      --faint:   #b0ada8;
-      --font:    'Inter', system-ui, -apple-system, sans-serif;
+    /* ── Toolbar year-tab style ─────────────────────────────────────────────── */
+    .yr-tab{
+      padding:4px 15px;border:1px solid var(--grid);border-radius:20px;
+      font-family:inherit;font-size:12px;font-weight:700;background:#fff;
+      color:#888;cursor:pointer;letter-spacing:.04em;
+      transition:background .12s,color .12s,border-color .12s;
     }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      font-size: 13px;
+    .yr-tab.active{background:#3a3530;color:#fff;border-color:#3a3530}
+    .yr-tab:hover:not(.active){background:#f4f2ef}
+    /* ── View-only: no edit controls ────────────────────────────────────────── */
+    .add-btn,.pub-btn,[data-pub-id],.small-btn{display:none!important}
+    [draggable="true"]{cursor:default!important}
+    /* ── Read-only badge ─────────────────────────────────────────────────────── */
+    .ro-badge{
+      display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;
+      text-transform:uppercase;padding:2px 7px;border-radius:4px;
+      background:#e8f4e8;color:#27ae60;border:1px solid #c3e6c3;
+      vertical-align:middle;margin-left:6px;
     }
-
-    /* ── Toolbar ─────────────────────────────────────────────────────────── */
-    .toolbar {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: #fff;
-      border-bottom: 1px solid var(--border);
-      padding: 10px 20px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .toolbar-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: #3a3530;
-      letter-spacing: .01em;
-    }
-    .yr-tabs { display: flex; gap: 5px; }
-    .yr-tab {
-      padding: 4px 15px;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      font-family: var(--font);
-      font-size: 12px;
-      font-weight: 700;
-      background: #fff;
-      color: #888;
-      cursor: pointer;
-      letter-spacing: .04em;
-      transition: background .12s, color .12s, border-color .12s;
-    }
-    .yr-tab.active { background: #3a3530; color: #fff; border-color: #3a3530; }
-    .yr-tab:hover:not(.active) { background: #f4f2ef; }
-    .refresh-btn {
-      padding: 4px 12px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-family: var(--font);
-      font-size: 12px;
-      font-weight: 600;
-      background: #fff;
-      color: #555;
-      cursor: pointer;
-    }
-    .refresh-btn:hover { background: #f4f2ef; }
-
-    /* ── Body / loading ──────────────────────────────────────────────────── */
-    .cal-body  { padding: 16px 20px 40px; }
-    .msg       { color: #aaa; font-size: 13px; padding: 20px 4px; }
-    .err       { color: #c00; padding: 20px 4px; }
-
-    /* ── Month header ────────────────────────────────────────────────────── */
-    .month-hd {
-      font-size: 13px;
-      font-weight: 800;
-      color: #3a3530;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      margin: 24px 0 8px;
-      padding-bottom: 6px;
-      border-bottom: 2px solid var(--border);
-    }
-    .month-hd:first-child { margin-top: 0; }
-    .month-empty {
-      color: #ccc;
-      font-style: italic;
-      font-size: 12px;
-      padding: 8px 2px 4px;
-    }
-
-    /* ── Week block ──────────────────────────────────────────────────────── */
-    .wk-block  { margin-bottom: 6px; }
-    .wk-lbl {
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--faint);
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      margin-bottom: 4px;
-    }
-    .wk-entries { display: flex; flex-direction: column; gap: 5px; }
-
-    /* ── Entry card ──────────────────────────────────────────────────────── */
-    .entry-card {
-      display: flex;
-      align-items: flex-start;
-      gap: 9px;
-      padding: 7px 10px;
-      background: var(--card);
-      border: 1px solid var(--border2);
-      border-left-width: 3px;
-      border-radius: 8px;
-    }
-    .entry-badge {
-      display: inline-block;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-      padding: 2px 6px;
-      border-radius: 4px;
-      white-space: nowrap;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-    .entry-info    { flex: 1; min-width: 0; }
-    .entry-title   { font-size: 12px; font-weight: 700; color: #111; line-height: 1.35; }
-    .entry-date    { font-size: 10.5px; color: var(--muted); margin-top: 2px; font-weight: 600; }
-    .entry-meta    { font-size: 10px; color: #999; margin-top: 2px; }
+    /* ── bg-store_openings (no specific CSS in base) ─────────────────────────── */
+    .bg-store_openings{background:#d4d4d4;color:#2d2d2d}
+    /* ── published badge (override for read-only context) ───────────────────── */
+    .published-badge{background:#27ae60;color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700}
+    .draft-badge{background:#aaa;color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700}
+    /* ── Loading/error state ─────────────────────────────────────────────────── */
+    .cal-msg{padding:40px 20px;text-align:center;color:#aaa;font-size:14px}
+    .cal-err{padding:40px 20px;text-align:center;color:#c00;font-size:13px}
+    /* ── Dot brand/revenue/both colours ─────────────────────────────────────── */
+    .dot.brand{background:#6a80b0}
+    .dot.revenue{background:#f2a114}
+    .dot.both{background:#27ae60}
   </style>
 </head>
 <body>
+<div class="app">
 
+  <!-- ── Toolbar ─────────────────────────────────────────────────────────────── -->
   <div class="toolbar">
-    <span class="toolbar-title">BTV Calendar</span>
-    <div class="yr-tabs">
+    <span style="font-size:15px;font-weight:700;color:#3a3530;letter-spacing:.01em">
+      BTV Calendar <span class="ro-badge">View Only</span>
+    </span>
+    <div style="display:flex;gap:5px">
       <button class="yr-tab active" id="yr2026" onclick="setYear(2026)">2026</button>
       <button class="yr-tab"        id="yr2027" onclick="setYear(2027)">2027</button>
     </div>
-    <button class="refresh-btn" onclick="loadCalendar()">&#8635; Refresh</button>
+    <div class="control">
+      <label>VIEW MODE</label>
+      <select id="viewMode" onchange="onViewModeChange()" style="width:120px">
+        <option value="year">Full Year</option>
+        <option value="month">Month</option>
+        <option value="quarter">Quarter</option>
+      </select>
+    </div>
+    <div id="monthGroup" style="display:none" class="control">
+      <label>MONTH</label>
+      <select id="monthSelect" onchange="renderGrid()"></select>
+    </div>
+    <div id="quarterGroup" style="display:none" class="control">
+      <label>QUARTER</label>
+      <select id="quarterSelect" onchange="renderGrid()">
+        <option value="Q1">Q1</option>
+        <option value="Q2">Q2</option>
+        <option value="Q3">Q3</option>
+        <option value="Q4">Q4</option>
+      </select>
+    </div>
+    <button onclick="loadCalendar()" style="margin-left:auto">&#8635; Refresh</button>
   </div>
 
-  <div id="calBody" class="cal-body">
-    <p class="msg">Loading&hellip;</p>
+  <!-- ── Calendar grid ───────────────────────────────────────────────────────── -->
+  <div class="table-wrap" id="tableWrap">
+    <table id="calendar"><tbody><tr><td class="cal-msg">Loading&hellip;</td></tr></tbody></table>
   </div>
+
+</div><!-- /.app -->
 
 <script>
-  var _year = 2026;
-  var _sb   = null;
-  var _loaded = false;
-  var _rtChannel = null;
+/* ── Constants ──────────────────────────────────────────────────────────────── */
+var MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var KEY_DOTS    = {
+  brand:  {cls:'brand'},   revenue:{cls:'revenue'}, both:{cls:'both'},
+  high:   {cls:'brand'},   medium: {cls:'revenue'}, low: {cls:'both'}
+};
+var SECTIONS = [
+  {key:'global',        label:'Global',        cls:'bg-global'},
+  {key:'china',         label:'China',         cls:'bg-china'},
+  {key:'sea',           label:'SEA',           cls:'bg-sea'},
+  {key:'nea',           label:'NEA',           cls:'bg-nea'},
+  {key:'restocks',      label:'Restocks',      cls:'bg-restocks'},
+  {key:'events',        label:'Events',        cls:'bg-events'},
+  {key:'store_openings',label:'Store Openings',cls:'bg-store_openings'},
+];
 
-  /* ── Section definitions — same order & colours as BTV Management Calendar ── */
-  var SECTIONS = [
-    { key:'global',         label:'Global',              bg:'#d4d4d4', fg:'#2d2d2d', bc:'#bcbcbc'  },
-    { key:'china',          label:'China',               bg:'#c47800', fg:'#ffffff', bc:'#c47800'  },
-    { key:'sea',            label:'SEA',                 bg:'#c43030', fg:'#ffffff', bc:'#c43030'  },
-    { key:'nea',            label:'NEA',                 bg:'#4a8eb5', fg:'#ffffff', bc:'#4a8eb5'  },
-    { key:'restocks',       label:'Restocks',            bg:'#7a5a35', fg:'#ffffff', bc:'#7a5a35'  },
-    { key:'events',         label:'Events',              bg:'#edecea', fg:'#2d2d2d', bc:'#a0b84a'  },
-    { key:'store_openings', label:'Store Openings',      bg:'#d4d4d4', fg:'#2d2d2d', bc:'#6a80b0'  }
-  ];
-  var SEC_MAP = {};
-  SECTIONS.forEach(function(s) { SEC_MAP[s.key] = s; });
+/* ── State ──────────────────────────────────────────────────────────────────── */
+var _year      = 2026;
+var _sb        = null;
+var _loaded    = false;
+var _rtChannel = null;
+var _data      = {};   /* { section: { week_id: [entry_data, ...] } } */
+var ALL_WEEKS  = [];
 
-  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var MON_S  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+/* ── Helpers ────────────────────────────────────────────────────────────────── */
+function esc(v){
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDDMMM(v){
+  if(!v) return '';
+  var d = new Date(v + 'T00:00:00');
+  if(isNaN(d.getTime())) return String(v);
+  return String(d.getDate()).padStart(2,'0') + '-' + MONTHS[d.getMonth()];
+}
+function dayNameFromISO(v){
+  if(!v) return '';
+  var d = new Date(v + 'T00:00:00');
+  if(isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US',{weekday:'short'});
+}
+function addDays(date, n){
+  var d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+function mondayOnOrBefore(date){
+  var d = new Date(date);
+  var day = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - day);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function weekRangeLabel(a, b){
+  return String(a.getDate()).padStart(2,'0') + '-' + MONTHS[a.getMonth()] +
+         ' to ' +
+         String(b.getDate()).padStart(2,'0') + '-' + MONTHS[b.getMonth()];
+}
+function getEntryStatus(entry){ return (entry && entry.workflowStatus) ? entry.workflowStatus : 'draft'; }
+function statusBadge(status){
+  return status === 'published'
+    ? '<span class="published-badge">Published</span>'
+    : '<span class="draft-badge">Draft</span>';
+}
+function globalCategoryClass(entry){
+  var firstCat = ((entry.lines||[]).find(function(x){return x.category;})||{}).category||'';
+  return firstCat ? 'cat-' + firstCat.toLowerCase() : '';
+}
+function countEntrySkus(entry){
+  return ((entry&&entry.lines)||[]).reduce(function(s,l){
+    return s + (parseInt(l.skuCount)||0);
+  }, 0);
+}
 
-  /* ── Helpers ─────────────────────────────────────────────────────────────── */
-  function fmtD(iso) {
-    if (!iso) return '';
-    var d = new Date(iso + 'T00:00:00');
-    return d.getDate() + ' ' + MON_S[d.getMonth()];
-  }
-  function fmtWk(wid) {
-    var d = new Date(wid + 'T00:00:00');
-    var e = new Date(d);
-    e.setDate(d.getDate() + 6);
-    return fmtD(wid) + '–' + e.getDate() + ' ' + MON_S[e.getMonth()];
-  }
-  function esc(v) {
-    return String(v == null ? '' : v)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-
-  /* ── Entry card renderer ─────────────────────────────────────────────────── */
-  function renderCard(row) {
-    var e   = row.entry_data || {};
-    var sec = SEC_MAP[row.section] || SEC_MAP['global'];
-
-    var title = e.launchTitle || e.productTitle || e.title || e.storeName || '(Untitled)';
-
-    var dateStr = '';
-    if (e.launchDate)      dateStr = fmtD(e.launchDate);
-    else if (e.startDateISO) {
-      dateStr = fmtD(e.startDateISO);
-      if (e.endDateISO && e.endDateISO !== e.startDateISO)
-        dateStr += ' – ' + fmtD(e.endDateISO);
-    } else if (e.targetOpenDate) {
-      dateStr = fmtD(e.targetOpenDate);
-    }
-
-    var sk   = row.section || 'global';
-    var mkts = '';
-    if      (sk === 'global')  mkts = (e.noLaunchMarkets || []).join(', ') || (e.allMarkets ? 'All Markets' : '');
-    else if (sk === 'china')   mkts = 'CN';
-    else if (sk === 'sea')     mkts = e.allMarkets ? 'SG, TH, ID, PH' : (e.countries || []).join(', ');
-    else if (sk === 'nea')     mkts = e.allMarkets ? 'CN, JP'          : (e.countries || []).join(', ');
-    else                       mkts = ((e.noLaunchMarkets || e.markets) || []).join(', ') || (e.allMarkets ? 'All' : '');
-
-    var prods = (e.lines || []).filter(function(l) { return l.productName; })
-                               .map(function(l)    { return esc(l.productName || ''); })
-                               .join(', ');
-    var skus  = (e.lines || []).reduce(function(n,l) { return n + (Number(l.skuCount) || 0); }, 0);
-    var meta  = [mkts ? esc(mkts) : null, prods || null, skus ? skus + ' SKUs' : null]
-                  .filter(Boolean).join(' · ');
-
-    return (
-      '<div class="entry-card" style="border-left-color:' + sec.bc + '">' +
-        '<span class="entry-badge" style="background:' + sec.bg + ';color:' + sec.fg + '">' + esc(sec.label) + '</span>' +
-        '<div class="entry-info">' +
-          '<div class="entry-title">'  + esc(title)   + '</div>' +
-          (dateStr ? '<div class="entry-date">' + esc(dateStr) + '</div>' : '') +
-          (meta    ? '<div class="entry-meta">' + meta         + '</div>' : '') +
-        '</div>' +
-      '</div>'
-    );
-  }
-
-  /* ── Year tab switcher ───────────────────────────────────────────────────── */
-  function setYear(yr) {
-    _year = yr;
-    document.getElementById('yr2026').classList.toggle('active', yr === 2026);
-    document.getElementById('yr2027').classList.toggle('active', yr === 2027);
-    loadCalendar();
-  }
-
-  /* ── Main render ─────────────────────────────────────────────────────────── */
-  function loadCalendar() {
-    var body = document.getElementById('calBody');
-    if (!_sb) {
-      body.innerHTML = '<p class="msg">Waiting for connection&hellip;</p>';
-      return;
-    }
-
-    body.innerHTML = '<p class="msg">Loading&hellip;</p>';
-
-    _sb.from('public_calendar_entries')
-      .select('*')
-      .eq('year', _year)
-      .order('week_id', { ascending: true })
-      .then(function(res) {
-        if (res.error) {
-          body.innerHTML = '<p class="err">Error: ' + esc(res.error.message) + '</p>';
-          return;
-        }
-        var rows = res.data || [];
-
-        /* Group: monthIndex(0-11) → week_id → rows[] */
-        var monthMap = {};
-        for (var m = 0; m < 12; m++) { monthMap[m] = {}; }
-
-        rows.forEach(function(row) {
-          var d    = new Date(row.week_id + 'T00:00:00');
-          var mIdx = d.getMonth();
-          if (!monthMap[mIdx][row.week_id]) monthMap[mIdx][row.week_id] = [];
-          monthMap[mIdx][row.week_id].push(row);
-        });
-
-        var html = '';
-        for (var mIdx = 0; mIdx < 12; mIdx++) {
-          var weeks    = monthMap[mIdx];
-          var weekKeys = Object.keys(weeks).sort();
-          html += '<div class="month-hd">' + esc(MONTHS[mIdx]) + '</div>';
-
-          if (!weekKeys.length) {
-            html += '<div class="month-empty">Nothing published yet</div>';
-          } else {
-            weekKeys.forEach(function(wid) {
-              html += '<div class="wk-block">';
-              html += '<div class="wk-lbl">Week of ' + esc(fmtWk(wid)) + '</div>';
-              html += '<div class="wk-entries">';
-              weeks[wid].forEach(function(row) { html += renderCard(row); });
-              html += '</div></div>';
-            });
-          }
-        }
-
-        body.innerHTML = html;
+/* ── Week generation ────────────────────────────────────────────────────────── */
+function buildWeeks(yr){
+  var start = new Date(yr + '-01-01T00:00:00');
+  var end   = new Date(yr + '-12-31T00:00:00');
+  var cur   = mondayOnOrBefore(start);
+  var out   = [];
+  while(cur <= end){
+    var wkEnd  = addDays(cur, 6);
+    var anchor = addDays(cur, 3);
+    if(wkEnd >= start && cur <= end){
+      out.push({
+        id:         cur.toISOString().slice(0,10),
+        start:      new Date(cur),
+        end:        new Date(wkEnd),
+        monthIndex: anchor.getMonth(),
+        month:      MONTHS[anchor.getMonth()],
+        quarter:    'Q' + (Math.floor(anchor.getMonth()/3)+1),
+        weekOfYear: 0
       });
+    }
+    cur = addDays(cur, 7);
+  }
+  out.forEach(function(w,i){ w.weekOfYear = i+1; });
+  return out;
+}
+
+/* ── View mode helpers ──────────────────────────────────────────────────────── */
+function e(id){ return document.getElementById(id); }
+
+function currentWeeks(){
+  var mode = e('viewMode') ? e('viewMode').value : 'year';
+  if(mode === 'month'){
+    var sel = e('monthSelect') ? e('monthSelect').value : '';
+    return ALL_WEEKS.filter(function(w){ return w.month === sel; });
+  }
+  if(mode === 'quarter'){
+    var sel = e('quarterSelect') ? e('quarterSelect').value : 'Q1';
+    return ALL_WEEKS.filter(function(w){ return w.quarter === sel; });
+  }
+  return ALL_WEEKS;
+}
+
+function onViewModeChange(){
+  var mode = e('viewMode').value;
+  e('monthGroup').style.display   = mode === 'month'   ? '' : 'none';
+  e('quarterGroup').style.display = mode === 'quarter' ? '' : 'none';
+  renderGrid();
+}
+
+function populateMonthSelect(){
+  var sel = e('monthSelect');
+  if(!sel) return;
+  var months = [];
+  ALL_WEEKS.forEach(function(w){ if(months.indexOf(w.month)<0) months.push(w.month); });
+  sel.innerHTML = months.map(function(m){
+    return '<option value="' + m + '">' + MONTHS_FULL[MONTHS.indexOf(m)] + ' ' + _year + '</option>';
+  }).join('');
+}
+
+/* ── Entry card renderers (read-only — no Edit/Publish buttons) ─────────────── */
+function renderGlobal(entry){
+  var grouped = {};
+  (entry.lines||[]).forEach(function(line){
+    if(!(line.category||line.productName||line.colour||line.size||line.price)) return;
+    var cat = line.category||'';
+    if(!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(line);
+  });
+  var groups = Object.keys(grouped).map(function(cat){
+    return '<div class="group"><div class="cat">' + esc(cat) + '</div><div>' +
+      grouped[cat].map(function(line){
+        return '<div class="prod">' +
+          '<div class="prod-top">' +
+            '<div class="prod-name">' + esc(line.productName||'') + '</div>' +
+            '<div class="prod-price">' + (line.price ? '$'+esc(line.price) : '') + '</div>' +
+          '</div>' +
+          '<div class="prod-meta">' + esc(line.colour||'') + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div></div>';
+  }).join('');
+  var dotCls = ((KEY_DOTS[entry.keyLevel]||KEY_DOTS.brand)||{}).cls||'brand';
+  var skus   = countEntrySkus(entry)||(entry.skuCount||0);
+  var mktStr = (entry.noLaunchMarkets||[]).join(', ')||(entry.allMarkets?'All Markets':'');
+  return '<div class="entry ' + globalCategoryClass(entry) + '">' +
+    '<div class="entry-preview">' +
+      '<div class="title-row">' +
+        '<div class="title-left">' +
+          '<div class="dot ' + dotCls + '"></div>' +
+          '<div>' +
+            '<div class="entry-date">' + fmtDDMMM(entry.launchDate) + (entry.launchDate?' ('+dayNameFromISO(entry.launchDate)+')':'') + '</div>' +
+            '<div class="entry-title">' + esc(entry.launchTitle||'') + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      groups +
+      (mktStr ? '<div class="entry-info"><span class="label">Markets:</span> ' + esc(mktStr) + '</div>' : '') +
+      (skus   ? '<div class="entry-info"><span class="label">SKUs:</span> ' + skus + '</div>' : '') +
+      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderRegional(entry){
+  var dotCls     = ((KEY_DOTS[entry.keyLevel]||KEY_DOTS.brand)||{}).cls||'brand';
+  var displayDate= entry.launchDate||entry.startDateISO||'';
+  var dateStr    = displayDate ? fmtDDMMM(displayDate)+' ('+dayNameFromISO(displayDate)+')' : (entry.startDate||'');
+  var marketStr  = (entry.allMarkets||false) ? 'All' : esc((entry.countries||[]).join(', ')||'—');
+  var colour     = entry.colour||(entry.colorSize&&!entry.colorSize.includes(' / ')?entry.colorSize:(entry.colorSize||'').split(' / ')[0])||'';
+  return '<div class="entry">' +
+    '<div class="entry-preview">' +
+      '<div class="title-row">' +
+        '<div class="title-left">' +
+          '<div class="dot ' + dotCls + '"></div>' +
+          '<div>' +
+            '<div class="entry-date">' + dateStr + '</div>' +
+            '<div class="entry-title">' + esc(entry.launchTitle||entry.optionType||'') + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="group"><div class="cat">' + esc(entry.optionType||'') + '</div>' +
+        '<div><div class="prod"><div class="prod-top">' +
+          '<div class="prod-name">' + esc(entry.productTitle||'—') + '</div>' +
+          '<div class="prod-price">' + (entry.price?'$'+esc(entry.price):'') + '</div>' +
+        '</div><div class="prod-meta">' + esc(colour) + '</div></div></div></div>' +
+      '<div class="entry-info"><span class="label">Markets:</span> ' + marketStr + '</div>' +
+      (entry.stores&&entry.stores.length ? '<div class="entry-info"><span class="label">Stores:</span> ' + esc(entry.stores.join(', ')) + '</div>' : '') +
+      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderRestock(entry){
+  var dotCls = ((KEY_DOTS[entry.keyLevel]||KEY_DOTS.brand)||{}).cls||'brand';
+  var dateStr= entry.etaISO ? 'ETA '+fmtDDMMM(entry.etaISO)+' ('+dayNameFromISO(entry.etaISO)+')' : (entry.eta?'ETA '+entry.eta:'');
+  var lines  = (entry.lines&&entry.lines.length) ? entry.lines : [{productTitle:entry.productTitle||'',colour:'',colors:entry.colors||''}];
+  var displayTitle = lines.length>1 ? lines.map(function(l){return l.productTitle;}).filter(Boolean).join(', ') : (lines[0].productTitle||entry.productTitle||'');
+  var marketStr = (entry.allMarkets||false) ? 'All Markets' : esc((entry.markets||[]).join(', ')||'—');
+  var lineHTML = lines.filter(function(l){return l.productTitle||l.colour||l.colors;}).map(function(line){
+    var col = line.colour||(line.colors&&!line.colors.includes(' / ')?line.colors:(line.colors||'').split(' / ')[0])||'';
+    return '<div class="prod"><div class="prod-name">' + esc(line.productTitle||'—') + '</div>' +
+      (col?'<div class="prod-meta">'+esc(col)+'</div>':'') + '</div>';
+  }).join('');
+  return '<div class="entry">' +
+    '<div class="entry-preview">' +
+      '<div class="title-row"><div class="title-left">' +
+        '<div class="dot ' + dotCls + '"></div>' +
+        '<div><div class="entry-date">' + dateStr + '</div>' +
+          '<div class="entry-title">' + esc(displayTitle) + '</div></div>' +
+      '</div></div>' +
+      '<div class="group"><div class="cat">Restock</div><div>' + lineHTML + '</div></div>' +
+      '<div class="entry-info"><span class="label">Markets:</span> ' + marketStr + '</div>' +
+      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
+    '</div></div>';
+}
+
+function renderStoreOpening(entry){
+  return '<div class="entry">' +
+    '<div class="entry-preview">' +
+      '<div class="title-row"><div>' +
+        '<div class="entry-title">' + esc(entry.storeName||'') + '</div>' +
+        '<div class="entry-date">' + (entry.targetOpenDate?'Target '+fmtDDMMM(entry.targetOpenDate):'') + '</div>' +
+      '</div></div>' +
+      '<div class="entry-info"><span class="label">Market:</span> ' + esc(entry.market||'—') + '</div>' +
+      '<div class="entry-info"><span class="label">Store Size:</span> ' + esc(entry.storeSize||'—') + '</div>' +
+      (entry.storeAddress?'<div class="entry-info"><span class="label">Address:</span> '+esc(entry.storeAddress)+'</div>':'') +
+      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
+    '</div></div>';
+}
+
+function renderEvent(entry){
+  return '<div class="entry">' +
+    '<div class="entry-preview">' +
+      '<div class="title-row"><div>' +
+        '<div class="entry-title">' + esc(entry.title||'') + '</div>' +
+        '<div class="entry-date">' + (entry.startDate||'') + (entry.endDate?' to '+entry.endDate:'') + '</div>' +
+      '</div></div>' +
+      '<div class="entry-info"><span class="label">Markets:</span> ' +
+        ((entry.allMarkets||false)?'All':esc((entry.markets||[]).join(', ')||'—')) + '</div>' +
+      (entry.anthemIncluded !== undefined ? '<div class="entry-info"><span class="label">Anthem:</span> '+(entry.anthemIncluded?'Yes':'No')+'</div>' : '') +
+      (entry.notes ? '<div class="entry-info muted">'+esc(entry.notes)+'</div>' : '') +
+      '<div class="entry-info">' + statusBadge(getEntryStatus(entry)) + '</div>' +
+    '</div></div>';
+}
+
+function renderEntry(section, entry){
+  if(section==='global'||section==='china') return renderGlobal(entry);
+  if(section==='nea'||section==='sea')      return (entry.lines ? renderGlobal(entry) : renderRegional(entry));
+  if(section==='restocks')                  return renderRestock(entry);
+  if(section==='store_openings')            return renderStoreOpening(entry);
+  return renderEvent(entry);
+}
+
+/* ── Grid builder ───────────────────────────────────────────────────────────── */
+function renderGrid(){
+  var table = e('calendar');
+  if(!table) return;
+
+  var weeks = currentWeeks();
+  if(!weeks.length){
+    table.innerHTML = '<tbody><tr><td class="cal-msg">No weeks to display.</td></tr></tbody>';
+    return;
   }
 
-  /* ── Auth bridge — called by parent index.html via btvSyncStart ─────────── */
-  function btvSyncStart(session, parentSb) {
-    if (parentSb) {
-      _sb = parentSb;
-      window._btvSb = parentSb;
-    }
-    if (!_loaded) {
-      _loaded = true;
-      loadCalendar();
-      // Real-time subscription: reload whenever public_calendar_entries changes
+  /* Build quarter and month span groups */
+  var quarterRuns = [], monthRuns = [];
+  weeks.forEach(function(w){
+    var q = quarterRuns[quarterRuns.length-1];
+    if(!q || q.label !== w.quarter) quarterRuns.push({label:w.quarter,count:1});
+    else q.count++;
+    var m = monthRuns[monthRuns.length-1];
+    if(!m || m.label !== w.month) monthRuns.push({label:w.month,count:1});
+    else m.count++;
+  });
+
+  var html = '<thead>';
+  html += '<tr><th class="corner">Quarter</th>' +
+    quarterRuns.map(function(r){
+      return '<th colspan="'+r.count+'">'+r.label.replace('Q','Quarter ')+'</th>';
+    }).join('') + '</tr>';
+  html += '<tr><th class="corner">Month</th>' +
+    monthRuns.map(function(r){
+      return '<th colspan="'+r.count+'">'+MONTHS_FULL[MONTHS.indexOf(r.label)]+' '+_year+'</th>';
+    }).join('') + '</tr>';
+  html += '<tr><th class="corner">Week</th>' +
+    weeks.map(function(w,i){
+      return '<th class="wk '+(i%2?'alt':'')+'">Wk '+w.weekOfYear+'</th>';
+    }).join('') + '</tr>';
+  html += '<tr><th class="corner">Date</th>' +
+    weeks.map(function(w,i){
+      return '<th class="wk '+(i%2?'alt':'')+'">'+weekRangeLabel(w.start,w.end)+'</th>';
+    }).join('') + '</tr>';
+  html += '</thead><tbody>';
+
+  SECTIONS.forEach(function(sec){
+    html += '<tr><th class="rowhead ' + sec.cls + '">' + sec.label + '</th>';
+    weeks.forEach(function(w,i){
+      var secData = (_data[sec.key]||{});
+      var entries = (secData[w.id]||[]);
+      html += '<td class="wk '+(i%2?'alt':'')+'"><div class="cell">' +
+        entries.map(function(entry){ return renderEntry(sec.key, entry); }).join('') +
+      '</div></td>';
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+/* ── Data loading from Supabase ─────────────────────────────────────────────── */
+function loadCalendar(){
+  var table = e('calendar');
+  if(table) table.innerHTML = '<tbody><tr><td class="cal-msg">Loading&hellip;</td></tr></tbody>';
+
+  if(!_sb){
+    if(table) table.innerHTML = '<tbody><tr><td class="cal-msg">Waiting for connection&hellip;</td></tr></tbody>';
+    return;
+  }
+
+  _sb.from('public_calendar_entries')
+    .select('*')
+    .eq('year', _year)
+    .then(function(res){
+      if(res.error){
+        if(table) table.innerHTML = '<tbody><tr><td class="cal-err">Error: ' + esc(res.error.message) + '</td></tr></tbody>';
+        return;
+      }
+      /* Build lookup: { section: { week_id: [entry_data, ...] } } */
+      var d = {};
+      SECTIONS.forEach(function(s){ d[s.key] = {}; });
+      (res.data||[]).forEach(function(row){
+        var sec = row.section;
+        var wid = row.week_id;
+        if(!d[sec]) d[sec] = {};
+        if(!d[sec][wid]) d[sec][wid] = [];
+        d[sec][wid].push(row.entry_data || {});
+      });
+      _data = d;
+      renderGrid();
+    });
+}
+
+/* ── Year / view switchers ──────────────────────────────────────────────────── */
+function setYear(yr){
+  _year = yr;
+  e('yr2026').classList.toggle('active', yr === 2026);
+  e('yr2027').classList.toggle('active', yr === 2027);
+  ALL_WEEKS = buildWeeks(yr);
+  populateMonthSelect();
+  loadCalendar();
+}
+
+/* ── Auth bridge ────────────────────────────────────────────────────────────── */
+function btvSyncStart(session, parentSb){
+  if(parentSb){ _sb = parentSb; window._btvSb = parentSb; }
+  if(!_loaded){
+    _loaded = true;
+    ALL_WEEKS = buildWeeks(_year);
+    populateMonthSelect();
+    loadCalendar();
+    /* Real-time: reload whenever public_calendar_entries changes */
+    if(_sb){
       _rtChannel = _sb.channel('btv_pubcal_entries_rt')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'public_calendar_entries'
-        }, function() {
-          loadCalendar();
-        })
+        .on('postgres_changes',{event:'*',schema:'public',table:'public_calendar_entries'},
+          function(){ loadCalendar(); })
         .subscribe();
     }
   }
+}
 
-  /* No-op so _bypassFramePasscode in parent doesn't throw */
-  window.plannerUnlockWith = function() {};
-
-  /* Expose globals */
-  window.btvSyncStart  = btvSyncStart;
-  window.setYear       = setYear;
-  window.loadCalendar  = loadCalendar;
+window.plannerUnlockWith = function(){};
+window.btvSyncStart      = btvSyncStart;
+window.setYear           = setYear;
+window.loadCalendar      = loadCalendar;
 </script>
 </body>
 </html>
