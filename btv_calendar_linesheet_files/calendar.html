@@ -10296,12 +10296,19 @@ var BTV_MGMT_WEBHOOK_URL = (function(){ try{ return localStorage.getItem('btvMgm
   window.btvIsPublished  = function(id)  { return _publishedIds.has(id); };
   window.btvAddPublished = function(id)  { _publishedIds.add(id); };
   window.btvDelPublished = function(id)  { _publishedIds.delete(id); };
-  window.btvLoadPublished = function() { 
+  window.btvLoadPublished = function() {
     if (!window._btvSb) return;
     var yr = parseInt(((window._btvStorageKey||'').match(/calendar-(\d{4})-/)||[])[1]||'0');
     window._btvSb.from('public_calendar_entries')
       .select('entry_id').eq('year', yr)
       .then(function(res){
+        if (res.error) {
+          console.error('[BTV Publish] Load error:', res.error.message);
+          if (res.error.message && res.error.message.includes('does not exist')) {
+            console.error('[BTV Publish] Table missing — run supabase-setup.sql sections 7-8 in Supabase SQL Editor.');
+          }
+          return;
+        }
         if(window.btvSetPublishedIds) window.btvSetPublishedIds((res.data||[]).map(function(r){ return r.entry_id; }));
       });
   };
@@ -13556,11 +13563,11 @@ async function btvTogglePublish(entryId, weekId, section) {
   var entry = ((_st[section] || {})[weekId] || []).find(function(e) { return e.id === entryId; });
   if (!entry) return;
 
-  if (_publishedIds.has(entryId)) {
+  if (window.btvIsPublished(entryId)) {
     var { error } = await window._btvSb.from('public_calendar_entries')
       .delete().eq('entry_id', entryId).eq('year', yr);
     if (error) { alert('Error removing from public calendar: ' + error.message); return; }
-    _publishedIds.delete(entryId);
+    window.btvDelPublished(entryId);
   } else {
     var { error } = await window._btvSb.from('public_calendar_entries')
       .upsert({
@@ -13570,11 +13577,11 @@ async function btvTogglePublish(entryId, weekId, section) {
         published_at: new Date().toISOString()
       }, { onConflict: 'entry_id,year' });
     if (error) { alert('Error publishing to public calendar: ' + error.message); return; }
-    _publishedIds.add(entryId);
+    window.btvAddPublished(entryId);
   }
   // Update all buttons for this entry without full re-render
   document.querySelectorAll('[data-entry-id="' + entryId + '"] .pub-btn').forEach(function(btn) {
-    var on = _publishedIds.has(entryId);
+    var on = window.btvIsPublished(entryId);
     btn.classList.toggle('pub-on', on);
     btn.textContent = on ? '\u2714 Live' : '\u2191 Publish';
     btn.title = on ? 'Remove from public calendar' : 'Publish to public calendar';
