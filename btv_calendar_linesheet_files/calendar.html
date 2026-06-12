@@ -72,9 +72,15 @@
 
 
 
-  html,body{height:100%}
+  html,body{height:100%;overflow:hidden}
 
-  .app{padding:12px;min-height:100%}
+  .app{padding:12px;height:100%;display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden}
+
+  .view-panel:not(.hidden){flex:1;min-height:0;overflow:auto}
+
+  #calendarView{overflow:hidden!important;display:flex!important;flex-direction:column}
+
+  #calendarView .table-wrap{flex:1;max-height:none!important;overflow:auto;min-height:0}
 
   .page-title{
 
@@ -2531,9 +2537,9 @@
 
   .marketing-card:last-child{margin-bottom:0}
 
-  .draft-badge{background:#fff3d0;color:#7a5c00;border:1px solid #d4a820}
+  .draft-badge{background:#fff8ea}
 
-  .published-badge{background:#27ae60;color:#fff!important;border:1px solid #1e8449}
+  .published-badge{background:#eef8ef}
 
   .market-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 
@@ -2606,9 +2612,7 @@
 
   .workflow-buttons{display:flex;gap:8px;flex-wrap:wrap}
 
-  .workflow-buttons button.active{background:#ccc;color:#444;border-color:#aaa}
-
-  .workflow-buttons #publishModeBtn.active{background:#27ae60;color:#fff;border-color:#1e8449}
+  .workflow-buttons button.active{background:#e8e2d8}
 
 
 
@@ -2639,9 +2643,9 @@
   .drag-insert-before{border-top:3px solid #4a8eb5!important}
   .drag-insert-after{border-bottom:3px solid #4a8eb5!important}
 
-  .entry.draft-entry{border-style:dashed!important;opacity:.9}
+  .entry.draft-entry{border-style:dashed!important}
 
-  .entry.published-entry{border-style:solid!important;box-shadow:inset 4px 0 0 #27ae60}
+  .entry.published-entry{border-style:solid!important}
 
   .entry.cat-bags{color:#7d5fb2;border-color:#7d5fb2!important}
 

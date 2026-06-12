@@ -174,4 +174,80 @@ end;
 $$;
 
 
+
+-- ── 7. public_calendar_entries ───────────────────────────────
+-- Stores entries published from the management calendar to the
+-- public-facing BTV Calendar (btv-pub-cal.html).
+
+create table if not exists public.public_calendar_entries (
+  entry_id      text        not null,
+  year          integer     not null,
+  week_id       text        not null,
+  section       text        not null,
+  entry_data    jsonb       not null default '{}',
+  published_by  text,
+  published_at  timestamptz not null default now(),
+  constraint public_calendar_entries_pkey primary key (entry_id, year)
+);
+
+alter table public.public_calendar_entries enable row level security;
+
+drop policy if exists "Authenticated users can read public_calendar_entries"   on public.public_calendar_entries;
+drop policy if exists "Authenticated users can write public_calendar_entries"  on public.public_calendar_entries;
+drop policy if exists "Authenticated users can update public_calendar_entries" on public.public_calendar_entries;
+drop policy if exists "Authenticated users can delete public_calendar_entries" on public.public_calendar_entries;
+
+create policy "Authenticated users can read public_calendar_entries"
+  on public.public_calendar_entries for select
+  to authenticated using (true);
+
+create policy "Authenticated users can write public_calendar_entries"
+  on public.public_calendar_entries for insert
+  to authenticated with check (true);
+
+create policy "Authenticated users can update public_calendar_entries"
+  on public.public_calendar_entries for update
+  to authenticated using (true);
+
+create policy "Authenticated users can delete public_calendar_entries"
+  on public.public_calendar_entries for delete
+  to authenticated using (true);
+
+-- Enable Realtime so btv-pub-cal.html gets live updates
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'public_calendar_entries'
+  ) then
+    alter publication supabase_realtime add table public.public_calendar_entries;
+  end if;
+end;
+$$;
+
+
+-- ── 8. user_profiles — add missing edit-permission columns ───
+-- These columns control whether a user can edit each module.
+-- Safe to run if they already exist (IF NOT EXISTS).
+
+alter table public.user_profiles
+  add column if not exists can_edit_cal       boolean not null default true,
+  add column if not exists can_edit_creative  boolean not null default true,
+  add column if not exists can_edit_ls        boolean not null default true,
+  add column if not exists can_access_pub_cal boolean not null default true;
+
+-- Grant all existing users edit access (idempotent)
+update public.user_profiles
+set can_edit_cal      = true,
+    can_edit_creative = true,
+    can_edit_ls       = true,
+    can_access_pub_cal = true
+where can_edit_cal = false
+   or can_edit_creative = false
+   or can_edit_ls = false
+   or can_access_pub_cal = false;
+
+
 -- ── Done! ─────────────────────────────────────────────────────
