@@ -1149,7 +1149,7 @@
 
   body.locked .app{display:none}
 
-  body.unlocked .app{display:block}
+  body.unlocked .app{display:flex}
 
   #plannerLock{
 
@@ -12424,6 +12424,7 @@ window.btvReloadAndRender = function() {
   if (e("globalMarketingView")) renderGlobalMarketingView();
   if (e("marketMarketingView")) renderMarketMarketingView();
   if (typeof _btvCalApplyLockBadges === 'function') _btvCalApplyLockBadges();
+  _btvLoadPublished();
 };
 window.loadAdminConfig = loadAdminConfig;
 window.saveAdminConfig = saveAdminConfig;
@@ -13536,6 +13537,13 @@ function _btvLoadPublished() {
   window._btvSb.from('public_calendar_entries')
     .select('entry_id').eq('year', yr)
     .then(function(res) {
+      if (res.error) {
+        console.error('[BTV Publish] Failed to load published IDs:', res.error.message);
+        if (res.error.message && res.error.message.includes('does not exist')) {
+          console.error('[BTV Publish] Table "public_calendar_entries" missing — run supabase-setup.sql sections 7-8 in Supabase SQL Editor.');
+        }
+        return;
+      }
       var ids = (res.data||[]).map(function(r){ return r.entry_id; });
       if (window.btvSetPublishedIds) window.btvSetPublishedIds(ids);
     });
