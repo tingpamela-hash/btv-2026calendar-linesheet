@@ -52,6 +52,8 @@
 
   *{box-sizing:border-box}
 
+  html,body{height:100%;overflow:hidden}
+
   body{
 
     margin:0;
@@ -66,7 +68,7 @@
 
 
 
-  .app{padding:12px}
+  .app{padding:12px;height:100%;display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden}
 
   .page-title{
 
@@ -224,7 +226,11 @@
 
     background:var(--panel);
 
-    max-height:calc(100vh - 220px)
+    flex:1;
+
+    min-height:0;
+
+    max-height:none
 
   }
 
@@ -1131,7 +1137,7 @@
 
   body.locked .app{display:none}
 
-  body.unlocked .app{display:block}
+  body.unlocked .app{display:flex}
 
   #plannerLock{
 
