@@ -72,7 +72,9 @@
 
 
 
-  .app{padding:12px}
+  html,body{height:100%}
+
+  .app{padding:12px;min-height:100%}
 
   .page-title{
 
@@ -230,7 +232,7 @@
 
     background:var(--panel);
 
-    max-height:calc(100vh - 220px)
+    max-height:calc(100vh - 185px)
 
   }
 
@@ -2529,9 +2531,9 @@
 
   .marketing-card:last-child{margin-bottom:0}
 
-  .draft-badge{background:#fff8ea}
+  .draft-badge{background:#fff3d0;color:#7a5c00;border:1px solid #d4a820}
 
-  .published-badge{background:#eef8ef}
+  .published-badge{background:#27ae60;color:#fff!important;border:1px solid #1e8449}
 
   .market-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 
@@ -2604,7 +2606,9 @@
 
   .workflow-buttons{display:flex;gap:8px;flex-wrap:wrap}
 
-  .workflow-buttons button.active{background:#e8e2d8}
+  .workflow-buttons button.active{background:#ccc;color:#444;border-color:#aaa}
+
+  .workflow-buttons #publishModeBtn.active{background:#27ae60;color:#fff;border-color:#1e8449}
 
 
 
@@ -2635,9 +2639,9 @@
   .drag-insert-before{border-top:3px solid #4a8eb5!important}
   .drag-insert-after{border-bottom:3px solid #4a8eb5!important}
 
-  .entry.draft-entry{border-style:dashed!important}
+  .entry.draft-entry{border-style:dashed!important;opacity:.9}
 
-  .entry.published-entry{border-style:solid!important}
+  .entry.published-entry{border-style:solid!important;box-shadow:inset 4px 0 0 #27ae60}
 
   .entry.cat-bags{color:#7d5fb2;border-color:#7d5fb2!important}
 
@@ -10285,6 +10289,9 @@ render();
 
 var BTV_MGMT_WEBHOOK_URL = (function(){ try{ return localStorage.getItem('btvMgmtWebhook')||'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }catch(e){ return 'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }
   window.btvSetPublishedIds = function(ids) { _publishedIds = new Set(ids); render(); };
+  window.btvIsPublished  = function(id)  { return _publishedIds.has(id); };
+  window.btvAddPublished = function(id)  { _publishedIds.add(id); };
+  window.btvDelPublished = function(id)  { _publishedIds.delete(id); };
   window.btvLoadPublished = function() { 
     if (!window._btvSb) return;
     var yr = parseInt(((window._btvStorageKey||'').match(/calendar-(\d{4})-/)||[])[1]||'0');

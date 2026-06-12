@@ -10245,6 +10245,9 @@ render();
 
 var BTV_MGMT_WEBHOOK_URL = (function(){ try{ return localStorage.getItem('btvMgmtWebhook')||'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }catch(e){ return 'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }
   window.btvSetPublishedIds = function(ids) { _publishedIds = new Set(ids); render(); };
+  window.btvIsPublished  = function(id)  { return _publishedIds.has(id); };
+  window.btvAddPublished = function(id)  { _publishedIds.add(id); };
+  window.btvDelPublished = function(id)  { _publishedIds.delete(id); };
   window.btvLoadPublished = function() { 
     if (!window._btvSb) return;
     var yr = parseInt(((window._btvStorageKey||'').match(/calendar-(\d{4})-/)||[])[1]||'0');
