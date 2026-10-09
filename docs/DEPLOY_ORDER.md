@@ -17,6 +17,9 @@ Do not apply these files to the live project from this repository change. Pam ap
 11. `supabase/migrations/20261007180000_scope_catalog_reads.sql`
 12. `supabase/migrations/20261009120000_scope_calendar_entries_and_locks.sql`
 13. `supabase/migrations/20261009140000_lock_requires_edit_grant.sql`
+14. `supabase/migrations/20261009130000_private_creative_marketing_bucket.sql`
+
+Do not apply step 14 until `global calendar.html` signs creative image URLs. Steps 10 to 12 install `btv.can_access` and the later policies without marking `creative-marketing` private. Step 14 is the only numbered file that does that. Its rollback is `supabase/rollbacks/20261009130000_private_creative_marketing_bucket.sql`.
 
 ## Monday reminder cron
 
@@ -28,9 +31,9 @@ Steps 4 to 8 create her tables and leave them open to every signed-in user. Step
 
 `global_cal_entries.id` and `marketing_entries.id` are text primary keys. That is the index the creative calendar uses when it loads a page of rows. The default replica identity is enough for a realtime delete.
 
-## Ship the creative calendar page with step 10
+## Ship the creative calendar page with step 14
 
-Deploy the site that signs creative image URLs before you apply step 10, or in the same change window. Step 10 marks the `creative-marketing` bucket private. A stored public image link stops loading until the page signs it.
+Deploy the site that signs creative image URLs before you apply step 14, or in the same change window. Step 14 marks the `creative-marketing` bucket private. A stored public image link stops loading until the page signs it. Steps 10 to 12 do not do this.
 
 Saved marketing rows keep the URL they already have. The creative calendar reads that URL, takes the object path, and asks Storage for a signed URL. A newly uploaded image stores the object path, `marketing/<file>`, and the page signs that path the same way.
 
@@ -44,7 +47,7 @@ A signed-in person can read their own profile. An admin can read every profile a
 
 Global calendar rows and marketing rows are visible to someone with global calendar access. Realtime delivers a change only when that person can read the row.
 
-The creative-marketing bucket is private. Someone with global calendar access can read an object and can request a signed URL. The anon role cannot.
+Step 14 makes the creative-marketing bucket private. Someone with global calendar access can read an object and can request a signed URL. The anon role cannot. Until step 14, the bucket stays as step 1 left it.
 
 ## What step 11 changes for staff
 
@@ -66,13 +69,14 @@ Taking or refreshing a lock requires the matching edit grant. A linesheet lock n
 
 ## Roll the files back
 
-Roll back in reverse order. Run the step 13 rollback before the step 12 rollback. Run the step 12 rollback before the step 11 rollback. Run the step 11 rollback before the step 10 rollback. The `change_log` select policy from step 11 calls `btv.app_state_read`. The step 10 rollback drops that function. Dropping the function while the policy still names it fails.
+Roll back in reverse order. Run the step 14 rollback before the step 13 rollback. Run the step 13 rollback before the step 12 rollback. Run the step 12 rollback before the step 11 rollback. Run the step 11 rollback before the step 10 rollback. The `change_log` select policy from step 11 calls `btv.app_state_read`. The step 10 rollback drops that function. Dropping the function while the policy still names it fails.
 
-1. Step 13, `supabase/rollbacks/20261009140000_lock_requires_edit_grant.sql`
-2. Step 12, `supabase/rollbacks/20261009120000_scope_calendar_entries_and_locks.sql`
-3. Step 11, `supabase/rollbacks/20261007180000_scope_catalog_reads.sql`
-4. Step 10, `supabase/rollbacks/20261007150000_scope_reads_and_private_bucket.sql`
-5. Step 9, `supabase/rollbacks/20261007000000_role_aware_rls.sql`
+1. Step 14, `supabase/rollbacks/20261009130000_private_creative_marketing_bucket.sql`
+2. Step 13, `supabase/rollbacks/20261009140000_lock_requires_edit_grant.sql`
+3. Step 12, `supabase/rollbacks/20261009120000_scope_calendar_entries_and_locks.sql`
+4. Step 11, `supabase/rollbacks/20261007180000_scope_catalog_reads.sql`
+5. Step 10, `supabase/rollbacks/20261007150000_scope_reads_and_private_bucket.sql`
+6. Step 9, `supabase/rollbacks/20261007000000_role_aware_rls.sql`
 
 ## Runbook
 
