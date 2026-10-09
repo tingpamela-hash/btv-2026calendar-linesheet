@@ -36,7 +36,7 @@ function sh(args, opts) {
     return execFileSync('sudo', args, Object.assign({ encoding: 'utf8' }, opts));
   } catch (error) {
     const detail = redact((error.stderr || '') + '\n' + (error.stdout || ''));
-    const wrapped = new Error('psql failed');
+    const wrapped = new Error('psql failed: ' + detail.trim().split('\n')[0]);
     wrapped.detail = detail;
     throw wrapped;
   }
@@ -80,8 +80,34 @@ if (cronSql.includes('sb_publishable_')) fail('monday cron file embeds a publish
 if (!cronSql.includes(PLACEHOLDER)) fail('monday cron file has no function URL placeholder');
 if (!cronSql.includes(liveHost)) fail('monday cron file does not name the live host it refuses');
 
+function clusterInfo() {
+  const text = sh(['pg_lsclusters', '--no-header'], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const line = text.split('\n').map(function (row) { return row.trim(); }).filter(Boolean)[0];
+  if (!line) fail('no local Postgres cluster');
+  const parts = line.split(/\s+/);
+  return { major: parts[0], name: parts[1], status: parts[3] };
+}
+
+function currentCronDatabase() {
+  const preload = psqlValue('postgres', 'show shared_preload_libraries');
+  if (preload.indexOf('pg_cron') === -1) return '';
+  return psqlValue('postgres', 'show cron.database_name');
+}
+
 function cronDatabase() {
-  const name = psqlValue('postgres', 'show cron.database_name');
+  const found = clusterInfo();
+  if (found.status !== 'online') sh(['pg_ctlcluster', found.major, found.name, 'start']);
+  let name = currentCronDatabase();
+  if (!/^[a-z0-9_]+$/.test(name)) {
+    const confDir = '/etc/postgresql/' + found.major + '/main/conf.d';
+    sh(['mkdir', '-p', confDir]);
+    sh(['tee', confDir + '/btv-monday-cron.conf'], {
+      input: "shared_preload_libraries = 'pg_cron'\ncron.database_name = 'postgres'\n",
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    sh(['pg_ctlcluster', found.major, found.name, 'restart']);
+    name = currentCronDatabase();
+  }
   if (!/^[a-z0-9_]+$/.test(name)) fail('cron database name is not a local identifier');
   const exists = psqlValue('postgres', "select 1 from pg_database where datname = '" + name + "'");
   if (exists !== '1') psql('postgres', 'create database ' + name + ';');
