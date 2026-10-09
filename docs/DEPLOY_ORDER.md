@@ -1,6 +1,6 @@
 # Apply the database files
 
-Apply these files on the staging project, in this order. Run the whole list again when you need to repeat it. Each file is safe to run again, and the last file has to stay last. Do not run an older file on its own after a later file.
+Apply these files on the staging project, in this order. Step 1 does not schedule the Monday reminder. Repeating these numbered steps does not schedule that job and does not call the live function. Steps 4 to 8 are not safe to repeat after step 12. The last numbered file has to stay last. Do not run an older numbered file on its own after a later numbered file.
 
 Do not apply these files to the live project from this repository change. Pam applies them on staging after QA.
 
@@ -17,6 +17,12 @@ Do not apply these files to the live project from this repository change. Pam ap
 11. `supabase/migrations/20261007180000_scope_catalog_reads.sql`
 12. `supabase/migrations/20261009120000_scope_calendar_entries_and_locks.sql`
 13. `supabase/migrations/20261009140000_lock_requires_edit_grant.sql`
+
+## Monday reminder cron
+
+`supabase-monday-reminder-cron.sql` is not a numbered step. Do not run it on staging. Do not run it from a non-live project against the live function URL.
+
+Replace `<MONDAY_REMINDER_FUNCTION_URL>` with the function URL of the project you are logged into. If that URL names the live project, the file raises unless the session flag `btv.schedule_live_monday_cron` is `on`. Leave that flag unset except on the live project. This repository does not set the flag.
 
 Steps 4 to 8 create her tables and leave them open to every signed-in user. Step 12 closes `calendar_entries` and `linesheet_product_locks`, and it drops the open policy names on `global_cal_entries` and `marketing_entries` that step 9 does not drop. Do not run steps 4 to 8 again after step 12. Do not run `supabase-rls-lockdown-migration.sql` after step 9. That file drops the policies this list installs.
 
