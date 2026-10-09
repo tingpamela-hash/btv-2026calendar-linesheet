@@ -1,6 +1,3 @@
--- Lock functions are security definer, so row policies do not apply.
--- Taking or refreshing a lock requires the same edit grant as the row write.
--- Releasing a lock requires that the caller holds it, even after that grant is revoked.
 
 create or replace function btv.can_lock_calendar_entry(p_id text)
 returns boolean
@@ -36,6 +33,9 @@ as $$
 declare
   v_updated int;
 begin
+  if p_stale_minutes is null or p_stale_minutes <= 0 then
+    raise exception 'stale threshold must be positive' using errcode = '22023';
+  end if;
   if not btv.can_write('linesheet') then
     return false;
   end if;
@@ -99,6 +99,9 @@ as $$
 declare
   v_updated int;
 begin
+  if p_stale_minutes is null or p_stale_minutes <= 0 then
+    raise exception 'stale threshold must be positive' using errcode = '22023';
+  end if;
   if not btv.can_lock_calendar_entry(p_id) then
     return false;
   end if;

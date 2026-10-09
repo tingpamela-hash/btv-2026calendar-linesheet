@@ -59,6 +59,9 @@ as $$
 declare
   v_updated int;
 begin
+  if p_stale_minutes is null or p_stale_minutes <= 0 then
+    raise exception 'stale threshold must be positive' using errcode = '22023';
+  end if;
   update public.calendar_entries
   set locked_by       = auth.uid(),
       locked_by_email = p_email,

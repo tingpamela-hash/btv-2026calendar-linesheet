@@ -1,6 +1,3 @@
--- Reverse 20261009120000_scope_calendar_entries_and_locks.sql.
--- This puts back the open policies from her create files. Run it only to
--- undo this step, and do not leave those policies in place.
 
 drop policy if exists calendar_entries_select_member on public.calendar_entries;
 drop policy if exists calendar_entries_insert_editor on public.calendar_entries;
