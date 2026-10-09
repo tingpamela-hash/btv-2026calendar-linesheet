@@ -6,7 +6,9 @@
   "scripts": {
     "test": "node --test --test-isolation=none tests/*.test.js",
     "build": "node scripts/build-site.js",
-    "verify:rollback": "node scripts/build-site.js --verify-original"
+    "verify:rollback": "node scripts/build-site.js --verify-original",
+    "scan:secrets": "node scripts/scan-client-secrets.mjs",
+    "test:issues": "for tz in UTC Asia/Singapore America/New_York; do printf '\\n# TZ=%s\\n' \"$tz\"; TZ=$tz node --test \"tests/issue-*.test.js\" || exit 1; done"
   },
   "repository": {
     "type": "git",
