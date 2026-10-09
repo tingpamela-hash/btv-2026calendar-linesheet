@@ -6,6 +6,7 @@
 <title>Global Calendar</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase-config.js"></script>
+<script src="../js/notify-relay.js"></script>
 <script src="../js/calendar-csv.js"></script>
 <script src="../js/calendar-export.js"></script>
 <script src="../js/creative-events.js"></script>
@@ -1725,48 +1726,24 @@ function ccDiffMarketingEntry(before, after){
 function ccSendMarketingWebhook(item, msgs, who){
   var actor=window.btvGetCurrentActor?window.btvGetCurrentActor():null;
   if(actor)who=actor.name+' ('+actor.email+')';
-  if(!msgs.length) return;
-  const isPublished = item.status === 'published';
-  const urlKey = isPublished ? 'ccWebhookPublished' : 'ccWebhookDraft';
-  let raw = '';
-  try{ raw = localStorage.getItem(urlKey) || ''; }catch(e){}
-  const urls = ccParseWebhookUrls(raw);
-  if(!urls.length) return;
+  if(!msgs || !msgs.length) return Promise.resolve(false);
+  const isPublished = item && item.status === 'published';
   const label = isPublished ? 'Published' : 'Draft';
   const lines = [
     '**Global Calendar — ' + label + ' Activation Update**',
     new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore'}),
     '',
-    '**' + (item.title || 'Entry') + '** (' + (item.market || '—') + ' · ' + String(item.row || '').replace(/_/g,' ') + ')',
+    '**' + ((item && item.title) || 'Entry') + '** (' + ((item && item.market) || '—') + ' · ' + String((item && item.row) || '').replace(/_/g,' ') + ')',
   ].concat(msgs.map(function(m){ return '• ' + m; }));
   if(who) lines.push('', '_changed by ' + who + '_');
-  const summaryText = lines.join('\n');
-  const htmlText = summaryText
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/_(.*?)_/g,'<i>$1</i>')
-    .replace(/\n/g,'<br>');
-  const payload = {
-    "@type":"MessageCard","@context":"http://schema.org/extensions",
-    "themeColor": isPublished ? "3ba55d" : "999999",
-    "summary": "Global Calendar Update",
-    "message": summaryText,
-    "sections":[{"text": htmlText}]
-  };
-  urls.forEach(function(url){
-    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(err){ console.warn('Global Calendar webhook failed', err); });
-  });
+  if(typeof btvPostNotification!=='function') return Promise.resolve(false);
+  return btvPostNotification('calendar', lines.join('\n'));
 }
 
 function ccConfigWebhooks(){
-  let curPub = ''; try{ curPub = localStorage.getItem('ccWebhookPublished') || ''; }catch(e){}
-  const vPub = window.prompt('Teams webhook URL(s) to notify when a PUBLISHED Marketing entry (Brand Events / Community Activation / Retail Activation / Digital Activation) is changed.\nSeparate multiple URLs with a comma.\n(Leave blank to disable)', curPub);
-  if(vPub !== null){ try{ localStorage.setItem('ccWebhookPublished', vPub.trim()); }catch(e){} }
-
-  let curDraft = ''; try{ curDraft = localStorage.getItem('ccWebhookDraft') || ''; }catch(e){}
-  const vDraft = window.prompt('Teams webhook URL(s) to notify when a DRAFT Marketing entry is changed.\nSeparate multiple URLs with a comma.\n(Leave blank to disable)', curDraft);
-  if(vDraft !== null){ try{ localStorage.setItem('ccWebhookDraft', vDraft.trim()); }catch(e){} }
-
-  alert('Webhook settings saved.');
+  try{ localStorage.removeItem('ccWebhookPublished'); }catch(e){}
+  try{ localStorage.removeItem('ccWebhookDraft'); }catch(e){}
+  alert('Teams notifications are sent by the server for signed-in editors. This page does not store a webhook URL.');
 }
 
 function saveMarketingEntry(){

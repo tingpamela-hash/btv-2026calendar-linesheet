@@ -8,7 +8,7 @@
 
 
 
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/notify-relay.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <script src="../js/product-launches.js"></script>
 <script src="../js/linesheet-identity.js"></script>
 <script src="../js/linesheet-products.js"></script>
@@ -9460,7 +9460,8 @@ function btvNotifyChange(url, source, product, field, fromVal, toVal){
 
 
 
-    fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(){});
+    if(typeof btvPostNotification!=='function') return Promise.resolve(false);
+    return btvPostNotification('linesheet', (source||'Linesheet')+'\n'+(product||'')+'\n'+(field||'')+': '+(fromVal||'')+' → '+(toVal||''));
 
 
 
@@ -9545,38 +9546,8 @@ function buildLsTeamsSummary(entries){
 }
 
 function btvSendTeamsSummary(url, message){
-  if(!url || !message) return;
-  try{
-    var summaryText = String(message).trim();
-    if(!summaryText) return;
-
-    // Teams Incoming Webhook / MessageCard format.
-    // Important: do NOT include top-level 'text'. Teams renders that as one flattened paragraph.
-    // The formatted version lives in sections[0].text using <br> for line breaks.
-    var htmlText = summaryText
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
-      .replace(/\n/g,'<br>');
-
-    var payload = {
-      '@type': 'MessageCard',
-      '@context': 'http://schema.org/extensions',
-      'themeColor': '8B6F4E',
-      'summary': 'BTV Planner — Linesheet',
-      'message': summaryText,
-      'sections': [{
-        'text': htmlText
-      }]
-    };
-
-    fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    }).catch(function(e){ console.warn('BTV LS Teams summary webhook failed', e); });
-  }catch(e){ console.warn('BTV LS Teams summary webhook error', e); }
+  if(typeof btvPostNotification!=='function') return Promise.resolve(false);
+  return btvPostNotification('linesheet', message);
 }
 
 function btvNotifyChangeBatch(url, summaryText){
@@ -9589,114 +9560,10 @@ function btvNotifyChangeBatch(url, summaryText){
 
 
 function btvConfigLsWebhook(){
-
-
-
-
-
-
-
-
-
-  var cur=(function(){ try{ return localStorage.getItem('btvLsWebhook')||''; }catch(e){ return ''; }})();
-
-
-
-
-
-
-
-
-
-  var v=window.prompt('Enter Teams webhook URL for Linesheet Approval channel:\n(Leave blank to disable)',cur);
-
-
-
-
-
-
-
-
-
-  if(v===null) return;
-
-
-
-
-
-
-
-
-
-  try{ localStorage.setItem('btvLsWebhook',v.trim()); }catch(e){}
-
-
-
-
-
-
-
-
-
-  BTV_LS_WEBHOOK_URL=v.trim();
-
-
-
-
-
-
-
-
-
-  alert('Saved. Reload page to confirm.');
-
-
-
-
-
-
-
-
-
+  try{ localStorage.removeItem('btvLsWebhook'); }catch(e){}
+  BTV_LS_WEBHOOK_URL='';
+  alert('Teams notifications are sent by the server for signed-in editors. This page does not store a webhook URL.');
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ---- Change Log ----
-
-
-
-
-
-
-
-
-
-const BTV_CHANGE_LOG_KEY = 'btvLinesheetChangeLog';
-
-
-
-
-
-
-
-
 
 function getChangeLog(){
   var local=[];try{local=JSON.parse(localStorage.getItem(BTV_CHANGE_LOG_KEY)||'[]');}catch(e){}
@@ -11105,7 +10972,6 @@ async function saveProductGroup(){
 
 
 
-    if(!BTV_LS_WEBHOOK_URL) return;
     var __btvNewCount = _btvSaveEntries.length;
     if(__btvNewCount <= 0) return;
     var __btvNewEntries = _btvSaveEntries;
@@ -12783,7 +12649,7 @@ async function btvLsGroupAction(id,role,checked){
   var entry={ts:Date.now(),productName:rows[0].name,variant:'(shared)',field:field,from:from,to:checked?'Yes':'No',action:'update',actorId:actor.id,actorName:actor.name,actorEmail:actor.email};
   addChangeEntry(entry);
   if(window.btvWriteChangeLog)window.btvWriteChangeLog([entry]);
-  if(BTV_LS_WEBHOOK_URL)btvNotifyChangeBatch(BTV_LS_WEBHOOK_URL,buildLsTeamsSummary([entry]));
+  btvNotifyChangeBatch('',buildLsTeamsSummary([entry]));
   localStorage.setItem('btv_linesheet_products',JSON.stringify(products));renderMaster();renderLinesheet();updateCount();
 }
 function renderMaster(){
@@ -15378,8 +15244,7 @@ function uploadMeasurementCSV(file){
 
 
 function btvNotifyNewCalendarPush(newItems){
-  var url; try{ url=localStorage.getItem('btvLsWebhook')||''; }catch(e){ url=''; }
-  if(!url||!newItems||!newItems.length) return;
+  if(!newItems||!newItems.length) return;
   var lines=['**BTV Planner — New Items Synced from Calendar**',''];
   lines.push(newItems.length+' new product(s) pushed to the linesheet:','');
   var launchIndex=btvProductLaunchIndex();
@@ -15388,7 +15253,7 @@ function btvNotifyNewCalendarPush(newItems){
     lines.push('• '+(p.name||'Unnamed')+(p.variant?' — '+p.variant:'')+(date?' [Launch: '+date+']':'')+(p.category?' ('+p.category+')':''));
   });
   lines.push('','Please update the linesheet with full product details.');
-  btvSendTeamsSummary(url, lines.join('\n'));
+  btvSendTeamsSummary('', lines.join('\n'));
 }
 
 
@@ -15405,8 +15270,6 @@ function btvCheckMondayReminder(){
   var launchIndex=btvProductLaunchIndex();
   var sentKey='btvMondayReminderSent_'+mondayKey;
   try{ if(localStorage.getItem(sentKey)) return; }catch(e){ return; }
-  var url; try{ url=localStorage.getItem('btvLsWebhook')||''; }catch(e){ url=''; }
-  if(!url) return;
   var cutoff=BtvProductLaunches.shiftDate(mondayKey,30);
   var TDEF=[
     {label:'Merch',fields:['name','category','variant','sgd'],flabels:['Product Name','Category','Colour/Variant','SGD RRP']},
@@ -15433,7 +15296,7 @@ function btvCheckMondayReminder(){
     lines.push('');
   });
   if(!hasAny){ lines.push('All tasks are on track — no outstanding items in the next 30 days.'); }
-  btvSendTeamsSummary(url, lines.join('\n'));
+  btvSendTeamsSummary('', lines.join('\n'));
   try{ localStorage.setItem(sentKey,'1'); }catch(e){}
 }
 
