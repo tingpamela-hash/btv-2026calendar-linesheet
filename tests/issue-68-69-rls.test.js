@@ -419,6 +419,15 @@ update public.calendar_entries
   const productEntryUnlock = lockState('public.calendar_entries', 'id', 'cal-lock-product');
   check('a product calendar editor can unlock a calendar entry they hold', productEntryUnlock === '||', productEntryUnlock);
 
+  const lockRollback = path.join(root, 'supabase', 'rollbacks', '20261009140000_lock_requires_edit_grant.sql');
+  const lockMigration = path.join(root, 'supabase', 'migrations', '20261009140000_lock_requires_edit_grant.sql');
+  psqlFile(lockRollback);
+  const rolledBack = callText(VIEWER, "public.try_lock_linesheet_group('lock-rollback', 'viewer@local.test')");
+  check('lock rollback restores a view-only linesheet lock', rolledBack === 'true', rolledBack);
+  psqlFile(lockMigration);
+  const relocked = callText(VIEWER, "public.try_lock_linesheet_group('lock-rollback-again', 'viewer@local.test')");
+  check('lock migration denies a view-only linesheet lock again', relocked === 'false', relocked);
+
   console.log(JSON.stringify({ issue: '68-69', failures: failures.length }));
   if (failures.length) process.exit(1);
 }
