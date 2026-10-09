@@ -1,5 +1,6 @@
 -- Lock functions are security definer, so row policies do not apply.
--- The function has to require the same edit grant as the row write.
+-- Taking or refreshing a lock requires the same edit grant as the row write.
+-- Releasing a lock requires that the caller holds it, even after that grant is revoked.
 
 create or replace function btv.can_lock_calendar_entry(p_id text)
 returns boolean
@@ -59,9 +60,6 @@ security definer
 set search_path = public
 as $$
 begin
-  if not btv.can_write('linesheet') then
-    return;
-  end if;
   update public.linesheet_product_locks
   set locked_by = null, locked_by_email = null, locked_at = null
   where group_id = p_group_id and locked_by = auth.uid();
@@ -126,9 +124,6 @@ security definer
 set search_path = public
 as $$
 begin
-  if not btv.can_lock_calendar_entry(p_id) then
-    return;
-  end if;
   update public.calendar_entries
   set locked_by = null, locked_by_email = null, locked_at = null
   where id = p_id and locked_by = auth.uid();
