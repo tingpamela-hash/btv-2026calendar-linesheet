@@ -8,7 +8,7 @@
 
 
 
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/notify-relay.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/notify-relay.js"></script><script src="../js/safe-url.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <script src="../js/product-launches.js"></script>
 <script src="../js/linesheet-identity.js"></script>
 <script src="../js/linesheet-products.js"></script>
@@ -7850,7 +7850,8 @@ function createImageBoxHTML(type, imageData=''){
 
 
 
-  return imageData ? `<img src="${imageData}" alt="${type} image">` : `<div class="placeholder">${placeholder}<br>JPG / PNG</div>`;
+  var href = (typeof safeResourceUrl === 'function') ? safeResourceUrl(imageData, 'image') : '';
+  return href ? `<img src="${href}" alt="${type} image">` : `<div class="placeholder">${placeholder}<br>JPG / PNG</div>`;
 
 
 
