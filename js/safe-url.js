@@ -17,6 +17,50 @@
     return '';
   }
 
+  function safeStoredImageUrl(raw) {
+    if (raw == null) return '';
+    var text = String(raw).replace(/^\s+|\s+$/g, '');
+    if (!text || /[<>"']/.test(text) || /^javascript:/i.test(text) || /^data:/i.test(text)) return '';
+    if (/^[a-z][a-z0-9+.-]*:/i.test(text)) {
+      var url;
+      try { url = new URL(text); } catch (err) { return ''; }
+      if (url.protocol !== 'https:') return '';
+      var cfg = root.BTV_SUPABASE_CONFIG || {};
+      var allowed = '';
+      try { allowed = new URL(String(cfg.url || '')).host; } catch (err) { allowed = ''; }
+      if (!allowed || url.host !== allowed) return '';
+      return url.href;
+    }
+    if (text.indexOf('//') !== -1 || text.indexOf('\\') !== -1 || /\s/.test(text)) return '';
+    if (!/^[A-Za-z0-9][A-Za-z0-9._~/-]*$/.test(text)) return '';
+    return text;
+  }
+
+  function safeLocalImagePreview(raw) {
+    var text = String(raw || '');
+    if (!/^data:image\/(png|jpeg);base64,[a-z0-9+/=]+$/i.test(text)) return '';
+    if (/[<>"']/.test(text)) return '';
+    return text;
+  }
+
+  function btvPaintStoredImage(parent, raw, alt) {
+    if (!parent || typeof document === 'undefined') return;
+    while (parent.firstChild) parent.removeChild(parent.firstChild);
+    var href = safeStoredImageUrl(raw) || safeLocalImagePreview(raw);
+    if (!href) {
+      var empty = document.createElement('div');
+      empty.className = 'ls-img-placeholder';
+      empty.textContent = alt || 'No image';
+      parent.appendChild(empty);
+      return;
+    }
+    var img = document.createElement('img');
+    img.className = 'ls-img';
+    img.alt = alt || '';
+    img.setAttribute('src', href);
+    parent.appendChild(img);
+  }
+
   function btvBeginImgSlots() {
     slots = [];
   }
@@ -161,6 +205,9 @@
   }
 
   root.safeResourceUrl = safeResourceUrl;
+  root.safeStoredImageUrl = safeStoredImageUrl;
+  root.safeLocalImagePreview = safeLocalImagePreview;
+  root.btvPaintStoredImage = btvPaintStoredImage;
   root.btvBeginImgSlots = btvBeginImgSlots;
   root.btvImgSlot = btvImgSlot;
   root.btvFillImgSlots = btvFillImgSlots;

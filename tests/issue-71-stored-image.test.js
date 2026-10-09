@@ -11,7 +11,8 @@ const linesheetPath = path.join(root, 'btv_calendar_linesheet_files', 'linesheet
 
 function loadAllowlist() {
   const sandbox = {
-    BTV_SUPABASE_CONFIG: { url: 'https://fixture.supabase.co', anonKey: 'anon-test' }
+    BTV_SUPABASE_CONFIG: { url: 'https://fixture.supabase.co', anonKey: 'anon-test' },
+    URL: URL
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
