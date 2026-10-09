@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test": "node --test --test-isolation=none tests/*.test.js",
+    "build": "node scripts/build-site.js",
+    "verify:rollback": "node scripts/build-site.js --verify-original"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/charmslau/btv-2026calendar-linesheet.git"

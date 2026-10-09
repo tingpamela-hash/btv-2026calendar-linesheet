@@ -2776,7 +2776,6 @@ body.btv-dashboard-mode .toolbar{display:none!important;}
   { display: none !important; }
   body.view-only [draggable="true"] { cursor: default !important; }
   /* ───────────────────────────────────────────────────────────────────────── */
-.md-store-group{margin:8px 0 0;padding:10px 12px;border:1px solid #d1d1d1;border-radius:4px;display:flex;flex-wrap:wrap;gap:10px 18px}.md-store-group legend{font-size:12px;font-weight:700;padding:0 5px}.md-store-group label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;text-transform:none;margin:0}.md-store-group input{margin:0}.md-status{padding:10px 12px;margin-bottom:12px;border:1px solid #d8ae5c;background:#fff4d9;color:#694800;font-size:12px;line-height:1.5;border-radius:4px}
 </style>
 
 
@@ -3126,10 +3125,7 @@ body.btv-dashboard-mode #quarterGroup{display:none!important}
   }
 </style>
 <script src="../js/calendar-csv.js"></script>
-<script src="../js/calendar-records.js"></script>
 <script src="../js/calendar-entry.js"></script>
-<script src="../js/markdown-calendar.js"></script>
-<script src="../js/markdown-sync.js"></script>
 <script src="../js/calendar-json.js"></script>
 <script src="../js/calendar-export.js"></script>
 </head>
@@ -3603,9 +3599,9 @@ const MARKETS_ALL = ["SG","TH","ID","PH","JP","CN"];
 
 let markdownState = loadMarkdownState();
 
-function loadMarkdownState(){ return window.btvMarkdownLoadLocal(); }
+function loadMarkdownState(){ try { return JSON.parse(localStorage.getItem(MARKDOWN_STORAGE_KEY)) || {}; } catch { return {}; } }
 
-window.btvMarkdownOnChange = function(){ markdownState=loadMarkdownState(); if(typeof render==='function')render(); };
+function saveMarkdownState(v){ localStorage.setItem(MARKDOWN_STORAGE_KEY, JSON.stringify(v)); }
 
 function dayNameFromISO(v){
 
@@ -5554,7 +5550,7 @@ function render(){
             const isEnd   = cov[cov.length-1] === w.id;
             const spanCls = (isStart && isEnd) ? '' : (isStart ? 'md-start' : (isEnd ? 'md-end' : 'md-mid'));
             const topPx   = _laneOf[idx] * _trackH;
-            html += `<div class="markdown-track" data-lane="${_laneOf[idx]}" style="position:absolute;top:${topPx}px;left:0;right:0"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor(this.dataset.markdownId)" data-markdown-id="${esc(md.id)}" title="${esc(BtvMarkdown.scope(md))}" style="cursor:pointer">` +
+            html += `<div class="markdown-track" data-lane="${_laneOf[idx]}" style="position:absolute;top:${topPx}px;left:0;right:0"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
               (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${fmtDDMMM(md.startDate)}→${fmtDDMMM(md.endDate)}</div>` : '') +
               `</div></div>`;
           }
@@ -6184,38 +6180,31 @@ function buildStoreOpeningForm(existing, weekId){
 }
 
 function buildMarkdownForm(existing){
-  const selected = existing?.markets?.length ? existing.markets : (existing ? GLOBAL_MARKETS : []);
-  return `<div class="grid">
-    <div class="field span12"><label for="mdTitle">Markdown Title</label><input id="mdTitle" type="text" value="${esc(existing?.title || '')}"></div>
-    <div class="field span6"><label for="mdStartDate">Start Date</label><input id="mdStartDate" type="date" value="${esc(existing?.startDate || '')}"></div>
-    <div class="field span6"><label for="mdEndDate">End Date</label><input id="mdEndDate" type="date" value="${esc(existing?.endDate || '')}"></div>
-    <div class="field span6"><label>No. of Days</label><input id="mdDays" type="number" readonly></div>
-    <div class="field span6"><label>No. of Weekend Days</label><input id="mdWeekendDays" type="number" readonly></div>
-    <div class="field span12"><label>Participating Markets</label>${marketChecks('mdMarkets',GLOBAL_MARKETS,selected,'mdAll')}</div>
-    <div class="field span12"><label>Participating Stores</label><div id="mdStores"></div></div>
-  </div>`;
+
+  const selected = existing?.markets || [];
+
+  return `
+
+    <div class="grid">
+
+      <div class="field span6"><label>Markdown Title</label><input id="mdTitle" type="text" value="${esc(existing?.title || "")}"></div>
+
+      <div class="field span3"><label>Start Date</label><input id="mdStartDate" type="date" value="${esc(existing?.startDate || "")}"></div>
+
+      <div class="field span3"><label>End Date</label><input id="mdEndDate" type="date" value="${esc(existing?.endDate || "")}"></div>
+
+      <div class="field span3"><label>No. of Days</label><input id="mdDays" type="number" value="${esc(existing?.days || "")}" readonly></div>
+
+      <div class="field span3"><label>No. of Weekend Days</label><input id="mdWeekendDays" type="number" value="${esc(existing?.weekendDays || "")}" readonly></div>
+
+      <div class="field span12"><label>Participating Markets</label>${marketChecks("mdMarkets", GLOBAL_MARKETS, selected, "mdAll")}</div>
+
+    </div>
+
+  `;
+
 }
 
-function renderMarkdownStores(stores){
-  const selected=checkedByName('mdMarkets');
-  e('mdStores').innerHTML=selected.map(m=>{
-    const names=Array.from(new Set(getActiveStores(m,e('mdStartDate').value).concat(stores[m] || [])));
-    const all=!(stores[m]?.length);
-    return `<fieldset class="md-store-group" data-market="${m}"><legend>${m}</legend>
-      <label><input type="checkbox" class="md-all-stores" ${all?'checked':''}>All stores</label>
-      ${names.map(name=>`<label><input type="checkbox" class="md-store" value="${esc(name)}" ${(stores[m] || []).includes(name)?'checked':''} ${all?'disabled':''}>${esc(name)}</label>`).join('')}
-    </fieldset>`;
-  }).join('');
-  e('mdStores').querySelectorAll('.md-all-stores').forEach(input=>input.onchange=function(){
-    this.closest('fieldset').querySelectorAll('.md-store').forEach(store=>{store.disabled=this.checked;if(this.checked)store.checked=false;});
-  });
-}
-function getMarkdownStores(){
-  return Object.fromEntries(Array.from(e('mdStores').querySelectorAll('fieldset')).map(group=>[
-    group.dataset.market,group.querySelector('.md-all-stores').checked?[]:
-      Array.from(group.querySelectorAll('.md-store:checked')).map(input=>input.value)
-  ]));
-}
 function btvSizeMarkdownLanes(){
   const tracks = Array.from(document.querySelectorAll('#calendar .markdown-track'));
   if (!tracks.length || !tracks[0].getClientRects().length) return;
@@ -6272,119 +6261,133 @@ function calcMarkdownMeta(){
 
 }
 
-let _btvMdEditor = null;
-let _btvMdRelease = Promise.resolve();
-function closeMarkdownSession(){
-  const session=_btvMdEditor;
-  if(!session)return;
-  _btvMdEditor=null;clearInterval(session.poll);clearInterval(session.heartbeat);
-  e('modalBody').onchange=null;
-  if(session.acquiring)_btvMdRelease=_btvMdRelease.then(()=>session.doneAcquiring);
-  if(session.baseline)_btvMdRelease=_btvMdRelease.then(()=>session.client.release(session.baseline.id)).catch(error=>console.warn('[BTV Markdown] Release failed:',error.message));
-}
-window.btvMarkdownSuspendEditor=function(){
-  closeMarkdownSession();
-  if(e('modal').dataset.editor==='markdown' && e('modal').classList.contains('show')){
-    e('confirmBtn').disabled=true;e('deleteBtn').disabled=true;
-    e('duplicateBtn').disabled=true;
-    const status=e('btv-md-status') || document.createElement('div');
-    status.id='btv-md-status';status.className='md-status';status.textContent='Editing paused. Close and reopen this Markdown to reconnect to the shared record.';
-    e('modalBody').prepend(status);
-  }
-};
 window.openMarkdownEditor = function(id){
-  if(window._btvCanEdit!==true || !window.btvMarkdownClient){alert('Sign in with Management edit permission to edit Markdown.');return;}
-  if(e('modal').classList.contains('show') && !btvCloseCalendarModal())return;
-  const existing=id?loadMarkdownState()[id]:null;
-  if(id && !existing){alert('This markdown was removed. Refresh the calendar.');return;}
-  closeMarkdownSession();
-  const session={id:existing?.id || BtvCalendarCSV.id('md-'),year:CAL_YEAR,client:window.btvMarkdownClient,existing,baseline:null,busy:false,stores:existing?.stores || {}};
-  _btvMdEditor=session;
-  function message(text){
-    let box=e('btv-md-status');
-    if(!box){box=document.createElement('div');box.id='btv-md-status';box.className='md-status';e('modalBody').prepend(box);}
-    box.textContent=text;
-  }
-  function editable(enabled){
-    e('modalBody').querySelectorAll('input,select,textarea').forEach(input=>input.disabled=!enabled);
-    e('confirmBtn').disabled=!enabled;e('deleteBtn').disabled=!enabled;e('duplicateBtn').disabled=!enabled;
-    if(enabled)e('mdStores').querySelectorAll('fieldset').forEach(group=>{
-      if(group.querySelector('.md-all-stores').checked)group.querySelectorAll('.md-store').forEach(input=>input.disabled=true);
-    });
-  }
-  function populate(record){
-    session.existing=record;session.stores=record?.stores || {};
-    e('mdTitle').value=record?.title || '';e('mdStartDate').value=record?.startDate || '';e('mdEndDate').value=record?.endDate || '';
-    document.querySelectorAll('input[name="mdMarkets"]').forEach(input=>input.checked=(record?.markets?.length?record.markets:(record?GLOBAL_MARKETS:[])).includes(input.value));
-    e('mdAll').checked=checkedByName('mdMarkets').length===GLOBAL_MARKETS.length;
-    renderMarkdownStores(session.stores);calcMarkdownMeta();_btvCalSetDirty(false);
-  }
-  async function acquire(){
-    if(_btvMdEditor!==session || session.acquiring || session.baseline)return;
-    session.acquiring=true;editable(false);
-    session.doneAcquiring=new Promise(resolve=>session.finishAcquire=resolve);
-    try{
-      await _btvMdRelease;
-      if(_btvMdEditor!==session)return;
-      const result=await session.client.acquire(session.existing,session.year);
-      if(_btvMdEditor!==session){if(result.acquired)await session.client.release(result.row.id);return;}
-      if(!result.acquired){message(result.email+' is editing this markdown. Waiting for the shared lock.');return;}
-      session.baseline=result.row;clearInterval(session.poll);populate(result.row.data);
-      window.btvMarkdownCacheRow(result.row);editable(true);e('btv-md-status')?.remove();
-      if(window.btvSetEditing)window.btvSetEditing('cal::markdown::'+session.id);
-      session.heartbeat=setInterval(async()=>{
-        try{if(await session.client.heartbeat(session.baseline.id)!==true)throw new Error('Edit lock released. Close and reopen to load the latest saved information.');}
-        catch(error){if(_btvMdEditor===session){editable(false);message(error.message);clearInterval(session.heartbeat);}}
-      },30000);
-    }catch(error){if(_btvMdEditor===session)message(error.message+' Retrying shared lock…');}
-    finally{session.acquiring=false;session.finishAcquire();}
-  }
-  e('modal').dataset.editor='markdown';
-  e('modalTitle').textContent=(existing?'Edit ':'Add ')+'Markdown';
-  e('modalBody').innerHTML=buildMarkdownForm(existing)+actions(existing,'markdown',false);
-  e('modal').classList.add('show');e('modalBody').scrollTop=0;
-  bindAllToggle('mdAll','mdMarkets');populate(existing);
-  e('modalBody').onchange=event=>{
-    if(event.target.name==='mdMarkets' || event.target.id==='mdAll'){
-      session.stores={...session.stores,...getMarkdownStores()};
-      renderMarkdownStores(session.stores);
+
+  const existing = id ? markdownState[id] : null;
+
+  e("modalTitle").textContent = (existing ? "Edit " : "Add ") + "Markdown";
+
+  e("modalBody").innerHTML = buildMarkdownForm(existing) + actions(existing, "markdown");
+
+  e("modal").classList.add("show");
+
+  // ── Presence locking for markdown ────────────────────────────────────
+  if (id) {
+    var _btvMdKey = 'cal::markdown::' + id;
+    var _btvMdHolder = typeof _btvCalGetLockHolder === 'function' ? _btvCalGetLockHolder(_btvMdKey) : null;
+    if (_btvMdHolder) {
+      var _btvMdBanner = document.createElement('div');
+      _btvMdBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7a5a00;line-height:1.6;';
+      _btvMdBanner.innerHTML = '🔒 <strong>' + _btvMdHolder + '</strong> is currently editing this markdown. Inputs are locked.';
+      e('modalBody').insertBefore(_btvMdBanner, e('modalBody').firstChild);
+      e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = true; });
+      var _cfmMd = e('confirmBtn'); if (_cfmMd) { _cfmMd.disabled = true; _cfmMd.style.opacity = '0.35'; }
+      var _btvMdUnlock = function() {
+        if (typeof _btvCalGetLockHolder !== 'function' || _btvCalGetLockHolder(_btvMdKey)) return;
+        window.removeEventListener('btv-presence-changed', _btvMdUnlock);
+        e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = false; });
+        if (_cfmMd) { _cfmMd.disabled = false; _cfmMd.style.opacity = '1'; }
+        _btvMdBanner.textContent = '✓ ' + _btvMdHolder + ' finished editing. You can now edit.';
+        _btvMdBanner.style.background = '#dcfce7';
+        _btvMdBanner.style.borderColor = '#22c55e';
+        _btvMdBanner.style.color = '#166534';
+        if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvMdKey);
+        setTimeout(function() { if (_btvMdBanner.parentNode) _btvMdBanner.remove(); }, 5000);
+      };
+      window.addEventListener('btv-presence-changed', _btvMdUnlock);
+    } else {
+      if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvMdKey);
     }
-  };
-  e('mdStartDate').addEventListener('input',calcMarkdownMeta);e('mdEndDate').addEventListener('input',calcMarkdownMeta);
-  e('cancelBtn').onclick=()=>btvCloseCalendarModal();
-  e('duplicateBtn').onclick=()=>{
-    const draft={...session.existing,title:e('mdTitle').value,startDate:e('mdStartDate').value,endDate:e('mdEndDate').value,markets:checkedByName('mdMarkets'),stores:getMarkdownStores()};
-    _btvCalSetDirty(false);btvCloseCalendarModal();window.openMarkdownEditor();
-    e('mdTitle').value=draft.title;e('mdStartDate').value=draft.startDate;e('mdEndDate').value=draft.endDate;
-    document.querySelectorAll('input[name="mdMarkets"]').forEach(input=>input.checked=draft.markets.includes(input.value));
-    renderMarkdownStores(draft.stores);calcMarkdownMeta();_btvCalSetDirty(true);
-  };
-  async function commit(remove){
-    if(session.busy || _btvMdEditor!==session || (existing && !session.baseline))return;
-    if(remove && !confirm('Delete this markdown?'))return;
-    session.busy=true;editable(false);e('confirmBtn').textContent='Saving...';
-    try{
-      const input={...session.existing,id:session.id,title:e('mdTitle').value,startDate:e('mdStartDate').value,
-        endDate:e('mdEndDate').value,markets:checkedByName('mdMarkets'),stores:getMarkdownStores()};
-      if(!remove){
-        e('mdStores').querySelectorAll('fieldset').forEach(group=>{
-          if(!group.querySelector('.md-all-stores').checked && !group.querySelector('.md-store:checked'))throw new Error('Select All stores or at least one store for '+group.dataset.market+'.');
-        });
-      }
-      const saved=await session.client.save(input,session.year,session.baseline,remove);
-      window.btvMarkdownCacheRow(saved.row);
-      saved.changes.forEach(change=>__btvPushCalChange(change.field,change.from,change.to,saved.row.data));
-      if(saved.changes.length && window.btvWriteChangeLog)window.btvWriteChangeLog(saved.changes.map(change=>({
-        ...change,ts:Date.parse(saved.row.updated_at),productName:saved.row.data.title,action:'markdown',
-        actor:saved.row.data.updatedActor,email:saved.row.data.updatedBy,changeId:saved.row.data.changeId
-      }))).catch(error=>console.warn('[BTV Markdown] Activity log failed:',error.message));
-      _btvCalSetDirty(false);session.busy=false;e('modal').classList.remove('show');closeMarkdownSession();
-    }catch(error){message(error.message);session.busy=false;editable(true);_btvCalSetDirty(true);}
-    finally{if(e('confirmBtn'))e('confirmBtn').textContent='Confirm';}
   }
-  e('confirmBtn').onclick=()=>commit(false);e('deleteBtn').onclick=()=>commit(true);
-  if(existing){message('Checking shared edit lock...');acquire();session.poll=setInterval(acquire,4000);}
-};
+
+  bindAllToggle("mdAll", "mdMarkets");
+
+  const wf = document.getElementById("workflowStatus"); if(wf){ const box = wf.closest(".field"); if(box) box.style.display = "none"; }
+
+  calcMarkdownMeta();
+
+  e("mdStartDate").addEventListener("input", calcMarkdownMeta);
+
+  e("mdEndDate").addEventListener("input", calcMarkdownMeta);
+
+  const setWorkflow = (v) => {
+
+    if(e("workflowStatus")) e("workflowStatus").value = v;
+
+    if(e("draftModeBtn")) e("draftModeBtn").classList.toggle("active", v==="draft");
+
+    if(e("publishModeBtn")) e("publishModeBtn").classList.toggle("active", v==="published");
+
+  };
+
+  if(e("draftModeBtn")) e("draftModeBtn").addEventListener("click", function(ev){ ev.preventDefault(); setWorkflow("draft"); });
+
+  if(e("publishModeBtn")) e("publishModeBtn").addEventListener("click", function(ev){ ev.preventDefault(); setWorkflow("published"); });
+
+  e("cancelBtn").onclick = () => btvCloseCalendarModal();
+
+  const del = e("deleteBtn");
+
+  if(del){
+
+    del.onclick = () => {
+
+      if(existing && existing.id){ delete markdownState[existing.id]; saveMarkdownState(markdownState); }
+
+      e("modal").classList.remove("show");
+
+      render();
+
+    };
+
+  }
+
+  e("confirmBtn").onclick = async () => {
+
+    // Version-conflict check for markdown key
+    if (typeof window.btvCheckVersionConflict === 'function') {
+      const _mdConflict = await window.btvCheckVersionConflict(MARKDOWN_STORAGE_KEY);
+      if (_mdConflict) {
+        const _proceed = confirm(
+          '⚠ Markdown data was updated by a teammate since you opened this entry.\n\n' +
+          'Saving now will overwrite their changes.\n\n' +
+          'Click OK to overwrite, or Cancel to review first.'
+        );
+        if (!_proceed) return;
+      }
+    }
+
+    const md = {
+
+      id: existing?.id || String(Date.now()),
+
+      title: e("mdTitle").value.trim(),
+
+      startDate: e("mdStartDate").value,
+
+      endDate: e("mdEndDate").value,
+
+      days: Number(e("mdDays").value || 0),
+
+      weekendDays: Number(e("mdWeekendDays").value || 0),
+
+      markets: checkedByName("mdMarkets")
+
+    };
+
+    markdownState[md.id] = md;
+
+    saveMarkdownState(markdownState);
+
+    e("modal").classList.remove("show");
+
+    render();
+
+  };
+
+}
+
+
 
 function actions(existing, sectionKey, includeWorkflow = true){
 
@@ -6837,15 +6840,10 @@ function btvValidateCalendarModal(section){
 }
 
 window.openEditor = function(section, weekId, entryId, options){
-  if(window._btvCanEdit!==true){alert('Sign in with Management edit permission to edit calendar entries.');return;}
-  if(!options?.lockedRow && e('modal').classList.contains('show') && !btvCloseCalendarModal())return;
-  if(_btvMdEditor && !btvCloseCalendarModal())return;
 
   const list = (((state || {})[section] || {})[weekId]) || [];
 
   const existing = entryId ? list.find(x => x.id === entryId) : null;
-  const draftId=existing?.id || BtvCalendarCSV.id('launch-');
-  let duplicateId,chinaCopyId;
   const formExisting = existing && options?.targetWeek ? BtvCalendarEntry.shiftDraft(existing, weekMondayLocalISO(options.targetWeek) || options.targetWeek) : existing;
 
   const editorDate = BtvCalendarEntry.dateOf(formExisting) || weekMondayLocalISO(weekId) || window.BtvCalendarCSV.monday(weekId);
@@ -6862,51 +6860,90 @@ window.openEditor = function(section, weekId, entryId, options){
 
   e("modal").classList.add("show");
 
-  const editorToken=++_btvCalEditorToken;
-  _btvCalEditorBaseline=options?.lockedRow || (entryId?undefined:null);
-  function editable(enabled){
-    e('modalBody').querySelectorAll('input,textarea,select,button').forEach(input=>{
-      if(input.id!=='cancelBtn')input.disabled=!enabled || input.hasAttribute('data-fixed-market');
+  // ── Hard lock (server-enforced) ────────────────────────────────────────
+  // The presence "who's editing" broadcast below is instant but soft — it's a
+  // courtesy signal, not a guarantee (see _btvCalAcquireLock's comment). The
+  // form is disabled by default and only re-enabled once Postgres itself has
+  // actually granted the lock, so two people opening the same entry within
+  // the same instant can never both end up with an editable form.
+  if (entryId) {
+    var _btvEditKey = 'cal::' + section + '::' + weekId + '::' + entryId;
+
+    // Disable immediately — re-enabled only on confirmed lock acquisition.
+    e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = true; });
+    var _cfmBtn = e('confirmBtn'); if (_cfmBtn) { _cfmBtn.disabled = true; _cfmBtn.style.opacity = '0.35'; }
+    var _addRowBtn = e('addProductRowBtn'); if (_addRowBtn) { _addRowBtn.disabled = true; _addRowBtn.style.opacity = '0.35'; }
+
+    // Instant, best-effort hint from presence while the real check is in flight —
+    // covers the common case (clearly already locked) without waiting on the network.
+    var _btvSoftHolder = typeof _btvCalGetLockHolder === 'function' ? _btvCalGetLockHolder(_btvEditKey) : null;
+    var _checkingBanner = document.createElement('div');
+    _checkingBanner.id = 'btv-cal-lock-checking';
+    _checkingBanner.style.cssText = 'background:#eef2f7;border:1.5px solid #9db3c9;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#33475b;';
+    _checkingBanner.textContent = _btvSoftHolder
+      ? ('🔒 ' + _btvSoftHolder + ' may already be editing this — confirming…')
+      : 'Checking for other editors…';
+    e('modalBody').insertBefore(_checkingBanner, e('modalBody').firstChild);
+
+    _btvCalAcquireLock(entryId).then(function(result) {
+      var checking = document.getElementById('btv-cal-lock-checking');
+      if (checking) checking.remove();
+
+      if (!e('modal').classList.contains('show')) {
+        // Modal was closed while the lock request was still in flight — release
+        // immediately rather than leaving an orphaned lock on an entry nobody's
+        // looking at.
+        if (result.acquired) _btvCalReleaseLock(entryId);
+        return;
+      }
+
+      if (result.acquired) {
+        _btvCalHeldLockId = entryId;
+        e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = el.hasAttribute('data-fixed-market'); });
+        if (_cfmBtn) { _cfmBtn.disabled = false; _cfmBtn.style.opacity = '1'; }
+        if (_addRowBtn) { _addRowBtn.disabled = false; _addRowBtn.style.opacity = '1'; }
+        if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvEditKey);
+        // Heartbeat: refresh the lock every 30s so a long edit session's own
+        // lock never expires out from under it (matches the 2-minute stale window).
+        _btvCalLockHeartbeatId = setInterval(function () {
+          // .then(onFulfilled, onRejected) not .catch() — the object rpc() returns is
+          // thenable but doesn't implement .catch() itself; calling .catch() directly
+          // on it throws "not a function" before the request is even sent, silently
+          // killing every heartbeat and letting a long edit session's own lock expire
+          // out from under it after 2 minutes.
+          if (window._btvSb) window._btvSb.rpc('refresh_calendar_entry_lock', { p_id: entryId }).then(function(){}, function(){});
+        }, 30000);
+      } else {
+        _btvCalRenderLockedBanner(entryId, result.email);
+        // Poll rather than relying solely on presence timing — the lock is
+        // decided in Postgres, not by whatever presence message happens to
+        // have arrived, so re-checking with the same authoritative call is
+        // what actually detects release.
+        _btvCalLockPollId = setInterval(function () {
+          if (!e('modal').classList.contains('show')) { _btvCalStopLockTimers(); return; }
+          _btvCalAcquireLock(entryId).then(function(retry) {
+            if (!retry.acquired) return;
+            if (!e('modal').classList.contains('show')) { _btvCalReleaseLock(entryId); return; }
+            _btvCalStopLockTimers();
+            _btvCalHeldLockId = entryId;
+            var banner = document.getElementById('btv-cal-lock-banner');
+            if (banner) banner.remove();
+            e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = el.hasAttribute('data-fixed-market'); });
+            if (_cfmBtn) { _cfmBtn.disabled = false; _cfmBtn.style.opacity = '1'; }
+            if (_addRowBtn) { _addRowBtn.disabled = false; _addRowBtn.style.opacity = '1'; }
+            if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvEditKey);
+            var _unlockNote = document.createElement('div');
+            _unlockNote.style.cssText = 'background:#dcfce7;border:1.5px solid #22c55e;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#166534;line-height:1.5;';
+            _unlockNote.textContent = '✓ The other editor is done. You can now edit.';
+            if (e('modalBody')) e('modalBody').insertBefore(_unlockNote, e('modalBody').firstChild);
+            setTimeout(function() { if (_unlockNote.parentNode) _unlockNote.remove(); }, 5000);
+            _btvCalLockHeartbeatId = setInterval(function () {
+              if (window._btvSb) window._btvSb.rpc('refresh_calendar_entry_lock', { p_id: entryId }).then(function(){}, function(){});
+            }, 30000);
+          });
+        }, 4000);
+      }
     });
-  }
-  function heartbeat(){
-    _btvCalLockHeartbeatId=setInterval(async()=>{
-      try{await _btvCalRequireOwnership(entryId);}
-      catch(error){if(editorToken===_btvCalEditorToken){editable(false);_btvCalRenderLockedBanner(entryId,null,error.message);_btvCalStopLockTimers();}}
-    },30000);
-  }
-  if(entryId && options?.lockedRow){
-    _btvCalHeldLockId=entryId;editable(true);heartbeat();
-    if(window.btvSetEditing)window.btvSetEditing('cal::'+section+'::'+weekId+'::'+entryId);
-  }else if(entryId){
-    editable(false);
-    _btvCalRenderLockedBanner(entryId,null,'Checking the shared edit lock...');
-    let checking=false;
-    function attempt(){
-      if(checking || editorToken!==_btvCalEditorToken)return;
-      checking=true;
-      _btvCalLockQueue=_btvCalLockQueue.catch(()=>{}).then(async()=>{
-        if(editorToken!==_btvCalEditorToken)return;
-        const result=await _btvCalAcquireLock(entryId);
-        if(editorToken!==_btvCalEditorToken){if(result.acquired)await _btvCalReleaseLock(entryId);return;}
-        if(!result.acquired){_btvCalRenderLockedBanner(entryId,result.email,result.error);return;}
-        try{
-          const response=await window.btvReadWithTimeout(window._btvSb.from('calendar_entries').select('id,section,week_id,year,data,updated_at').eq('id',entryId).maybeSingle(),'Latest calendar entry');
-          if(response.error || !response.data)throw new Error('Could not load the latest shared entry. Keep this form closed for editing and retry.');
-          if(editorToken!==_btvCalEditorToken){await _btvCalReleaseLock(entryId);return;}
-          const row=response.data;
-          _btvCalStopLockTimers();
-          Object.values(state).forEach(weeks=>Object.keys(weeks || {}).forEach(week=>{weeks[week]=(weeks[week] || []).filter(item=>item.id!==entryId);}));
-          (state[row.section] ||= {})[row.week_id] ||= [];
-          state[row.section][row.week_id].push({...row.data,id:row.id,section:row.section,weekId:row.week_id});
-          window.openEditor(row.section,row.week_id,entryId,{...options,lockedRow:row});
-        }catch(error){
-          await _btvCalReleaseLock(entryId);
-          if(editorToken===_btvCalEditorToken)_btvCalRenderLockedBanner(entryId,null,error.message);
-        }
-      }).finally(()=>{checking=false;});
-    }
-    attempt();_btvCalLockPollId=setInterval(attempt,4000);
   }
 
   e("cancelBtn").onclick = () => btvCloseCalendarModal();
@@ -6936,11 +6973,9 @@ window.openEditor = function(section, weekId, entryId, options){
 
   if(del){
 
-    del.onclick = async () => {
+    del.onclick = () => {
 
       if(!existing) return;
-      if(!await _btvCalValidateEditorOwnership(entryId))return;
-      try{await window.btvCalCommitDraft({...existing,section,weekId},_btvCalEditorBaseline,true);}catch(error){_btvCalRenderLockedBanner(entryId,null,error.message);return;}
 
       pushHistory(state);
 
@@ -6962,7 +6997,7 @@ window.openEditor = function(section, weekId, entryId, options){
 
       state[section][weekId] = (state[section][weekId] || []).filter(x => x.id !== existing.id);
 
-      _calApplyingRemote=true;try{saveState(state);}finally{_calApplyingRemote=false;}
+      saveState(state);
 
       e("modal").classList.remove("show");
 
@@ -6976,16 +7011,13 @@ window.openEditor = function(section, weekId, entryId, options){
 
   if(dupBtn && existing){
 
-    dupBtn.onclick = async () => {
-      if(!await _btvCalValidateEditorOwnership(entryId))return;
+    dupBtn.onclick = () => {
 
       pushHistory(state);
 
       const copy = JSON.parse(JSON.stringify(existing));
 
-      copy.id = duplicateId || (duplicateId=BtvCalendarCSV.id('launch-copy-'));
-      copy.section=section;copy.weekId=weekId;
-      try{await window.btvCalCommitDraft(copy,null,false);}catch(error){_btvCalRenderLockedBanner(entryId,null,error.message);return;}
+      copy.id = String(Date.now());
 
       const targetWeek = weekId;
 
@@ -6993,7 +7025,7 @@ window.openEditor = function(section, weekId, entryId, options){
 
       state[section][targetWeek].push(copy);
 
-      _calApplyingRemote=true;try{saveState(state);}finally{_calApplyingRemote=false;}
+      saveState(state);
 
       e("modal").classList.remove("show");
 
@@ -7009,14 +7041,13 @@ window.openEditor = function(section, weekId, entryId, options){
 
   if(copyToChinaBtn && existing && section === "global"){
 
-    copyToChinaBtn.onclick = async () => {
-      if(!await _btvCalValidateEditorOwnership(entryId))return;
+    copyToChinaBtn.onclick = () => {
 
       pushHistory(state);
 
       const copy = JSON.parse(JSON.stringify(existing));
 
-      copy.id = chinaCopyId || (chinaCopyId=BtvCalendarCSV.id('launch-copy-'));
+      copy.id = String(Date.now()) + Math.random().toString(36).slice(2, 6);
 
       copy.section = "china";
       copy.updatedBy = (typeof window.btvGetCurrentEmail === 'function' && window.btvGetCurrentEmail()) || copy.updatedBy || '';
@@ -7026,7 +7057,6 @@ window.openEditor = function(section, weekId, entryId, options){
       if (copy.launchStatus === 'delay' && !copy.delayMarkets.length) copy.launchStatus = 'on_time';
 
       copy.weekId  = weekId;
-      try{await window.btvCalCommitDraft(copy,null,false);}catch(error){_btvCalRenderLockedBanner(entryId,null,error.message);return;}
 
       if(!state.china) state.china = {};
 
@@ -7034,7 +7064,7 @@ window.openEditor = function(section, weekId, entryId, options){
 
       state.china[weekId].push(copy);
 
-      _calApplyingRemote=true;try{saveState(state);}finally{_calApplyingRemote=false;}
+      saveState(state);
 
       e("modal").classList.remove("show");
 
@@ -7178,11 +7208,7 @@ window.openEditor = function(section, weekId, entryId, options){
 
 
 
-  let editorSaving=false;
   e("confirmBtn").onclick = async () => {
-    if(editorSaving)return;
-    editorSaving=true;
-    if(!await _btvCalValidateEditorOwnership(entryId)){editorSaving=false;return;}
     // Disable button immediately to prevent double-submission during async ops.
     var _cfmBtnEl = e("confirmBtn");
     if (_cfmBtnEl) { _cfmBtnEl.disabled = true; _cfmBtnEl.textContent = 'Saving…'; }
@@ -7207,7 +7233,7 @@ window.openEditor = function(section, weekId, entryId, options){
 
     let targetWeekId = weekId;
 
-    const payload = { ...existing, id: draftId, section, weekId, workflowStatus: (e("workflowStatus")?.value || existing?.workflowStatus || "draft"), updatedBy: (typeof window.btvGetCurrentEmail === 'function' ? (window.btvGetCurrentEmail() || existing?.updatedBy || '') : (existing?.updatedBy || '')) };
+    const payload = { ...existing, id: existing?.id || String(Date.now()), section, weekId, workflowStatus: (e("workflowStatus")?.value || existing?.workflowStatus || "draft"), updatedBy: (typeof window.btvGetCurrentEmail === 'function' ? (window.btvGetCurrentEmail() || existing?.updatedBy || '') : (existing?.updatedBy || '')) };
 
 
 
@@ -7353,10 +7379,9 @@ window.openEditor = function(section, weekId, entryId, options){
 
     const idx = originalArr.findIndex(x => x.id === payload.id);
 
-    const beforeEntry = existing ? JSON.parse(JSON.stringify(existing)) : null;
+    const beforeEntry = idx >= 0 ? JSON.parse(JSON.stringify(originalArr[idx])) : null;
 
     payload.weekId = targetWeekId;
-    await window.btvCalCommitDraft(payload,_btvCalEditorBaseline,false);
 
     if(idx >= 0) originalArr.splice(idx,1);
 
@@ -7364,7 +7389,7 @@ window.openEditor = function(section, weekId, entryId, options){
 
     state[section][targetWeekId].push(payload);
 
-    _calApplyingRemote=true;try{saveState(state);}finally{_calApplyingRemote=false;}
+    saveState(state);
 
     // Track changes in BTV Linesheet KPI Dashboard
 
@@ -7533,9 +7558,8 @@ window.openEditor = function(section, weekId, entryId, options){
       console.error('[BTV] Confirm error:', _btvConfirmErr);
       // Re-enable the button so the user can try again after an error.
       if (_cfmBtnEl) { _cfmBtnEl.disabled = false; _cfmBtnEl.textContent = 'Confirm'; }
-      _btvCalRenderLockedBanner(entryId,null,_btvConfirmErr.message || String(_btvConfirmErr));
-      _btvCalSetDirty(true);
-    }finally{editorSaving=false;}
+      alert('⚠ Could not save: ' + (_btvConfirmErr.message || String(_btvConfirmErr)) + '\nPlease try again or refresh.');
+    }
   };
 
 };
@@ -8231,15 +8255,8 @@ e("exportLaunchListBtn").addEventListener("click", ()=>{
 
 
 function btvCloseCalendarModal(){
-  if(window.btvCalDraftBusy?.())return false;
-  if(_btvMdEditor?.busy)return false;
   if (_btvCalModalDirty && !confirm('You have unsaved changes. Close without saving?')) return false;
   e("modal").classList.remove("show");
-  _btvCalEditorToken++;_btvCalStopLockTimers();
-  if(_btvCalHeldLockId){const held=_btvCalHeldLockId;_btvCalHeldLockId=null;_btvCalLockQueue=_btvCalLockQueue.catch(()=>{}).then(()=>_btvCalReleaseLock(held));}
-  closeMarkdownSession();
-  delete e('modal').dataset.editor;
-  _btvCalSetDirty(false);
   if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
   return true;
 }
@@ -8286,8 +8303,7 @@ window.addEventListener('beforeunload', function(ev) {
 
 (new MutationObserver(function(muts) {
   muts.forEach(function(m) {
-      if (m.attributeName === 'class' && !e('modal').classList.contains('show')) {
-      closeMarkdownSession();delete e('modal').dataset.editor;
+    if (m.attributeName === 'class' && !e('modal').classList.contains('show')) {
       if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
       _btvCalSetDirty(false);
       if (window._btvCurrentUnlockWatcher) {
@@ -8296,8 +8312,7 @@ window.addEventListener('beforeunload', function(ev) {
       }
       // Release the hard lock (if held) on every path the modal can close by —
       // Save, Cancel, Delete, Escape — since they all end by removing .show.
-      _btvCalEditorToken++;
-      if (_btvCalHeldLockId) {const held=_btvCalHeldLockId;_btvCalHeldLockId=null;_btvCalLockQueue=_btvCalLockQueue.catch(()=>{}).then(()=>_btvCalReleaseLock(held));}
+      if (_btvCalHeldLockId) _btvCalReleaseLock(_btvCalHeldLockId);
       _btvCalStopLockTimers();
     }
   });
@@ -8322,48 +8337,58 @@ function _btvCalStopLockTimers(){
   if (_btvCalLockPollId)      { clearInterval(_btvCalLockPollId);      _btvCalLockPollId = null; }
 }
 
-var _btvCalEditorToken=0,_btvCalEditorBaseline,_btvCalLockQueue=Promise.resolve();
-var BTV_CAL_LOCK_TIMEOUT_MS=6000;
-async function _btvCalLockRequest(query){
-  let timer;
-  try{
-    const result=await Promise.race([query,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Shared lock request timed out. Editing remains disabled; reconnect and retry.')),BTV_CAL_LOCK_TIMEOUT_MS);})]);
-    if(result.error)throw new Error(result.error.message);return result.data;
-  }finally{clearTimeout(timer);}
+// Attempts to acquire the lock. Resolves { acquired: true } on success, or
+// { acquired: false, email } naming the current holder on failure. Fails OPEN
+// (resolves acquired:true) if sync isn't connected, the call errors, OR the
+// server doesn't answer within BTV_CAL_LOCK_TIMEOUT_MS — a stalled request
+// (flaky wifi, a corporate proxy dropping the connection, a slow Supabase
+// cold start) used to leave the form disabled with "Checking for other
+// editors…" showing forever, since an unresolved promise never hits the
+// catch block below. Editing shouldn't be permanently blocked by that; the
+// server-side trigger is what actually prevents data loss if this turns out
+// to have been the wrong call.
+var BTV_CAL_LOCK_TIMEOUT_MS = 6000;
+function _btvCalTimeoutSignal(ms){
+  return new Promise(function(resolve){ setTimeout(function(){ resolve({ __btvTimedOut: true }); }, ms); });
 }
 async function _btvCalAcquireLock(entryId){
-  if(!window._btvSb || window._btvCanEdit!==true)return {acquired:false,error:'Reconnect with Management edit permission before editing.'};
-  try{
-    const email=window.btvGetCurrentEmail?.() || '';
-    const acquired=await _btvCalLockRequest(window._btvSb.rpc('try_lock_calendar_entry',{p_id:entryId,p_email:email}));
-    if(acquired===true)return {acquired:true};
-    const row=await _btvCalLockRequest(window._btvSb.from('calendar_entries').select('locked_by_email').eq('id',entryId).maybeSingle());
-    return {acquired:false,email:row?.locked_by_email};
-  }catch(error){return {acquired:false,error:error.message};}
-}
-async function _btvCalRequireOwnership(entryId){
-  if(window._btvCanEdit!==true || !window._btvSb)throw new Error('Reconnect with Management edit permission before saving.');
-  if(!entryId)return;
-  if(_btvCalHeldLockId!==entryId || !_btvCalEditorBaseline)throw new Error('The shared edit lock has not been confirmed. Your draft is kept.');
-  if(await _btvCalLockRequest(window._btvSb.rpc('refresh_calendar_entry_lock',{p_id:entryId}))!==true)throw new Error('Your edit lock was released. Your draft is kept; close and reopen to load the latest entry.');
-}
-async function _btvCalValidateEditorOwnership(entryId){
-  if(window.btvCalDraftBusy?.())return false;
-  try{await _btvCalRequireOwnership(entryId);return true;}
-  catch(error){
-    e('modalBody').querySelectorAll('input,textarea,select,button').forEach(input=>{if(input.id!=='cancelBtn')input.disabled=true;});
-    _btvCalRenderLockedBanner(entryId,null,error.message);return false;
+  if (!window._btvSb) return { acquired: true };
+  var email = (typeof window.btvGetCurrentEmail === 'function' && window.btvGetCurrentEmail()) || '';
+  try {
+    var res = await Promise.race([
+      window._btvSb.rpc('try_lock_calendar_entry', { p_id: entryId, p_email: email }),
+      _btvCalTimeoutSignal(BTV_CAL_LOCK_TIMEOUT_MS)
+    ]);
+    if (res.__btvTimedOut) { console.warn('[BTV Cal] try_lock_calendar_entry timed out — failing open.'); return { acquired: true }; }
+    if (res.error) { console.warn('[BTV Cal] try_lock_calendar_entry error:', res.error.message); return { acquired: true }; }
+    if (res.data === true) return { acquired: true };
+    var sel = await Promise.race([
+      window._btvSb.from('calendar_entries').select('locked_by_email').eq('id', entryId).maybeSingle(),
+      _btvCalTimeoutSignal(BTV_CAL_LOCK_TIMEOUT_MS)
+    ]);
+    if (sel.__btvTimedOut) { console.warn('[BTV Cal] locked_by_email lookup timed out.'); return { acquired: false, email: null }; }
+    return { acquired: false, email: (sel.data && sel.data.locked_by_email) || null };
+  } catch(err) {
+    console.warn('[BTV Cal] lock acquire failed:', err);
+    return { acquired: true };
   }
 }
-async function _btvCalReleaseLock(entryId){
-  if(_btvCalHeldLockId===entryId)_btvCalHeldLockId=null;
-  if(entryId && window._btvSb)try{await _btvCalLockRequest(window._btvSb.rpc('unlock_calendar_entry',{p_id:entryId}));}
-  catch(error){console.warn('[BTV Calendar] Lock release failed:',error.message);}
+
+function _btvCalReleaseLock(entryId){
+  if (_btvCalHeldLockId === entryId) _btvCalHeldLockId = null;
+  if (window._btvSb) {
+    window._btvSb.rpc('unlock_calendar_entry', { p_id: entryId }).then(function(res){
+      if (res && res.error) console.warn('[BTV Cal] unlock error:', res.error.message);
+    }).catch(function(){});
+  }
 }
-function _btvCalRenderLockedBanner(entryId,email,message){
-  let banner=e('btv-cal-lock-banner');
-  if(!banner){banner=document.createElement('div');banner.id='btv-cal-lock-banner';banner.style.cssText='background:#fff5dc;border:1px solid #dcc273;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;line-height:1.5';e('modalBody').prepend(banner);}
-  banner.textContent=message || ((email || 'Another user')+' is editing this entry. Waiting for the shared lock.');
+
+function _btvCalRenderLockedBanner(entryId, email){
+  var _btvLockBanner = document.createElement('div');
+  _btvLockBanner.id = 'btv-cal-lock-banner';
+  _btvLockBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7a5a00;line-height:1.6;';
+  _btvLockBanner.innerHTML = '<span>🔒 <strong>' + esc(email || 'Someone') + '</strong> is currently editing this entry. Inputs are locked to protect their work.</span>';
+  e('modalBody').insertBefore(_btvLockBanner, e('modalBody').firstChild);
 }
 
 // ── Live presence: who's online + item-level locking ─────────────────────
@@ -8778,10 +8803,6 @@ window.btvReloadAndRender = function() {
 function switchCalYear(y){
   y = parseInt(y, 10);
   if (!y || y === CAL_YEAR) return;
-  if(e('modal').classList.contains('show') && !btvCloseCalendarModal()){
-    e('yearSelect').value=String(CAL_YEAR);
-    return;
-  }
   if (_btvHasUnsavedChanges && !confirm(
     'You have unsaved changes in ' + CAL_YEAR + '. Switching years now will lose them ' +
     '(they were never saved). Continue?'
@@ -8809,7 +8830,6 @@ function switchCalYear(y){
 
   // Re-point the calendar_entries Realtime subscription + refetch at the new year.
   if (typeof window.btvCalResubscribeForYear === 'function') window.btvCalResubscribeForYear();
-  window.btvMarkdownReload();
 }
 window.switchCalYear = switchCalYear;
 // ── Per-entry diff helper ───────────────────────────────────────────────────
@@ -8882,24 +8902,10 @@ function _calDiffAndSyncEntries(newState){
   // Entries saved locally but not yet Supabase-confirmed. Re-applied on top of
   // every fresh fetch/render so a Realtime snapshot can never wipe unsaved work.
   var _pendingEntries = new Map(); // id -> { entry, section, weekId }
-  var _versions=new Map(),_seen=new Set(),_writer=null,_active=false,_manualBusy=false,_readSequence=0;
-  window.btvCalDraftBusy=()=>_manualBusy;
-  window.btvCalCommitDraft=async function(entry,baseline,remove){
-    if(_manualBusy || !_active || !_writer)throw new Error('Reconnect before saving this calendar entry.');
-    _manualBusy=true;
-    const actorId=_uid;
-    try{
-      const row=await _writer.commit(_writer.prepare('calendar_entries',entry,baseline,remove));
-      if(!_active || actorId!==_uid)throw new Error('The active session changed. Reopen the calendar to load the confirmed result.');
-      _readSequence++;
-      _seen.add(entry.id);
-      if(row)_versions.set(row.id,row);else _versions.delete(entry.id);
-      return row;
-    }finally{_manualBusy=false;}
-  };
   var _catchupTimer = null;
   var _catchupBusy = false;
 
+  function _delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
   function _showCalBar(msg){
     var bar = document.getElementById('btv-cal-write-fail-bar');
@@ -8929,23 +8935,33 @@ function _calDiffAndSyncEntries(newState){
     if (bar) bar.style.display = 'none';
   }
 
+  function _rowsFromPairs(pairs){
+    var now = new Date().toISOString();
+    // window.CAL_YEAR (not the bare CAL_YEAR) — this IIFE is a separate top-level
+    // scope from the one that declares CAL_YEAR; see _btvApplyYearKeys's comment.
+    var yr = window.CAL_YEAR || new Date().getFullYear();
+    return pairs.map(function(p){
+      return { id: p.entry.id, section: p.section, week_id: p.weekId, data: p.entry,
+               year: yr, updated_at: now, updated_by: _uid };
+    });
+  }
+
   async function _upsertWithRetry(pairs){
-    let ok=true;
-    for(const pair of pairs){
-      try{
-        if(!_active || !_writer)throw new Error('Reconnect to save shared calendar changes.');
-        if(!pair.attempt)pair.attempt=_writer.prepare('calendar_entries',{...pair.entry,section:pair.section,weekId:pair.weekId},_versions.get(pair.entry.id) || (_seen.has(pair.entry.id)?undefined:null),false);
-        const row=await _writer.commit(pair.attempt);
-        _readSequence++;
-        _seen.add(row.id);
-        _versions.set(row.id,row);_pendingEntries.delete(row.id);
-      }catch(error){
-        ok=false;_showCalBar(error.message);
-        if(error.code==='conflict' || /lock was released|different signed-in/.test(error.message))_pendingEntries.delete(pair.entry.id);
+    var ids = pairs.map(function(p){ return p.entry.id; });
+    var rows = _rowsFromPairs(pairs);
+    var delays = [0, 1000, 3000];
+    for (var i = 0; i < delays.length; i++) {
+      if (delays[i]) await _delay(delays[i]);
+      var res = await _sb.from('calendar_entries').upsert(rows, { onConflict: 'id' });
+      if (!res.error) {
+        ids.forEach(function(id){ _pendingEntries.delete(id); });
+        _hideCalBar();
+        return;
       }
+      console.warn('[BTV Cal] upsert attempt ' + (i + 1) + ' failed:', res.error.message);
     }
-    if(ok)_hideCalBar();
-    return ok;
+    _showCalBar('Save failed — some calendar changes may not be saved. Click Retry.');
+    console.error('[BTV Cal] calendar_entries upsert failed after 3 attempts.');
   }
 
   // Removes an entry from wherever it currently sits in `state`, regardless of
@@ -8962,7 +8978,7 @@ function _calDiffAndSyncEntries(newState){
   // How many entries have been confirmed (via Confirm/saveState) but NOT yet
   // acknowledged by calendar_entries — i.e. genuinely unsafe to navigate away
   // from right now. Read by the beforeunload handler above.
-  window.btvCalPendingSaveCount = function(){ return _pendingEntries.size+(_manualBusy?1:0); };
+  window.btvCalPendingSaveCount = function(){ return _pendingEntries.size; };
 
   window.btvCalApplyPendingToState = function(){
     if (_pendingEntries.size === 0) return;
@@ -8981,13 +8997,10 @@ function _calDiffAndSyncEntries(newState){
   };
 
   async function _fetchAll(){
-    if(!_active || !_sb)return;
-    const token=++_readSequence,user=_uid;
     // Scoped to the currently viewed year only — switching years calls
     // window.btvCalResubscribeForYear(), which re-runs this with the new year.
     var yr = window.CAL_YEAR || new Date().getFullYear();
-    var res = await window.btvReadWithTimeout(_sb.from('calendar_entries').select('id, section, week_id, data, updated_at').eq('year', yr),'Shared calendar entries');
-    if(!_active || token!==_readSequence || user!==_uid || yr!==(window.CAL_YEAR || new Date().getFullYear()))return;
+    var res = await _sb.from('calendar_entries').select('id, section, week_id, data, updated_at').eq('year', yr);
     if (res.error) {
       // supabase-calendar-entries-year-column-migration.sql hasn't been run yet —
       // the `year` column doesn't exist. Fall back to an unfiltered fetch (all
@@ -8995,18 +9008,15 @@ function _calDiffAndSyncEntries(newState){
       // calendar until someone notices and runs the migration.
       if (/column .*year.* does not exist/i.test(res.error.message || '')) {
         console.warn('[BTV Cal] calendar_entries.year column missing — run supabase-calendar-entries-year-column-migration.sql. Falling back to an unfiltered fetch for now.');
-        res = await window.btvReadWithTimeout(_sb.from('calendar_entries').select('id, section, week_id, data, updated_at'),'Shared calendar entries');
-        if(!_active || token!==_readSequence || user!==_uid || yr!==(window.CAL_YEAR || new Date().getFullYear()))return;
+        res = await _sb.from('calendar_entries').select('id, section, week_id, data, updated_at');
       }
       if (res.error) { console.error('[BTV Cal] _fetchAll error:', res.error.message); _showCalBar('Could not load the shared calendar. Check connection and database access, then reload.'); return; }
     }
     // A successful empty snapshot means all shared entries have been removed.
     if (!res.data) return;
-    _versions.clear();res.data.forEach(row=>{if(row.section!=='markdown'){_versions.set(row.id,row);_seen.add(row.id);}});
 
     var newState = {};
     res.data.forEach(function(row){
-      if(row.section === 'markdown')return;
       newState[row.section] = newState[row.section] || {};
       newState[row.section][row.week_id] = newState[row.section][row.week_id] || [];
       newState[row.section][row.week_id].push(Object.assign({}, row.data, {
@@ -9039,27 +9049,18 @@ function _calDiffAndSyncEntries(newState){
   }
 
   function _applyRealtimeChange(payload){
-    if(!_active)return;
-    if(payload.new?.section === 'markdown' || String(payload.old?.id || '').startsWith('markdown::'))return;
-    _readSequence++;
     _calApplyingRemote = true;
     try {
       if (payload.eventType === 'DELETE') {
         var delId = payload.old && payload.old.id;
         if (delId) {
-          _seen.add(delId);
-          _versions.delete(delId);
           _pendingEntries.delete(delId);
           _removeFromState(delId);
         }
       } else {
         var row = payload.new;
         var entry = Object.assign({}, row.data, { id: row.id, section: row.section, weekId: row.week_id });
-        const previous=_versions.get(row.id);
-        if(previous && Date.parse(previous.updated_at)>Date.parse(row.updated_at))return;
-        _versions.set(row.id,row);
-        _seen.add(row.id);
-        if(_pendingEntries.get(row.id)?.attempt?.row.data._btvOperationId===row.data._btvOperationId)_pendingEntries.delete(row.id);
+        _pendingEntries.delete(row.id); // Realtime arrival = Supabase confirmed
         _removeFromState(row.id);
         state[row.section] = state[row.section] || {};
         state[row.section][row.week_id] = state[row.section][row.week_id] || [];
@@ -9089,16 +9090,8 @@ function _calDiffAndSyncEntries(newState){
     if (!ids.length) return;
     ids.forEach(function(id){ _pendingEntries.delete(id); });
     if (!_sb || !_uid) return;
-    for(const id of ids){
-      const baseline=_versions.get(id);
-      try{
-        if(!baseline || !_writer || !_active)throw BtvCalendarRecords.conflict();
-        await _writer.commit(_writer.prepare('calendar_entries',{...baseline.data,id,section:baseline.section,weekId:baseline.week_id},baseline,true));
-        _readSequence++;_seen.add(id);
-        _versions.delete(id);
-      }catch(error){_showCalBar(error.message);return false;}
-    }
-    return true;
+    var res = await _sb.from('calendar_entries').delete().in('id', ids);
+    if (res.error) console.error('[BTV Cal] Delete error:', res.error.message);
   };
 
   // One Realtime channel per year — a channel's filter is fixed at subscribe
@@ -9120,11 +9113,8 @@ function _calDiffAndSyncEntries(newState){
       console.warn('[BTV Cal] _btvSb not available — per-entry sync skipped.');
       return;
     }
-    if(_uid && _uid!==session.user.id){_pendingEntries.clear();_versions.clear();_seen.clear();}
     _sb  = window._btvSb;
     _uid = session.user.id;
-    _active=true;
-    _writer=BtvCalendarRecords.createClient({sb:_sb,actor:()=>window.btvGetCurrentActor(),canEdit:()=>_active && window._btvCanEdit===true});
 
     await _fetchAll(); // pending entries re-applied inside _fetchAll
 
@@ -9157,7 +9147,6 @@ function _calDiffAndSyncEntries(newState){
   };
 
   window.btvCalEntriesTeardown = function(){
-    _active=false;_readSequence++;
     clearInterval(_catchupTimer); _catchupTimer = null;
     if (_ch) { try { _sb && _sb.removeChannel(_ch); } catch(e) {} _ch = null; }
     if (_lsBridgeCh) { try { _sb && _sb.removeChannel(_lsBridgeCh); } catch(e) {} _lsBridgeCh = null; }
@@ -9394,7 +9383,7 @@ function btvPrintPDF(rangeMode) {
         while (ci < sp.first) { rows += '<td></td>'; ci++; }
         var span = sp.last - sp.first + 1;
         rows += '<td colspan="'+span+'" class="md-span">'
-              + '<div class="mb"><strong>'+esc(sp.md.title||'Markdown')+'</strong><div>'+esc(BtvMarkdown.scope(sp.md))+'</div>'
+              + '<div class="mb"><strong>'+esc(sp.md.title||'Markdown')+'</strong>'
               + '<br><span class="mb-d">'+esc(fd(sp.md.startDate))+'–'+esc(fd(sp.md.endDate))+'</span></div>'
               + '</td>';
         ci = sp.last + 1;

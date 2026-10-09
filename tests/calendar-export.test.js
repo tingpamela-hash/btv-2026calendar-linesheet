@@ -70,11 +70,10 @@ test('long product text is split across rows rather than clipped at Excel maximu
 });
 test('multiple launches, restock products, delay flags, markets and markdown spans are retained',()=>{
   const data=fixture();data.state.global['2026-10-05'].push({...data.state.global['2026-10-05'][0],id:'second',launchTitle:'Second launch'});
-  Object.assign(data.markdowns.sale,{markets:['SG','TH'],stores:{SG:['NAC'],TH:[]}});
   const sheet=exporter.buildWorkbook(data,ExcelJS).getWorksheet('Oct 2026');
   for(const value of ['Second launch','Tote restock','Restocked Tote','Delay Mkt: SG | ETA 2-Nov (Mon)','Launch (Mkt): SG'])assert.ok(find(sheet,value),value);
   const delay=find(sheet,'Launch Status: Delay Flagged');assert.equal(delay.fill.fgColor.argb,'FFFFF0F0');
-  assert.equal(find(sheet,'Mid-season sale\n6-Oct (Tue) to 18-Oct (Sun)\nSG: NAC | TH: All stores').isMerged,true);
+  assert.equal(find(sheet,'Mid-season sale\n6-Oct (Tue) to 18-Oct (Sun)').isMerged,true);
 });
 test('empty calendars produce valid worksheets and empty view fails clearly',()=>{
   const data=fixture();data.state={};data.markdowns={};assert.ok(exporter.buildWorkbook(data,ExcelJS).worksheets.length===2);

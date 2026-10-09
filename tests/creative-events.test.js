@@ -11,8 +11,8 @@ test('publication is independent of production status and preserves legacy visib
   assert.equal(events.publication({workflowStatus:'unknown'}),'draft');
 });
 test('matching copies consolidate without identity, market or audit metadata',()=>{
-  const a={id:'a',market:'SG',row:'ig_grid',title:' Campaign ',brief:'Brief',links:['asset'],created:'old',updatedActor:{id:'editor-a',email:'a@example.test'},_btvOperationId:'save-a'};
-  const b={...a,id:'b',market:'TH',title:'campaign',created:'new',_seeded:true,updatedActor:{id:'editor-b',email:'b@example.test'},_btvOperationId:'save-b'};
+  const a={id:'a',market:'SG',row:'ig_grid',title:' Campaign ',brief:'Brief',links:['asset'],created:'old'};
+  const b={...a,id:'b',market:'TH',title:'campaign',created:'new',_seeded:true};
   assert.equal(events.fingerprint(a,range),events.fingerprint(b,range));
 });
 test('different content, channels, dates, attachments and delimiter values stay separate',()=>{

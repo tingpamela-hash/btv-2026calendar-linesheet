@@ -7,10 +7,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase-config.js"></script>
 <script src="../js/calendar-csv.js"></script>
-<script src="../js/calendar-records.js"></script>
-<script src="../js/creative-sync.js"></script>
-<script src="../js/markdown-calendar.js"></script>
-<script src="../js/markdown-sync.js"></script>
 <script src="../js/calendar-export.js"></script>
 <script src="../js/creative-events.js"></script>
 <script src="../js/linesheet-preview.js"></script>
@@ -328,8 +324,7 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 .f-txt{resize:vertical;min-height:55px}
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .f-conditional{display:none}.f-conditional.show{display:block}.f-conditional.f-row.show{display:grid}
-.f-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
-.f-actions>button{max-width:100%;white-space:normal}
+.f-actions{display:flex;gap:7px;margin-top:14px}
 .btn-primary{flex:1;padding:9px;border:none;border-radius:10px;background:var(--text);color:#fff;
   font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:background .15s}
 .btn-primary:hover{background:#333}
@@ -1037,7 +1032,8 @@ function btvEntryHoverText(section,entry){
 
 // ── Markdown/promo periods bridge — read-only, from Product Calendar Input's markdown data ──
 function loadBtvMarkdownState(){
-  return window.btvMarkdownLoadLocal();
+  try { return JSON.parse(localStorage.getItem(BTV_CAL_STORAGE_KEY.replace('working-v5','markdown-bars-v1')))||{}; }
+  catch(e){ return {}; }
 }
 // Markdown groups with their full week range (for colspan rendering) and market colour —
 // optionally scoped to one market (per-market tabs) or unscoped (Global tab, market:null).
@@ -1076,7 +1072,7 @@ function renderMarkdownSpanRow(groups,gc){
       const cssClass=g.isGlobal?'mkt-global':(MKT_CSS[g.markets[0]]||'c-ns');
       const spanTag=g.weekEnd>w.n?`<span class="span-tag">→Wk${g.weekEnd}</span>`:'';
       const dateLabel=g.md.startDate?formatDateWithDay(g.md.startDate):weekStartDateLabel(w.n);
-      chips+=`<div class="chip ${cssClass}" role="button" tabindex="0" data-markdown-id="${esc(g.md.id)}" onclick="openMarkdownSummary(this.dataset.markdownId);event.stopPropagation();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMarkdownSummary(this.dataset.markdownId);}" title="${esc(g.title+'\n'+BtvMarkdown.scope(g.md))}">
+      chips+=`<div class="chip ${cssClass}" title="${esc(g.title+'\n'+g.mktList)}">
         <span class="date-tag">${esc(dateLabel)}</span>
         <span class="country-tag">${esc(g.mktList)}</span>
         ${spanTag}${esc(g.title)}
@@ -1085,16 +1081,6 @@ function renderMarkdownSpanRow(groups,gc){
     html+=`<td${colspanAttr} class="${gc} readonly">${chips}</td>`;
   });
   return html;
-}
-function openMarkdownSummary(id){
-  const entry=loadBtvMarkdownState()[id];if(!entry)return;
-  document.getElementById('vm-title').textContent=entry.title || 'Markdown';
-  document.getElementById('vm-sub').textContent=entry.startDate+' to '+entry.endDate;
-  const latest=entry.history?.[entry.history.length-1];
-  document.getElementById('vm-body').innerHTML='<div class="btvcard">'+
-    '<div class="btvcard-info"><span class="btvcard-lbl">Participating Markets / Stores:</span><div>'+esc(BtvMarkdown.scope(entry))+'</div></div>'+
-    (latest?'<div class="btvcard-info"><span class="btvcard-lbl">Updated By:</span> '+esc(latest.actor.name || latest.actor.email)+'</div><div class="btvcard-info">'+esc(new Date(latest.at).toLocaleString('en-SG',{timeZone:'Asia/Singapore'}))+'</div>':'')+'</div>';
-  document.getElementById('viewModal').classList.add('show');
 }
 function btvEntrySummary(section,entry){
   if(section==='global'||section==='china'){
@@ -1615,9 +1601,6 @@ function _setMField(id,val){ const el=document.getElementById(id); if(el) el.val
 function _getMField(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
 
 function openMarketingAddModal(market,rowKey,week){
-  window.btvCcClearNotice();
-  if(!ccCanLeave('marketing_entries'))return;
-  ccMarketingBaseline=null;ccMarketingDraftId=ccNewDraftId();ccDirty.marketing_entries=false;
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   marketingModalEntry=null;
   _marketingPendingImages=[];
@@ -1637,7 +1620,7 @@ function openMarketingAddModal(market,rowKey,week){
   updateMarketingPublicationControls();
   document.getElementById('marketingModal').classList.add('show');
   document.querySelector('#marketingModal .modal-card').scrollTop=0;
-  document.getElementById('mTitle').focus({preventScroll:true});
+  setTimeout(()=>document.getElementById('mTitle').focus(),60);
 }
 
 function openMarketingViewModal(id,market){
@@ -1646,10 +1629,7 @@ function openMarketingViewModal(id,market){
 }
 
 function openMarketingEditModal(item){
-  window.btvCcClearNotice();
-  if(!ccCanLeave('marketing_entries'))return;
-  marketingModalEntry=JSON.parse(JSON.stringify(item));ccMarketingDraftId=item.id;
-  ccMarketingBaseline=window.btvCcBaseline('marketing_entries',item.id);ccDirty.marketing_entries=false;
+  marketingModalEntry=item;
   _marketingPendingImages=(item.images||[]).slice();
   const rowLabel=(ROW_DEFS.find(r=>r.key===item.row)||{}).label||item.row;
   document.getElementById('mModalTitle').textContent='Edit '+rowLabel;
@@ -1690,24 +1670,21 @@ function updateMarketingPublicationControls(){
   document.getElementById('mSaveBtn').textContent=draft?'Save Draft':'Save Changes';
 }
 
-async function publishMarketingEntry(){
+function publishMarketingEntry(){
   if(CC_IS_GLOBAL_VIEW || window._btvCanEdit===false) return;
   const status=document.getElementById('mStatus');
   const previous=status.value;
   status.value='published';
-  await saveMarketingEntry();
+  saveMarketingEntry();
   // Validation errors must leave the unsaved event in its previous publication state.
   if(document.getElementById('marketingModal').classList.contains('show')) status.value=previous;
   updateMarketingPublicationControls();
 }
 
 function closeMarketingModal(){
-  if(!ccCanLeave('marketing_entries'))return false;
-  if(ccMarketingDraftId)window.btvCcForgetDraft('marketing_entries',ccMarketingDraftId);
   document.getElementById('marketingModal').classList.remove('show');
   marketingModalEntry=null;
   _marketingPendingImages=[];
-  ccDirty.marketing_entries=false;return true;
 }
 
 // ── Marketing entry Teams webhooks ──────────────────────────────────────────
@@ -1792,7 +1769,7 @@ function ccConfigWebhooks(){
   alert('Webhook settings saved.');
 }
 
-async function saveMarketingEntry(){
+function saveMarketingEntry(){
   if (CC_IS_GLOBAL_VIEW || window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   const title=document.getElementById('mTitle').value.trim();
   const market=document.getElementById('mMarket').value;
@@ -1831,14 +1808,28 @@ async function saveMarketingEntry(){
   const who = (typeof window.btvGetCurrentEmail === 'function' ? window.btvGetCurrentEmail() : '') || '';
   const beforeSnapshot = marketingModalEntry ? JSON.parse(JSON.stringify(marketingModalEntry)) : null;
 
-  let item=Object.assign({},marketingModalEntry || {created:new Date().toISOString(),relatedLaunch:''},d,{
-    id:ccMarketingDraftId,title,market,row,status,weekId,startDate,endDate,startDateISO,endDateISO,
-    images:_marketingPendingImages.slice(),notes,updatedBy:who
-  });
-  item.linkedMarketingId=item.id;
-  const confirmed=await ccCommitDraft('marketing_entries',item,ccMarketingBaseline,false,'mModalErr');
-  if(!confirmed)return;
-  item=confirmed.row.data;
+  marketingState[market]=marketingState[market]||[];
+  let item;
+  if(marketingModalEntry){
+    item=marketingModalEntry;
+    const prevMarket=item.market;
+    Object.assign(item,d,{title,market,row,status,weekId,startDate,endDate,startDateISO,endDateISO,
+      images:_marketingPendingImages.slice(),notes,updatedBy:who,updated:new Date().toISOString()});
+    if(prevMarket!==market){
+      marketingState[prevMarket]=(marketingState[prevMarket]||[]).filter(x=>x.id!==item.id);
+      marketingState[market].unshift(item);
+    }
+  } else {
+    item=Object.assign({
+      id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      market,weekId,row,status,title,startDate,endDate,startDateISO,endDateISO,relatedLaunch:'',
+      images:_marketingPendingImages.slice(),notes,updatedBy:who,
+      created:new Date().toISOString(),updated:new Date().toISOString()
+    },d);
+    item.linkedMarketingId=item.id;
+    marketingState[market].unshift(item);
+  }
+  saveMarketingState(marketingState);
   pushMarketingToBtvCalendar(item,status);
   closeMarketingModal();
   // Two separate Teams webhooks — one for Published entries, one for Draft — only fire
@@ -1850,10 +1841,12 @@ async function saveMarketingEntry(){
   ccJumpToWeek(startWeek, item.id);
 }
 
-async function deleteMarketingEntry(){
+function deleteMarketingEntry(){
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   if(!marketingModalEntry||!confirm('Delete this entry?')) return;
-  if(!await ccCommitDraft('marketing_entries',marketingModalEntry,ccMarketingBaseline,true,'mModalErr'))return;
+  const m=marketingModalEntry.market;
+  marketingState[m]=(marketingState[m]||[]).filter(e=>e.id!==marketingModalEntry.id);
+  saveMarketingState(marketingState);
   pushMarketingToBtvCalendar(marketingModalEntry,'draft'); // removes any previously-pushed BTV Calendar copy
   closeMarketingModal();
   renderCurrent();
@@ -1864,8 +1857,6 @@ async function deleteMarketingEntry(){
 // country, date, and row — all content fields are preserved.
 
 function openMktDuplicateModal(){
-  if(!ccCanLeave('marketing_entries'))return;
-  ccMarketingDuplicateDraftId=null;
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   if(!marketingModalEntry) return;
   document.getElementById('mDupDate').value = marketingModalEntry.startDateISO || '';
@@ -1876,12 +1867,10 @@ function openMktDuplicateModal(){
 }
 
 function closeMktDuplicateModal(){
-  if(ccSaving.marketing_entries)return;
-  if(ccMarketingDuplicateDraftId)window.btvCcForgetDraft('marketing_entries',ccMarketingDuplicateDraftId);
   document.getElementById('mktDuplicateModal').classList.remove('show');
 }
 
-async function confirmMktDuplicate(){
+function confirmMktDuplicate(){
   if (CC_IS_GLOBAL_VIEW || window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   if(!marketingModalEntry) return;
   const src = marketingModalEntry;
@@ -1903,7 +1892,7 @@ async function confirmMktDuplicate(){
   const startDate = formatDate(startDateISO);
 
   // Build a new entry copying all content fields from the source
-  const newId = ccMarketingDuplicateDraftId || (ccMarketingDuplicateDraftId=ccNewDraftId());
+  const newId = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   const newEntry = Object.assign(JSON.parse(JSON.stringify(src)), {
     id: newId,
     market, row, weekId, startDate, startDateISO,
@@ -1920,8 +1909,9 @@ async function confirmMktDuplicate(){
   // Fix endDate display string
   newEntry.endDate = newEntry.endDateISO ? formatDate(newEntry.endDateISO) : '';
 
-  if(!await ccCommitDraft('marketing_entries',newEntry,null,false,'mDupErr'))return;
-  ccDirty.marketing_entries=false;
+  marketingState[market] = marketingState[market] || [];
+  marketingState[market].unshift(newEntry);
+  saveMarketingState(marketingState);
   pushMarketingToBtvCalendar(newEntry,newEntry.status);
 
   closeMktDuplicateModal();
@@ -2038,7 +2028,7 @@ function btvExportGlobalGridXLS(){
 
   function markdownCellText(wn){
     return buildMarkdownSpanGroups(null).filter(g=>wn>=g.week&&wn<=g.weekEnd)
-      .map(g=>'['+(g.isGlobal?g.mktList:g.markets[0])+'] '+g.title+' | '+BtvMarkdown.scope(g.md)).join('\n');
+      .map(g=>'['+(g.isGlobal?g.mktList:g.markets[0])+'] '+g.title).join('\n');
   }
 
   function marketingCellText(rowKey,wn){
@@ -2219,33 +2209,6 @@ let state = loadState();
 let _prevStateJson = JSON.stringify(state); // snapshot for per-entry diffing (see sync IIFE below)
 let currentTab = 'global';
 let modalEntry = null;
-let ccModalBaseline,ccMarketingBaseline,ccDraftId,ccMarketingDraftId,ccDuplicateDraftId,ccMarketingDuplicateDraftId;
-const ccSaving={global_cal_entries:false,marketing_entries:false};
-const ccDirty={global_cal_entries:false,marketing_entries:false};
-function ccNewDraftId(){return BtvCalendarCSV.id('creative-');}
-function ccCanLeave(table){
-  if(ccSaving[table])return false;
-  return !ccDirty[table] || confirm('You have unsaved changes. Close without saving?');
-}
-async function ccCommitDraft(table,entry,baseline,remove,errorId){
-  if(ccSaving[table])return null;
-  const modal=document.getElementById(table==='global_cal_entries'?'entryModal':'marketingModal');
-  ccSaving[table]=true;
-  const duplicate=document.getElementById(table==='global_cal_entries'?'duplicateModal':'mktDuplicateModal');
-  const controls=Array.from(modal.querySelectorAll('input,select,textarea,button')).concat(Array.from(duplicate.querySelectorAll('input,select,textarea,button')));
-  const disabled=controls.map(input=>input.disabled);controls.forEach(input=>input.disabled=true);
-  try{
-    const row=await window.btvCcCommit(table,entry,baseline,remove);
-    ccDirty[table]=false;return {row};
-  }catch(error){const errorEl=document.getElementById(errorId);errorEl.textContent=error.message;errorEl.scrollIntoView({block:'nearest'});ccDirty[table]=true;return null;}
-  finally{ccSaving[table]=false;controls.forEach((input,i)=>input.disabled=disabled[i]);}
-}
-['global_cal_entries','marketing_entries'].forEach(table=>{
-  const modal=document.getElementById(table==='global_cal_entries'?'entryModal':'marketingModal');
-  modal.addEventListener('input',()=>ccDirty[table]=true);
-  modal.addEventListener('change',()=>ccDirty[table]=true);
-});
-window.addEventListener('beforeunload',event=>{if(Object.values(ccDirty).some(Boolean) || Object.values(ccSaving).some(Boolean)){event.preventDefault();event.returnValue='';}});
 let _viewCache = {};
 
 // Filter state
@@ -2476,9 +2439,6 @@ function ccGoToToday(){
 function switchCcYear(y){
   y = parseInt(y, 10);
   if (!y || y === CC_YEAR) return;
-  if(!ccCanLeave('global_cal_entries') || !ccCanLeave('marketing_entries')){document.getElementById('ccYearSelect').value=String(CC_YEAR);return;}
-  ccDirty.global_cal_entries=false;ccDirty.marketing_entries=false;
-  closeModal();closeMarketingModal();closeDuplicateModal();closeMktDuplicateModal();
   CC_YEAR = y;
   _ccApplyYearKeys(y);
   WEEKS = buildCcWeeks(y);
@@ -2489,7 +2449,6 @@ function switchCcYear(y){
   var fWeek = document.getElementById('fWeek'); if (fWeek) fWeek.innerHTML = buildWeekOpts(1);
   var fWeekEnd = document.getElementById('fWeekEnd'); if (fWeekEnd) fWeekEnd.innerHTML = buildWeekOpts(null, true);
   window.btvRender();
-  if(window.btvCcRefreshEntries)window.btvCcRefreshEntries();
   if (typeof window.btvCcRefreshBridgeForYear === 'function') window.btvCcRefreshBridgeForYear();
 }
 window.switchCcYear = switchCcYear;
@@ -3089,9 +3048,6 @@ function buildWeekOpts(sel,blank){
 }
 
 function openAddModal(market,rowKey,week,dateIso){
-  window.btvCcClearNotice();
-  if(!ccCanLeave('global_cal_entries'))return;
-  ccModalBaseline=null;ccDraftId=ccNewDraftId();ccDirty.global_cal_entries=false;
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   modalEntry=null;
   document.getElementById('modalTitle').textContent='Add Entry';
@@ -3118,15 +3074,12 @@ function openAddModal(market,rowKey,week,dateIso){
   onRowChange();
   document.getElementById('entryModal').classList.add('show');
   document.querySelector('#entryModal .modal-card').scrollTop=0;
-  document.getElementById('fTitle').focus({preventScroll:true});
+  setTimeout(()=>document.getElementById('fTitle').focus(),60);
 }
 
 function openEditModal(id,market){
-  window.btvCcClearNotice();
-  if(!ccCanLeave('global_cal_entries'))return;
   const e=getMarketEntries(market).find(x=>x.id===id);if(!e)return;
-  modalEntry=JSON.parse(JSON.stringify(e));ccDraftId=e.id;
-  ccModalBaseline=window.btvCcBaseline('global_cal_entries',id);ccDirty.global_cal_entries=false;
+  modalEntry=e;
   document.getElementById('modalTitle').textContent='Edit Entry';
   document.getElementById('modalSub').textContent=`${e.market} · ${e.row.replace(/_/g,' ')} · Wk ${e.week}`;
   document.getElementById('fTitle').value=e.title||'';
@@ -3153,7 +3106,7 @@ function openEditModal(id,market){
   onRowChange();
   document.getElementById('entryModal').classList.add('show');
   document.querySelector('#entryModal .modal-card').scrollTop=0;
-  document.getElementById('fTitle').focus({preventScroll:true});
+  setTimeout(()=>document.getElementById('fTitle').focus(),60);
 }
 
 function updateCreativePublicationControls(){
@@ -3169,23 +3122,18 @@ function updateCreativePublicationControls(){
   document.getElementById('duplicateBtn').disabled=readOnly;
 }
 
-async function publishCreativeEntry(){
+function publishCreativeEntry(){
   if(CC_IS_GLOBAL_VIEW || window._btvCanEdit===false) return;
   const input=document.getElementById('fPublication'),previous=input.value;
   input.value='published';
-  await saveEntry();
+  saveEntry();
   if(document.getElementById('entryModal').classList.contains('show')) input.value=previous;
   updateCreativePublicationControls();
 }
 
-function closeModal(){
-  if(!ccCanLeave('global_cal_entries'))return false;
-  if(ccDraftId)window.btvCcForgetDraft('global_cal_entries',ccDraftId);
-  document.getElementById('entryModal').classList.remove('show');modalEntry=null;ccDirty.global_cal_entries=false;
-  return true;
-}
+function closeModal(){ document.getElementById('entryModal').classList.remove('show');modalEntry=null; }
 
-async function saveEntry(){
+function saveEntry(){
   if (CC_IS_GLOBAL_VIEW || window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   const title=document.getElementById('fTitle').value.trim();
   const market=document.getElementById('fMarket').value;
@@ -3234,21 +3182,37 @@ async function saveEntry(){
 
   fields.workflowStatus=NO_STATUS_ROWS.has(row)?'published':document.getElementById('fPublication').value;
   if(!['draft','published'].includes(fields.workflowStatus)){errEl.textContent='Choose Draft or Published.';return;}
-  const entryId=ccDraftId;
-  const candidate=Object.assign({},modalEntry || {created:new Date().toISOString()},{id:entryId,title,market,row},fields,{_seeded:false});
-  if(!await ccCommitDraft('global_cal_entries',candidate,ccModalBaseline,false,'modalErr'))return;
-  closeModal();
+  let entryId;
+  if(modalEntry){
+    entryId=modalEntry.id;
+    const prevMarket=modalEntry.market;
+    Object.assign(modalEntry,{title,market,row},fields,{_seeded:false,updated:new Date().toISOString()});
+    if(prevMarket!==market){
+      state[prevMarket]=(state[prevMarket]||[]).filter(x=>x.id!==modalEntry.id);
+      state[market]=state[market]||[];
+      state[market].unshift(modalEntry);
+    }
+  } else {
+    entryId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    state[market]=state[market]||[];
+    state[market].unshift(Object.assign({
+      id:entryId,
+      title,market,row
+    },fields,{_seeded:false,created:new Date().toISOString(),updated:new Date().toISOString()}));
+  }
+  saveState();closeModal();
   // The entry may have just moved to a different week or market than where the modal
   // was opened from — switch to the right tab and scroll there so it never looks lost.
   if(currentTab!=='global' && currentTab!==market) switchTab(market); else renderCurrent();
   ccJumpToWeek(fields.week, entryId);
 }
 
-async function deleteEntry(){
+function deleteEntry(){
   if(CC_IS_GLOBAL_VIEW || window._btvCanEdit===false) return;
   if(!modalEntry||!confirm('Delete this entry?'))return;
-  if(!await ccCommitDraft('global_cal_entries',modalEntry,ccModalBaseline,true,'modalErr'))return;
-  closeModal();renderCurrent();
+  const m=modalEntry.market;
+  state[m]=(state[m]||[]).filter(e=>e.id!==modalEntry.id);
+  saveState();closeModal();renderCurrent();
 }
 
 // ── Duplicate entry ──────────────────────────────────────────────────────
@@ -3259,8 +3223,6 @@ async function deleteEntry(){
 // changing.
 
 function openDuplicateModal(){
-  if(!ccCanLeave('global_cal_entries'))return;
-  ccDuplicateDraftId=null;
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   if(!modalEntry) return;
   document.getElementById('dupDate').value = modalEntry.date || modalEntry.startDate || weekNumToISO(modalEntry.week) || '';
@@ -3271,12 +3233,10 @@ function openDuplicateModal(){
 }
 
 function closeDuplicateModal(){
-  if(ccSaving.global_cal_entries)return;
-  if(ccDuplicateDraftId)window.btvCcForgetDraft('global_cal_entries',ccDuplicateDraftId);
   document.getElementById('duplicateModal').classList.remove('show');
 }
 
-async function confirmDuplicate(){
+function confirmDuplicate(){
   if(CC_IS_GLOBAL_VIEW || window._btvCanEdit===false){ ccToast('You have view-only access to the Global Calendar'); return; }
   if(!modalEntry) return;
   const src = modalEntry;
@@ -3308,12 +3268,13 @@ async function confirmDuplicate(){
   // Preserve publication independently of production status when copying markets.
   if(src.workflowStatus) fields.workflowStatus=src.workflowStatus;
 
-  const newId=ccDuplicateDraftId || (ccDuplicateDraftId=ccNewDraftId());
-  const candidate=Object.assign(fields,{
+  const newId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  state[market]=state[market]||[];
+  state[market].unshift(Object.assign(fields,{
     id:newId,title:src.title,market,row,_seeded:false,created:new Date().toISOString(),updated:new Date().toISOString()
-  });
-  if(!await ccCommitDraft('global_cal_entries',candidate,null,false,'dupErr'))return;
-  ccDirty.global_cal_entries=false;
+  }));
+
+  saveState();
   closeDuplicateModal();
   closeModal();
   ccToast('Duplicated to '+market+' · Wk '+fields.week);
@@ -3432,7 +3393,475 @@ function _ccDiffAndSyncMarketing(v){
   if (deletedIds.length) window.btvMktDeleteEntries(deletedIds);
 }
 
-// Per-entry shared reads and version-checked writes live in js/creative-sync.js.
+// ── Per-entry Realtime sync IIFE ──────────────────────────────────────────
+// Mirrors the linesheet_products architecture: one Supabase row per entry,
+// Realtime subscription for live per-entry updates.
+// Called by supabase-sync.js _goLive / _goPaused (btvCcEntriesInit / btvCcEntriesTeardown).
+(function(){
+  'use strict';
+
+  var _sb   = null;
+  var _uid  = null;
+  var _gcCh  = null;  // Realtime channel: global_cal_entries
+  var _mktCh = null;  // Realtime channel: marketing_entries
+  var _calEntCh = null;  // Realtime channel: calendar_entries (read-only BTV Calendar bridge)
+  var _calBridgeDebounce = null;
+  var _catchupTimer = null;
+  var _catchupBusy = false;
+
+  // ── Pending-entry maps (entries in-flight, not yet Supabase-confirmed) ────
+  // Keyed by entry id. Populated immediately on save; cleared on Realtime confirm.
+  // btvCcApplyPendingToState() and _fetchAll() both re-apply these on top of any
+  // Supabase snapshot so a blob Realtime overwrite can never wipe unsaved work.
+  var _pendingGcEntries  = new Map();
+  var _pendingMktEntries = new Map();
+
+  // ── Write-fail error bar ─────────────────────────────────────────────────
+  function _showCcBar(msg){
+    var bar = document.getElementById('btv-cc-write-fail-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'btv-cc-write-fail-bar';
+      bar.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);' +
+        'background:#c0392b;color:#fff;padding:10px 20px;border-radius:8px;z-index:9999;' +
+        'display:flex;align-items:center;gap:12px;font-family:sans-serif;font-size:13px;' +
+        'box-shadow:0 2px 8px rgba(0,0,0,.3);';
+      var txt = document.createElement('span');
+      txt.id = 'btv-cc-write-fail-msg';
+      var btn = document.createElement('button');
+      btn.textContent = 'Retry';
+      btn.style.cssText = 'background:#fff;color:#c0392b;border:none;border-radius:4px;' +
+        'padding:4px 10px;cursor:pointer;font-weight:bold;';
+      btn.onclick = function(){ window.btvCcRetryPending(); };
+      bar.appendChild(txt);
+      bar.appendChild(btn);
+      document.body.appendChild(bar);
+    }
+    document.getElementById('btv-cc-write-fail-msg').textContent = msg;
+    bar.style.display = 'flex';
+  }
+
+  function _hideCcBar(){
+    var bar = document.getElementById('btv-cc-write-fail-bar');
+    if (bar) bar.style.display = 'none';
+  }
+
+  // ── Utility ───────────────────────────────────────────────────────────────
+  function _delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  // ── Upsert with retry (3 attempts: 0 ms / 1 s / 3 s backoff) ─────────────
+  async function _upsertWithRetry(table, rows, pendingMap, entries){
+    var delays = [0, 1000, 3000];
+    for (var i = 0; i < delays.length; i++) {
+      if (delays[i]) await _delay(delays[i]);
+      var res = await _sb.from(table).upsert(rows, { onConflict: 'id' });
+      if (!res.error) {
+        // Confirmed — remove from pending map and clear error bar
+        entries.forEach(function(e){ pendingMap.delete(e.id); });
+        _hideCcBar();
+        return;
+      }
+      console.warn('[BTV CC] ' + table + ' upsert attempt ' + (i + 1) + ' failed:', res.error.message);
+    }
+    // All 3 attempts failed — surface error bar with Retry button
+    _showCcBar('Save failed — some changes may not be saved. Click Retry.');
+    console.error('[BTV CC] ' + table + ' upsert failed after 3 attempts.');
+  }
+
+  // ── Re-apply pending entries on top of in-memory state ───────────────────
+  // Called from btvRender() so that a blob Realtime overwrite of localStorage
+  // never wipes unconfirmed entries from the UI between the save and the
+  // Supabase Realtime confirmation arriving.
+  window.btvCcApplyPendingToState = function(){
+    if (_pendingGcEntries.size === 0 && _pendingMktEntries.size === 0) return;
+
+    _pendingGcEntries.forEach(function(entry, id){
+      var mkt = entry.market;
+      if (!mkt) return;
+      Object.keys(state).forEach(function(m){
+        if (Array.isArray(state[m]))
+          state[m] = state[m].filter(function(e){ return e.id !== id; });
+      });
+      state[mkt] = state[mkt] || [];
+      state[mkt].unshift(entry);
+    });
+
+    _pendingMktEntries.forEach(function(entry, id){
+      var mkt = entry.market;
+      if (!mkt) return;
+      Object.keys(marketingState).forEach(function(m){
+        if (Array.isArray(marketingState[m]))
+          marketingState[m] = marketingState[m].filter(function(e){ return e.id !== id; });
+      });
+      marketingState[mkt] = marketingState[mkt] || [];
+      marketingState[mkt].unshift(entry);
+    });
+
+    // Update snapshots so the next diff sees the combined (confirmed + pending) state
+    _prevStateJson    = JSON.stringify(state);
+    _prevMktStateJson = JSON.stringify(marketingState);
+  };
+
+  // ── Retry button handler ─────────────────────────────────────────────────
+  window.btvCcRetryPending = function(){
+    if (_pendingGcEntries.size) {
+      var gcEntries = Array.from(_pendingGcEntries.values());
+      var gcRows = gcEntries.map(function(e){
+        return { id: e.id, market: e.market, data: e,
+                 updated_at: new Date().toISOString(), updated_by: _uid };
+      });
+      _upsertWithRetry('global_cal_entries', gcRows, _pendingGcEntries, gcEntries);
+    }
+    if (_pendingMktEntries.size) {
+      var mktEntries = Array.from(_pendingMktEntries.values());
+      var mktRows = mktEntries.map(function(e){
+        return { id: e.id, market: e.market, data: e,
+                 updated_at: new Date().toISOString(), updated_by: _uid };
+      });
+      _upsertWithRetry('marketing_entries', mktRows, _pendingMktEntries, mktEntries);
+    }
+  };
+  window.btvCcPendingSaveCount = function(){ return _pendingGcEntries.size + _pendingMktEntries.size; };
+  window.addEventListener('beforeunload', function(event){
+    if (!window.btvCcPendingSaveCount()) return;
+    event.preventDefault(); event.returnValue = '';
+  });
+
+  // ── Read-only bridge: calendar_entries → calendar-2026-working-v5 ─────────
+  // Product Calendar Input's 2026 launches/restocks/store-openings/events moved to
+  // the per-row calendar_entries table (see supabase-calendar-entries-migration.sql)
+  // to fix a save race, and calendar-2026-working-v5 was removed from
+  // supabase-sync.js's SYNCED_KEYS as part of that change. That silently broke every
+  // OTHER reader of that blob in THIS file (loadBtvCalState, the launch-detail popup,
+  // pushMarketingToBtvCalendar) — correct only on the same browser where Input
+  // Calendar 2026 is actively edited, stale or wrong everywhere else. This rebuilds
+  // that same localStorage blob, live, straight from calendar_entries, so every
+  // existing reader below keeps working unchanged.
+  async function _refreshCalEntriesBridge(){
+    if (!_sb) return;
+    // Scoped to the currently viewed year — BTV_CAL_STORAGE_KEY is itself
+    // year-scoped (see _ccApplyYearKeys), so this keeps the two consistent.
+    // Switching years (switchCcYear) calls this again with the new year already
+    // applied.
+    var yr = window.CC_YEAR || new Date().getFullYear();
+    var res = await window.btvReadWithTimeout(_sb.from('calendar_entries').select('section,week_id,data').eq('year', yr),'Management launches');
+    if (res.error) {
+      console.error('[BTV Cal Bridge] calendar_entries fetch error:', res.error.message);
+      _showCcBar('Could not load Management launches. Check the shared database connection and calendar year migration, then reload.');
+      return;
+    }
+    if (yr !== (window.CC_YEAR || new Date().getFullYear())) return;
+    var blob = {};
+    (res.data || []).forEach(function(row){
+      blob[row.section] = blob[row.section] || {};
+      (blob[row.section][row.week_id] = blob[row.section][row.week_id] || []).push(row.data);
+    });
+    var snapshot = JSON.stringify(blob);
+    if (localStorage.getItem(BTV_CAL_STORAGE_KEY) === snapshot) return;
+    localStorage.setItem(BTV_CAL_STORAGE_KEY, snapshot);
+    if (typeof window.btvRender === 'function') window.btvRender();
+  }
+
+  // Debounced — a burst of individual entry saves in Input Calendar (per-field webhook
+  // saves fire per keystroke-equivalent) would otherwise trigger a full refetch each time.
+  function _scheduleCalEntriesBridgeRefresh(){
+    clearTimeout(_calBridgeDebounce);
+    _calBridgeDebounce = setTimeout(_refreshCalEntriesBridge, 600);
+  }
+
+  // Called by switchCcYear() (outside this IIFE) after CC_YEAR/BTV_CAL_STORAGE_KEY
+  // have already been updated — refetches immediately rather than waiting on the
+  // debounce, since this is a deliberate year switch, not a burst of saves.
+  window.btvCcRefreshBridgeForYear = function(){ _refreshCalEntriesBridge(); };
+
+  // Lets pushMarketingToBtvCalendar (outside this IIFE) persist its synthetic "events"
+  // entry through calendar_entries too, instead of only this browser's localStorage —
+  // otherwise the next bridge refresh above would silently wipe it back out, and no
+  // other device would ever see the link. Always deletes first (covers unpublish and
+  // re-publish-to-a-different-week, since the id is fixed but week_id can change), then
+  // re-inserts only if entryData is given.
+  window.btvPushMarketingEventEntry = async function(entryId, weekId, entryData){
+    if (!_sb) return;
+    try {
+      await _sb.from('calendar_entries').delete().eq('id', entryId);
+      if (entryData) {
+        // year is derived from the week's own date, not window.CC_YEAR — the
+        // entry belongs to whatever year its actual week falls in, regardless
+        // of which year happens to be selected on screen right now.
+        var yr = (weekId && parseInt(String(weekId).slice(0, 4), 10)) || window.CC_YEAR || new Date().getFullYear();
+        await _sb.from('calendar_entries').upsert([{
+          id: entryId, section: 'events', week_id: weekId, data: entryData, year: yr,
+          updated_at: new Date().toISOString(), updated_by: _uid
+        }], { onConflict: 'id' });
+      }
+    } catch(e) { console.error('[BTV Cal Bridge] push marketing event failed:', e); }
+  };
+
+  // ── Fetch all entries from Supabase and rebuild in-memory state ────────────
+  async function _fetchAll(){
+    var previous = JSON.stringify(state);
+    var previousMarketing = JSON.stringify(marketingState);
+    // ── Global Calendar entries ──
+    var gcRes = await window.btvReadWithTimeout(_sb.from('global_cal_entries')
+      .select('id, market, data, updated_at'),'Creative entries');
+    if (!gcRes.error && gcRes.data) {
+      var newState = {};
+      gcRes.data.forEach(function(row){
+        newState[row.market] = newState[row.market] || [];
+        newState[row.market].push(Object.assign({}, row.data, { id: row.id, market: row.market }));
+      });
+      // Re-apply any pending (not-yet-Realtime-confirmed) entries on top of Supabase snapshot
+      // so tab-switch _fetchAll calls never wipe in-flight saves from the UI.
+      _pendingGcEntries.forEach(function(entry, id){
+        var mkt = entry.market;
+        if (!mkt) return;
+        Object.keys(newState).forEach(function(m){
+          newState[m] = newState[m].filter(function(e){ return e.id !== id; });
+        });
+        newState[mkt] = newState[mkt] || [];
+        newState[mkt].unshift(entry);
+      });
+      _ccApplyingRemote = true;
+      try {
+        Object.keys(state).forEach(function(k){ delete state[k]; });
+        Object.assign(state, newState);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        _prevStateJson = JSON.stringify(state);
+      } finally { _ccApplyingRemote = false; }
+    } else if (gcRes.error) {
+      console.error('[BTV CC] _fetchAll global_cal_entries error:', gcRes.error.message);
+      _showCcBar('Could not load shared Creative entries. Check database access and connection, then reload.');
+    }
+
+    // ── Marketing Workflow entries ──
+    var mktRes = await window.btvReadWithTimeout(_sb.from('marketing_entries')
+      .select('id, market, data, updated_at'),'Marketing entries');
+    if (!mktRes.error && mktRes.data) {
+      var newMkt = { SG:[], TH:[], ID:[], PH:[], JP:[], CN:[] };
+      mktRes.data.forEach(function(row){
+        newMkt[row.market] = newMkt[row.market] || [];
+        newMkt[row.market].push(Object.assign({}, row.data, { id: row.id, market: row.market }));
+      });
+      // Re-apply pending marketing entries on top of Supabase snapshot
+      _pendingMktEntries.forEach(function(entry, id){
+        var mkt = entry.market;
+        if (!mkt) return;
+        Object.keys(newMkt).forEach(function(m){
+          newMkt[m] = newMkt[m].filter(function(e){ return e.id !== id; });
+        });
+        newMkt[mkt] = newMkt[mkt] || [];
+        newMkt[mkt].unshift(entry);
+      });
+      _ccApplyingRemote = true;
+      try {
+        Object.keys(marketingState).forEach(function(k){ delete marketingState[k]; });
+        Object.assign(marketingState, newMkt);
+        localStorage.setItem(MARKETING_STORAGE_KEY, JSON.stringify(marketingState));
+        _prevMktStateJson = JSON.stringify(marketingState);
+      } finally { _ccApplyingRemote = false; }
+    } else if (mktRes.error) {
+      console.error('[BTV CC] _fetchAll marketing_entries error:', mktRes.error.message);
+      _showCcBar('Could not load shared marketing entries. Check database access and connection, then reload.');
+    }
+
+    // Re-render with fresh data
+    if ((previous !== JSON.stringify(state) || previousMarketing !== JSON.stringify(marketingState)) && typeof window.btvRender === 'function') window.btvRender();
+  }
+
+  // ── Apply a single global_cal_entries change from Realtime ─────────────────
+  function _applyGcEntry(payload){
+    _ccApplyingRemote = true;
+    try {
+      if (payload.eventType === 'DELETE') {
+        // REPLICA IDENTITY DEFAULT: payload.old only has the PK (id).
+        var delId = payload.old && payload.old.id;
+        if (delId) {
+          _pendingGcEntries.delete(delId);  // confirmed delete — clear from pending
+          Object.keys(state).forEach(function(mkt){
+            if (Array.isArray(state[mkt]))
+              state[mkt] = state[mkt].filter(function(e){ return e.id !== delId; });
+          });
+        }
+      } else {
+        var row   = payload.new;
+        var entry = Object.assign({}, row.data, { id: row.id, market: row.market });
+        _pendingGcEntries.delete(row.id);  // Realtime arrival = Supabase confirmed
+        // Remove from all markets first (handles market-change edits)
+        Object.keys(state).forEach(function(mkt){
+          if (Array.isArray(state[mkt]))
+            state[mkt] = state[mkt].filter(function(e){ return e.id !== row.id; });
+        });
+        state[row.market] = state[row.market] || [];
+        state[row.market].unshift(entry);
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      _prevStateJson = JSON.stringify(state);
+      if (typeof window.btvRender === 'function') window.btvRender();
+    } catch(e) {
+      console.error('[BTV CC] _applyGcEntry error:', e);
+    } finally {
+      _ccApplyingRemote = false;
+    }
+  }
+
+  // ── Apply a single marketing_entries change from Realtime ──────────────────
+  function _applyMktEntry(payload){
+    _ccApplyingRemote = true;
+    try {
+      if (payload.eventType === 'DELETE') {
+        var delId = payload.old && payload.old.id;
+        if (delId) {
+          _pendingMktEntries.delete(delId);  // confirmed delete
+          Object.keys(marketingState).forEach(function(mkt){
+            if (Array.isArray(marketingState[mkt]))
+              marketingState[mkt] = marketingState[mkt].filter(function(e){ return e.id !== delId; });
+          });
+        }
+      } else {
+        var row   = payload.new;
+        var entry = Object.assign({}, row.data, { id: row.id, market: row.market });
+        _pendingMktEntries.delete(row.id);  // confirmed
+        Object.keys(marketingState).forEach(function(mkt){
+          if (Array.isArray(marketingState[mkt]))
+            marketingState[mkt] = marketingState[mkt].filter(function(e){ return e.id !== row.id; });
+        });
+        marketingState[row.market] = marketingState[row.market] || [];
+        marketingState[row.market].unshift(entry);
+      }
+      localStorage.setItem(MARKETING_STORAGE_KEY, JSON.stringify(marketingState));
+      _prevMktStateJson = JSON.stringify(marketingState);
+      if (typeof window.btvRender === 'function') window.btvRender();
+    } catch(e) {
+      console.error('[BTV CC] _applyMktEntry error:', e);
+    } finally {
+      _ccApplyingRemote = false;
+    }
+  }
+
+  // ── Public API — called by supabase-sync.js ────────────────────────────────
+
+  window.btvCcUpsertEntries = async function(entries){
+    // Add to pending immediately — even before _sb is ready (pre-init saves).
+    // _fetchAll and btvCcApplyPendingToState will re-apply them until confirmed.
+    entries.forEach(function(e){ if (e.id) _pendingGcEntries.set(e.id, e); });
+    if (!_sb || !_uid) { _showCcBar('Waiting for shared connection. Keep this page open until the save completes.'); return; }
+    var rows = entries.map(function(e){
+      return { id: e.id, market: e.market, data: e,
+               updated_at: new Date().toISOString(), updated_by: _uid };
+    });
+    await _upsertWithRetry('global_cal_entries', rows, _pendingGcEntries, entries);
+  };
+
+  window.btvCcDeleteEntries = async function(ids){
+    if (!ids.length) return;
+    // Remove from pending — a deleted entry is gone regardless of Supabase confirm
+    ids.forEach(function(id){ _pendingGcEntries.delete(id); });
+    if (!_sb || !_uid) return;
+    var res = await _sb.from('global_cal_entries').delete().in('id', ids);
+    if (res.error) console.error('[BTV CC] Delete error:', res.error.message);
+  };
+
+  window.btvMktUpsertEntries = async function(entries){
+    // Add to pending immediately
+    entries.forEach(function(e){ if (e.id) _pendingMktEntries.set(e.id, e); });
+    if (!_sb || !_uid) { _showCcBar('Waiting for shared connection. Keep this page open until the save completes.'); return; }
+    var rows = entries.map(function(e){
+      return { id: e.id, market: e.market, data: e,
+               updated_at: new Date().toISOString(), updated_by: _uid };
+    });
+    await _upsertWithRetry('marketing_entries', rows, _pendingMktEntries, entries);
+  };
+
+  window.btvMktDeleteEntries = async function(ids){
+    if (!ids.length) return;
+    ids.forEach(function(id){ _pendingMktEntries.delete(id); });
+    if (!_sb || !_uid) return;
+    var res = await _sb.from('marketing_entries').delete().in('id', ids);
+    if (res.error) console.error('[BTV Mkt] Delete error:', res.error.message);
+  };
+
+  window.btvCcEntriesInit = async function(session){
+    if (!window._btvSb) {
+      console.warn('[BTV CC] _btvSb not available — per-entry sync skipped.');
+      return;
+    }
+    _sb  = window._btvSb;
+    _uid = session.user.id;
+
+    // Fetch current state from per-entry tables (pending entries re-applied inside _fetchAll)
+    await _fetchAll();
+    await _refreshCalEntriesBridge();
+
+    // Flush any entries that were saved before _sb was ready (pre-init window)
+    if (_pendingGcEntries.size) {
+      var gcEntries = Array.from(_pendingGcEntries.values());
+      var gcRows = gcEntries.map(function(e){
+        return { id: e.id, market: e.market, data: e,
+                 updated_at: new Date().toISOString(), updated_by: _uid };
+      });
+      await _upsertWithRetry('global_cal_entries', gcRows, _pendingGcEntries, gcEntries);
+    }
+    if (_pendingMktEntries.size) {
+      var mktEntries = Array.from(_pendingMktEntries.values());
+      var mktRows = mktEntries.map(function(e){
+        return { id: e.id, market: e.market, data: e,
+                 updated_at: new Date().toISOString(), updated_by: _uid };
+      });
+      await _upsertWithRetry('marketing_entries', mktRows, _pendingMktEntries, mktEntries);
+    }
+
+    // Subscribe to Realtime for live per-entry changes from teammates
+    if (!_gcCh) {
+      _gcCh = _sb.channel('btv_gc_entries_v1')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'global_cal_entries' },
+          function(payload){ _applyGcEntry(payload); })
+        .subscribe(function(status){
+          console.log('[BTV CC] global_cal_entries Realtime:', status);
+        });
+    }
+
+    if (!_mktCh) {
+      _mktCh = _sb.channel('btv_mkt_entries_v1')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'marketing_entries' },
+          function(payload){ _applyMktEntry(payload); })
+        .subscribe(function(status){
+          console.log('[BTV Mkt] marketing_entries Realtime:', status);
+        });
+    }
+
+    if (!_calEntCh) {
+      _calEntCh = _sb.channel('btv_global_cal_bridge_v1')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'calendar_entries' },
+          function(){ _scheduleCalEntriesBridgeRefresh(); })
+        .subscribe(function(status){
+          console.log('[BTV Cal Bridge] calendar_entries Realtime:', status);
+        });
+    }
+
+    console.log('[BTV CC] Per-entry sync active.');
+    if (!_catchupTimer) _catchupTimer = setInterval(async function(){
+      if (_catchupBusy || document.hidden || _pendingGcEntries.size || _pendingMktEntries.size) return;
+      _catchupBusy = true;
+      try { await _fetchAll(); await _refreshCalEntriesBridge(); }
+      catch(error) { console.warn('[BTV CC] Catch-up failed:', error); }
+      finally { _catchupBusy = false; }
+    }, 15000);
+  };
+
+  window.btvCcEntriesTeardown = function(){
+    clearInterval(_catchupTimer); _catchupTimer = null;
+    if (_gcCh)     { try { _gcCh.unsubscribe();     } catch(e){} _gcCh     = null; }
+    if (_mktCh)    { try { _mktCh.unsubscribe();    } catch(e){} _mktCh    = null; }
+    if (_calEntCh) { try { _calEntCh.unsubscribe(); } catch(e){} _calEntCh = null; }
+    clearTimeout(_calBridgeDebounce);
+    console.log('[BTV CC] Per-entry sync paused.');
+  };
+
+})();
+
 // ── Init ─────────────────────────────────────────────────────────────────
 document.getElementById('fWeek').innerHTML=buildWeekOpts(1);
 document.getElementById('fWeekEnd').innerHTML=buildWeekOpts(null,true);

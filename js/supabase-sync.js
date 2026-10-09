@@ -123,7 +123,6 @@
   );
   const _SYNCED_KEYS = SYNCED_KEYS.filter(function (k) { return !_pageExcludes.has(k); });
   const _RENDER_KEYS = RENDER_KEYS.filter(function (k) { return !_pageExcludes.has(k); });
-  const isLegacyMarkdownKey = key => /^calendar-\d{4}-markdown-bars-v1$/.test(key);
 
   // Capture the real setItem before we intercept it
   const _origSetItem = localStorage.setItem.bind(localStorage);
@@ -207,7 +206,7 @@
       // Pushing every synced key unconditionally risks overwriting a teammate's
       // newer save with our stale local copy of a key we didn't actually change.
       const rows = [..._dirtyKeys]
-        .filter(function (k) { return _SYNCED_KEYS.includes(k) && !isLegacyMarkdownKey(k) && localStorage.getItem(k) !== null; })
+        .filter(function (k) { return _SYNCED_KEYS.includes(k) && localStorage.getItem(k) !== null; })
         .map(function (key) {
           const raw = localStorage.getItem(key);
           let parsed; try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
@@ -436,7 +435,7 @@
     _interceptorInstalled = true;
     localStorage.setItem = function (key, value) {
       _origSetItem(key, value);
-      if (!_SYNCED_KEYS.includes(key) || isLegacyMarkdownKey(key) || !_sb) return;
+      if (!_SYNCED_KEYS.includes(key) || !_sb) return;
       // Mark dirty immediately — even if offline — so that applyRow / _pullLatest
       // won't overwrite local storage with a stale remote value while our write is pending.
       _dirtyKeys.add(key);
@@ -757,7 +756,7 @@
       // Supabase is empty — push local data up as first migration
       console.log('[BTV Sync] Supabase empty — pushing local data up…');
       const rows = _SYNCED_KEYS
-        .filter(function (k) { return !isLegacyMarkdownKey(k) && localStorage.getItem(k) !== null; })
+        .filter(function (k) { return localStorage.getItem(k) !== null; })
         .map(function (key) {
           const raw = localStorage.getItem(key);
           let parsed; try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
@@ -861,9 +860,6 @@
     if (typeof window.btvCalEntriesInit === 'function') {
       await window.btvCalEntriesInit(_session);
     }
-    if (typeof window.btvMarkdownInit === 'function') {
-      try { await window.btvMarkdownInit(); } catch(error) { console.warn('[BTV Markdown] Startup failed:',error.message); }
-    }
     // Linesheet products are synced as individual rows (not through the generic
     // whole-blob app_state path above) — see the per-row sync module in linesheet.html.
     if (typeof window.btvLsProductsInit === 'function') {
@@ -911,7 +907,6 @@
     if (typeof window.btvCcEntriesTeardown === 'function') window.btvCcEntriesTeardown();
     // Same for the Product Calendar Input's own per-entry channel.
     if (typeof window.btvCalEntriesTeardown === 'function') window.btvCalEntriesTeardown();
-    if (typeof window.btvMarkdownTeardown === 'function') window.btvMarkdownTeardown();
     // Linesheet runs its own separate presence channel (see comment in setupPresence) —
     // tear it down too, otherwise a backgrounded Linesheet tab would keep it alive.
     if (typeof window.btvLsPresenceTeardown === 'function') window.btvLsPresenceTeardown();
@@ -1011,7 +1006,7 @@
     // local copy of a key this user didn't actually change (e.g., clicking "Retry Sync"
     // after a linesheet write failure would otherwise also push a stale calendar blob).
     const dirtyToSync = [..._dirtyKeys].filter(function (k) {
-      return _SYNCED_KEYS.includes(k) && !isLegacyMarkdownKey(k) && localStorage.getItem(k) !== null;
+      return _SYNCED_KEYS.includes(k) && localStorage.getItem(k) !== null;
     });
     if (!dirtyToSync.length) {
       showToast('Nothing to sync — all local changes are already saved.');
@@ -1052,7 +1047,7 @@
   window.btvWriteChangeLog = async function(entries){
     if(!_sb || !_userId || !entries || !entries.length)return false;
     try {
-      var result=await _sb.from('change_log').insert(entries.map(function(entry){return {key:(entry.action==='markdown'?'markdown:':'linesheet:')+entry.productName,label:JSON.stringify(entry),changed_by:_userId,email:_userEmail,changed_at:new Date(entry.ts).toISOString()};}));
+      var result=await _sb.from('change_log').insert(entries.map(function(entry){return {key:'linesheet:'+entry.productName,label:JSON.stringify(entry),changed_by:_userId,email:_userEmail,changed_at:new Date(entry.ts).toISOString()};}));
       if(result.error)throw result.error;
       return true;
     } catch(error){console.warn('[BTV Sync] Detailed audit log was not written:',error.message);return false;}

@@ -258,6 +258,18 @@ Preview: https://6ac8716bbac1bf12be8a07f3--btv2026calendar-linesheet.netlify.app
 
 User selected the latest tested code, including calendar conflict protection, rather than the older linked preview. Prepared the application, shared helpers, 106 passing Node tests, four maintained isolated browser fixtures, migration source and rollout notes on `planner-tested-updates-2026-10-09`. Netlify's connected production branch is `main`, with automatic builds enabled; the review branch keeps this source upload separate from a production merge. Backups, screenshots, generated previews, local tool state and database import/wipe maintenance scripts remain excluded. No database scripts or reminder deployment were executed.
 
+## 2026-10-09: User-Requested Website Rollback
+
+User reported slowness and selected deployment `6ac7533eac067a19b508b3e6` instead of the newer GitHub code, then explicitly approved replacing the live website. Netlify's published deployment was restored directly to that exact deployment before source recovery. The 19 browser assets were recovered from its immutable URL and checked against Netlify's SHA-1 file manifest. Database records, policies, migrations and reminder deployment were not changed.
+
+The newer Markdown store/per-row sync and Management/Creative/Marketing version-check code, including their newer-only fixtures, are intentionally removed from the active website; the previous implementation remains in Git history at `e2e494f`. Earlier completed-work entries above are historical, not a claim that these rolled-back features remain active. Existing grouped Linesheet, scoped approvals, SKU/image handover, measurements, store openings and launch ordering remain in the selected baseline.
+
+The deployment now builds only the manifest-listed assets into `dist`, so GitHub-triggered Netlify builds do not publish source/tests/SQL/backups. CI runs isolated unit tests and builds rather than old live-site browser specs. Runtime line endings are pinned to LF to preserve asset bytes across platforms. Original vendor license whitespace is retained for byte identity. A device conflict copy of index.html appeared during recovery; it was left local and excluded rather than deleted or uploaded.
+
+Verification: 81 baseline Node tests pass, and `npm run verify:rollback` confirms all 19 generated website assets match the selected deployment. The full isolated multi-user calendar/Linesheet regression passed against the generated build, including original-date notifications, store opening, lock handover, size SKU/barcode/image retention and measurement previews. Production requests and notifications were blocked in browser fixtures. This rollback does not establish the cause of the reported slowness or prove live company-account syncing.
+
+Hosted rollback preview: https://6ac89cf555e81aa0141265e7--btv2026calendar-linesheet.netlify.app . All 19 hosted browser assets match the selected deployment. Hosted Creative/Global loading, measurement units, tolerance, management product ordering and desktop/mobile overflow checks passed with production requests blocked. Staged source was also byte-verified and scanned for high-confidence credentials before the approved GitHub/main rollout.
+
 ## Remaining Major Areas
 
 - Single-app routing/shared state without iframe modules.

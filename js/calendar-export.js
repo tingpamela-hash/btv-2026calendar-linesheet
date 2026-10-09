@@ -1,7 +1,7 @@
 (function(root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./calendar-csv'),require('./markdown-calendar'));
-  else root.BtvCalendarExport = factory(root.BtvCalendarCSV,root.BtvMarkdown);
-})(typeof window === 'undefined' ? globalThis : window, function(csv,markdown) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./calendar-csv'));
+  else root.BtvCalendarExport = factory(root.BtvCalendarCSV);
+})(typeof window === 'undefined' ? globalThis : window, function(csv) {
   'use strict';
   const SECTIONS = [{key:'global',label:'Global',bg:'D4D4D4',fg:'2D2D2D'},
     {key:'china',label:'China',bg:'C47800',fg:'FFFFFF'},
@@ -151,7 +151,7 @@
       const mdLanes=lanes(data.markdowns,weeks);
       put(row,1,'Markdown',{bold:true,bg:'D4D4D4',size:10});
       (mdLanes.length ? mdLanes : [[]]).forEach(lane=>{
-        lane.forEach(span=>put(row,2+span.first*3,(span.md.title || 'Markdown')+'\n'+dateLabel(span.md.startDate)+' to '+dateLabel(span.md.endDate)+'\n'+(markdown?markdown.scope(span.md):''),
+        lane.forEach(span=>put(row,2+span.first*3,(span.md.title || 'Markdown')+'\n'+dateLabel(span.md.startDate)+' to '+dateLabel(span.md.endDate),
           {span:(span.last-span.first+1)*3-1,bold:true,bg:'F5DF73',size:10,width:48*(span.last-span.first+1)}));
         row++;
       });

@@ -4,7 +4,7 @@
   else root.BtvCreativeEvents=api;
 })(typeof window==='undefined'?globalThis:window,function(){
   'use strict';
-  const metadata=new Set(['id','market','created','updated','updatedBy','updatedActor','createdBy','linkedMarketingId','workflowStatus','weekId','week','weekEnd','date','startDate','endDate','startDateISO','endDateISO']);
+  const metadata=new Set(['id','market','created','updated','updatedBy','createdBy','linkedMarketingId','workflowStatus','weekId','week','weekEnd','date','startDate','endDate','startDateISO','endDateISO']);
   function publication(entry){
     // Legacy content was visible before publication became an explicit property.
     return !entry.workflowStatus || entry.workflowStatus==='published'?'published':'draft';

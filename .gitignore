@@ -16,6 +16,8 @@ node_modules/
 /_archive/
 /charms .json backup/
 /tmp/
+/dist/
+/index-BTV-Charmaine.html
 /supabase/.temp/
 /output/*
 !/output/playwright/

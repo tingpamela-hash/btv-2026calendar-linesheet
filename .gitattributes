@@ -1,0 +1,3 @@
+/index.html text eol=lf
+/btv_calendar_linesheet_files/*.html text eol=lf
+/js/** text eol=lf

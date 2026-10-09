@@ -1,0 +1,83 @@
+{
+  "sourceDeploy": "6ac7533eac067a19b508b3e6",
+  "sourceUrl": "https://6ac7533eac067a19b508b3e6--btv2026calendar-linesheet.netlify.app",
+  "files": [
+    {
+      "path": "js/vendor/exceljs.min.js",
+      "sha1": "bdfca3a2270d3023ea63c56a799a55b90fbdc713"
+    },
+    {
+      "path": "js/vendor/exceljs-license.txt",
+      "sha1": "c0f126b3215067d35b15868009fbfd89765e355c",
+      "source": "js/vendor/EXCELJS-LICENSE.txt"
+    },
+    {
+      "path": "js/supabase-sync.js",
+      "sha1": "2742b688ccc008edeb2fedebb8c8f6c0b93bd918"
+    },
+    {
+      "path": "js/supabase-config.js",
+      "sha1": "0892ea9a5492764f27ae02d85e1f15d62434f171"
+    },
+    {
+      "path": "js/product-launches.js",
+      "sha1": "6bc84e8e00bf02e66e9f9402cd3ebf5aa9b74267"
+    },
+    {
+      "path": "js/linesheet-products.js",
+      "sha1": "f417609b711bb64f2a7a06f52210f55c9cb67802"
+    },
+    {
+      "path": "js/linesheet-preview.js",
+      "sha1": "1bb791e4fd441f357f50a90e52c0b7d94f9d732e"
+    },
+    {
+      "path": "js/linesheet-identity.js",
+      "sha1": "7215dd471b115d702ac92357417ea1625bb40467"
+    },
+    {
+      "path": "js/linesheet-columns.js",
+      "sha1": "591cde9b3fda30f915c7ac2c1e831d29cc582e39"
+    },
+    {
+      "path": "js/linesheet-approvals.js",
+      "sha1": "3abcb8313552016a5dbdaaa0fad02cc6e4aad723"
+    },
+    {
+      "path": "js/creative-events.js",
+      "sha1": "53ff20c20e94239fea1ca9bf29133399bd5ee55c"
+    },
+    {
+      "path": "js/calendar-json.js",
+      "sha1": "573c9a08273a8a321756924b9db5367eb88a3c66"
+    },
+    {
+      "path": "js/calendar-export.js",
+      "sha1": "10c7b7a4e3b7234149b4a169ffea730c86d64738"
+    },
+    {
+      "path": "js/calendar-entry.js",
+      "sha1": "38b8d81d5d387e8048a9721f01f87a3bfb26ff99"
+    },
+    {
+      "path": "js/calendar-csv.js",
+      "sha1": "eef09fd77f8dd82cdc7f56a6da66580fc1047b0f"
+    },
+    {
+      "path": "index.html",
+      "sha1": "f80266c1057fcb32a5828af33711cae50fc06c74"
+    },
+    {
+      "path": "btv_calendar_linesheet_files/linesheet.html",
+      "sha1": "cde06b58cc0d0ba7b61c53df396a991ae850f88d"
+    },
+    {
+      "path": "btv_calendar_linesheet_files/input calendar-2026.html",
+      "sha1": "1448d44eb6e0b857282e4b49b24905d80ce6fda1"
+    },
+    {
+      "path": "btv_calendar_linesheet_files/global calendar.html",
+      "sha1": "723f6a48a73d9dd7d12175f3318e9206cdf6fa90"
+    }
+  ]
+}
