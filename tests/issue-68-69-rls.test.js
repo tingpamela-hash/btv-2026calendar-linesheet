@@ -180,7 +180,7 @@ end $$;
 `);
   const dir = path.join(root, 'supabase', 'migrations');
   if (!fs.existsSync(dir)) return;
-  fs.readdirSync(dir).filter((name) => name.endsWith('.sql')).sort()
+  fs.readdirSync(dir).filter((name) => name.endsWith('.sql') && name.indexOf('private_creative_marketing') === -1).sort()
     .forEach((name) => psqlFile(path.join(dir, name)));
 }
 
@@ -307,6 +307,25 @@ function main() {
   ensureCluster();
   recreateDatabase();
   applySql();
+
+  const access = psqlValue(DB, "select btv.can_access('global')::text");
+  check('steps 11 and 12 can call btv.can_access', access === 'true' || access === 'false', access);
+  const bucket = psqlValue(DB, "select public::text from storage.buckets where id = 'creative-marketing'");
+  check('steps 10 through 12 leave the creative bucket public', bucket === 'true', bucket);
+
+  const bucketFile = path.join(root, 'supabase', 'migrations', '20261009130000_private_creative_marketing_bucket.sql');
+  const bucketRollback = path.join(root, 'supabase', 'rollbacks', '20261009130000_private_creative_marketing_bucket.sql');
+  if (!fs.existsSync(bucketFile) || !fs.existsSync(bucketRollback)) {
+    check('private bucket migration and rollback exist', false, 'missing');
+  } else {
+    psqlFile(bucketFile);
+    const closed = psqlValue(DB, "select public::text from storage.buckets where id = 'creative-marketing'");
+    check('bucket migration marks creative-marketing private', closed === 'false', closed);
+    psqlFile(bucketRollback);
+    const reopened = psqlValue(DB, "select public::text from storage.buckets where id = 'creative-marketing'");
+    check('bucket rollback restores a public creative-marketing bucket', reopened === 'true', reopened);
+  }
+
   seed();
 
   const viewerCalendar = attempt(VIEWER, "insert into public.calendar_entries (id, section, week_id, year, data) values ('cal-viewer', 'global', '2026-10-05', 2026, '{}'::jsonb);");
