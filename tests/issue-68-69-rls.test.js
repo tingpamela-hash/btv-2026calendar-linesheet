@@ -368,10 +368,13 @@ insert into public.linesheet_product_locks (group_id, locked_by, locked_by_email
   check('a view-only profile cannot refresh a linesheet lock', viewerRefresh === 'false', viewerRefresh);
   callText(VIEWER, "public.unlock_linesheet_group('lock-held-viewer')");
   const viewerUnlock = lockState('public.linesheet_product_locks', 'group_id', 'lock-held-viewer');
-  check('a view-only profile cannot unlock a linesheet group', viewerUnlock === VIEWER + '|viewer@local.test|set', viewerUnlock);
+  check('a view-only profile can release a linesheet lock they hold', viewerUnlock === '||', viewerUnlock);
   callText(PRODUCT, "public.unlock_linesheet_group('lock-held-product')");
   const productUnlock = lockState('public.linesheet_product_locks', 'group_id', 'lock-held-product');
-  check('a product calendar editor cannot unlock a linesheet group', productUnlock === PRODUCT + '|product@local.test|set', productUnlock);
+  check('a product calendar editor can release a linesheet lock they hold', productUnlock === '||', productUnlock);
+  callText(VIEWER, "public.unlock_linesheet_group('lock-linesheet')");
+  const viewerOther = lockState('public.linesheet_product_locks', 'group_id', 'lock-linesheet');
+  check('a view-only profile cannot release a linesheet lock they do not hold', viewerOther === LINESHEET + '|linesheet@local.test|set', viewerOther);
   callText(LINESHEET, "public.unlock_linesheet_group('lock-linesheet')");
   const linesheetUnlock = lockState('public.linesheet_product_locks', 'group_id', 'lock-linesheet');
   check('a linesheet editor can unlock a group they hold', linesheetUnlock === '||', linesheetUnlock);
@@ -411,13 +414,39 @@ update public.calendar_entries
   check('a profile with no access cannot refresh a calendar lock', noaccessRefresh === 'false', noaccessRefresh);
   callText(NOACCESS, "public.unlock_calendar_entry('cal-lock-held')");
   const noaccessUnlock = lockState('public.calendar_entries', 'id', 'cal-lock-held');
-  check('a profile with no access cannot unlock a calendar entry', noaccessUnlock === NOACCESS + '|noaccess@local.test|set', noaccessUnlock);
+  check('a profile with no access can release a calendar lock they hold', noaccessUnlock === '||', noaccessUnlock);
+  callText(NOACCESS, "public.unlock_calendar_entry('cal-lock-product')");
+  const noaccessOther = lockState('public.calendar_entries', 'id', 'cal-lock-product');
+  check('a profile with no access cannot release a calendar lock they do not hold', noaccessOther === PRODUCT + '|product@local.test|set', noaccessOther);
   callText(GLOBAL, "public.unlock_calendar_entry('cal-lock-events')");
   const globalUnlock = lockState('public.calendar_entries', 'id', 'cal-lock-events');
   check('a global editor can unlock an events row they hold', globalUnlock === '||', globalUnlock);
   callText(PRODUCT, "public.unlock_calendar_entry('cal-lock-product')");
   const productEntryUnlock = lockState('public.calendar_entries', 'id', 'cal-lock-product');
   check('a product calendar editor can unlock a calendar entry they hold', productEntryUnlock === '||', productEntryUnlock);
+
+  const revokedGroup = callText(LINESHEET, "public.try_lock_linesheet_group('lock-revoked', 'linesheet@local.test')");
+  check('a linesheet editor can lock a group before the grant is revoked', revokedGroup === 'true', revokedGroup);
+  psql(DB, "update public.user_profiles set can_edit_linesheet = false where id = '" + LINESHEET + "';");
+  callText(LINESHEET, "public.unlock_linesheet_group('lock-revoked')");
+  const revokedUnlock = lockState('public.linesheet_product_locks', 'group_id', 'lock-revoked');
+  check('a linesheet editor can unlock their own group after the edit grant is revoked', revokedUnlock === '||', revokedUnlock);
+  const revokedAgain = callText(LINESHEET, "public.try_lock_linesheet_group('lock-revoked-again', 'linesheet@local.test')");
+  check('a linesheet editor cannot lock a group after the edit grant is revoked', revokedAgain === 'false', revokedAgain);
+
+  psql(DB, `
+insert into public.calendar_entries (id, section, week_id, year, data) values
+  ('cal-lock-revoked', 'global', '2026-10-05', 2026, '{}'::jsonb),
+  ('cal-lock-revoked-again', 'global', '2026-10-05', 2026, '{}'::jsonb);
+`);
+  const revokedEntry = callText(PRODUCT, "public.try_lock_calendar_entry('cal-lock-revoked', 'product@local.test')");
+  check('a product calendar editor can lock an entry before the grant is revoked', revokedEntry === 'true', revokedEntry);
+  psql(DB, "update public.user_profiles set can_edit_product_calendar = false where id = '" + PRODUCT + "';");
+  callText(PRODUCT, "public.unlock_calendar_entry('cal-lock-revoked')");
+  const revokedEntryUnlock = lockState('public.calendar_entries', 'id', 'cal-lock-revoked');
+  check('a product calendar editor can unlock their own entry after the edit grant is revoked', revokedEntryUnlock === '||', revokedEntryUnlock);
+  const revokedEntryAgain = callText(PRODUCT, "public.try_lock_calendar_entry('cal-lock-revoked-again', 'product@local.test')");
+  check('a product calendar editor cannot lock an entry after the edit grant is revoked', revokedEntryAgain === 'false', revokedEntryAgain);
 
   const lockRollback = path.join(root, 'supabase', 'rollbacks', '20261009140000_lock_requires_edit_grant.sql');
   const lockMigration = path.join(root, 'supabase', 'migrations', '20261009140000_lock_requires_edit_grant.sql');
