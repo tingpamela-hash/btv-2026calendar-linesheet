@@ -282,6 +282,27 @@ commit;
   return psqlValue(DB, sql).split('\n').map((line) => line.trim()).filter((line) => line && line !== 'COMMIT' && line !== 'BEGIN').pop();
 }
 
+function callText(userId, expression) {
+  const sql = `
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '${userId}', true);
+select (${expression})::text;
+commit;
+`;
+  const lines = psqlValue(DB, sql).split('\n').map((line) => line.trim()).filter((line) => line && line !== 'BEGIN' && line !== 'COMMIT');
+  return lines[lines.length - 1];
+}
+
+function lockState(table, column, id) {
+  return psqlValue(DB, `
+select coalesce(locked_by::text, '') || '|' || coalesce(locked_by_email, '') || '|' ||
+       case when locked_at is null then '' else 'set' end
+  from ${table}
+ where ${column} = '${id}'
+`);
+}
+
 function main() {
   ensureCluster();
   recreateDatabase();
@@ -324,6 +345,79 @@ function main() {
 
   const viewerGlobal = attempt(VIEWER, "insert into public.global_cal_entries (id, market, data) values ('g-viewer', 'SG', '{}'::jsonb);");
   check('a view-only profile cannot insert a global calendar row', viewerGlobal === '42501', viewerGlobal);
+
+  const viewerGroup = callText(VIEWER, "public.try_lock_linesheet_group('lock-viewer', 'viewer@local.test')");
+  check('a view-only profile cannot lock a linesheet group', viewerGroup === 'false', viewerGroup);
+  const noaccessGroup = callText(NOACCESS, "public.try_lock_linesheet_group('lock-none', 'noaccess@local.test')");
+  check('a profile with no access cannot lock a linesheet group', noaccessGroup === 'false', noaccessGroup);
+  const productGroup = callText(PRODUCT, "public.try_lock_linesheet_group('lock-product', 'product@local.test')");
+  check('a product calendar editor cannot lock a linesheet group', productGroup === 'false', productGroup);
+  const linesheetGroup = callText(LINESHEET, "public.try_lock_linesheet_group('lock-linesheet', 'linesheet@local.test')");
+  check('a linesheet editor can lock a linesheet group', linesheetGroup === 'true', linesheetGroup);
+  const linesheetHeld = lockState('public.linesheet_product_locks', 'group_id', 'lock-linesheet');
+  check('a linesheet editor holds the group lock', linesheetHeld === LINESHEET + '|linesheet@local.test|set', linesheetHeld);
+  const adminGroup = callText(ADMIN, "public.try_lock_linesheet_group('lock-admin', 'admin@local.test')");
+  check('an admin can lock a linesheet group', adminGroup === 'true', adminGroup);
+
+  psql(DB, `
+insert into public.linesheet_product_locks (group_id, locked_by, locked_by_email, locked_at) values
+  ('lock-held-viewer', '${VIEWER}', 'viewer@local.test', now()),
+  ('lock-held-product', '${PRODUCT}', 'product@local.test', now());
+`);
+  const viewerRefresh = callText(VIEWER, "public.refresh_linesheet_group_lock('lock-held-viewer')");
+  check('a view-only profile cannot refresh a linesheet lock', viewerRefresh === 'false', viewerRefresh);
+  callText(VIEWER, "public.unlock_linesheet_group('lock-held-viewer')");
+  const viewerUnlock = lockState('public.linesheet_product_locks', 'group_id', 'lock-held-viewer');
+  check('a view-only profile cannot unlock a linesheet group', viewerUnlock === VIEWER + '|viewer@local.test|set', viewerUnlock);
+  callText(PRODUCT, "public.unlock_linesheet_group('lock-held-product')");
+  const productUnlock = lockState('public.linesheet_product_locks', 'group_id', 'lock-held-product');
+  check('a product calendar editor cannot unlock a linesheet group', productUnlock === PRODUCT + '|product@local.test|set', productUnlock);
+  callText(LINESHEET, "public.unlock_linesheet_group('lock-linesheet')");
+  const linesheetUnlock = lockState('public.linesheet_product_locks', 'group_id', 'lock-linesheet');
+  check('a linesheet editor can unlock a group they hold', linesheetUnlock === '||', linesheetUnlock);
+
+  psql(DB, `
+insert into public.calendar_entries (id, section, week_id, year, data) values
+  ('cal-lock-viewer', 'global', '2026-10-05', 2026, '{}'::jsonb),
+  ('cal-lock-none', 'global', '2026-10-05', 2026, '{}'::jsonb),
+  ('cal-lock-linesheet', 'global', '2026-10-05', 2026, '{}'::jsonb),
+  ('cal-lock-product', 'global', '2026-10-05', 2026, '{}'::jsonb),
+  ('cal-lock-global', 'global', '2026-10-05', 2026, '{}'::jsonb),
+  ('cal-lock-events', 'events', '2026-10-05', 2026, '{}'::jsonb),
+  ('cal-lock-admin', 'global', '2026-10-05', 2026, '{}'::jsonb),
+  ('cal-lock-held', 'global', '2026-10-05', 2026, '{}'::jsonb);
+update public.calendar_entries
+   set locked_by = '${NOACCESS}', locked_by_email = 'noaccess@local.test', locked_at = now()
+ where id = 'cal-lock-held';
+`);
+  const viewerEntry = callText(VIEWER, "public.try_lock_calendar_entry('cal-lock-viewer', 'viewer@local.test')");
+  check('a view-only profile cannot lock a calendar entry', viewerEntry === 'false', viewerEntry);
+  const noaccessEntry = callText(NOACCESS, "public.try_lock_calendar_entry('cal-lock-none', 'noaccess@local.test')");
+  check('a profile with no access cannot lock a calendar entry', noaccessEntry === 'false', noaccessEntry);
+  const noaccessFields = lockState('public.calendar_entries', 'id', 'cal-lock-none');
+  check('a profile with no access does not set calendar lock fields', noaccessFields === '||', noaccessFields);
+  const linesheetEntry = callText(LINESHEET, "public.try_lock_calendar_entry('cal-lock-linesheet', 'linesheet@local.test')");
+  check('a linesheet editor cannot lock a calendar entry', linesheetEntry === 'false', linesheetEntry);
+  const productEntry = callText(PRODUCT, "public.try_lock_calendar_entry('cal-lock-product', 'product@local.test')");
+  check('a product calendar editor can lock a calendar entry', productEntry === 'true', productEntry);
+  const globalLockedOther = callText(GLOBAL, "public.try_lock_calendar_entry('cal-lock-global', 'global@local.test')");
+  check('a global editor cannot lock a non-events calendar entry', globalLockedOther === 'false', globalLockedOther);
+  const globalEvents = callText(GLOBAL, "public.try_lock_calendar_entry('cal-lock-events', 'global@local.test')");
+  check('a global editor can lock an events calendar entry', globalEvents === 'true', globalEvents);
+  const adminEntry = callText(ADMIN, "public.try_lock_calendar_entry('cal-lock-admin', 'admin@local.test')");
+  check('an admin can lock a calendar entry', adminEntry === 'true', adminEntry);
+
+  const noaccessRefresh = callText(NOACCESS, "public.refresh_calendar_entry_lock('cal-lock-held')");
+  check('a profile with no access cannot refresh a calendar lock', noaccessRefresh === 'false', noaccessRefresh);
+  callText(NOACCESS, "public.unlock_calendar_entry('cal-lock-held')");
+  const noaccessUnlock = lockState('public.calendar_entries', 'id', 'cal-lock-held');
+  check('a profile with no access cannot unlock a calendar entry', noaccessUnlock === NOACCESS + '|noaccess@local.test|set', noaccessUnlock);
+  callText(GLOBAL, "public.unlock_calendar_entry('cal-lock-events')");
+  const globalUnlock = lockState('public.calendar_entries', 'id', 'cal-lock-events');
+  check('a global editor can unlock an events row they hold', globalUnlock === '||', globalUnlock);
+  callText(PRODUCT, "public.unlock_calendar_entry('cal-lock-product')");
+  const productEntryUnlock = lockState('public.calendar_entries', 'id', 'cal-lock-product');
+  check('a product calendar editor can unlock a calendar entry they hold', productEntryUnlock === '||', productEntryUnlock);
 
   console.log(JSON.stringify({ issue: '68-69', failures: failures.length }));
   if (failures.length) process.exit(1);
