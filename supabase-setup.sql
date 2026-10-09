@@ -1,5 +1,8 @@
 -- ============================================================
 -- BTV Planner – Supabase Setup SQL
+-- ⚠ ONCE supabase-rls-lockdown-migration.sql HAS BEEN RUN, DO NOT RE-RUN
+--   THIS FILE: it recreates the old `using (true)` policies and section 4
+--   re-grants access to every account. Run individual sections only.
 -- Safe to re-run at any time — all statements are idempotent.
 -- Run this entire script in Supabase → SQL Editor → New query
 -- ============================================================

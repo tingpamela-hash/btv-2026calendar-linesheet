@@ -278,13 +278,11 @@ html, body {
 <!-- Top navigation -->
 <nav class="top-nav">
   <span class="top-nav-brand">BTV Planner</span>
-  <button class="top-nav-btn active" data-frame="cal" onclick="showFrame('cal')">Product Calendar Input</button>
-  <div id="calYearPicker" class="cal-year-picker">
-    <button id="yearBtn2026" class="year-btn active-year" onclick="setCalYear('2026')">2026</button>
-    <button id="yearBtn2027" class="year-btn" onclick="setCalYear('2027')">2027</button>
-  </div>
-  <button class="top-nav-btn" data-frame="creative" onclick="showFrame('creative')">Global Calendar</button>
-  <button class="top-nav-btn" data-frame="ls" onclick="showFrame('ls')">Linesheet</button>
+  <button class="top-nav-btn active" data-frame="global" onclick="showFrame('global')">Global Calendar</button>
+  <button class="top-nav-btn" data-frame="cal" onclick="showFrame('cal')">Management Calendar Input</button>
+  <button class="top-nav-btn" data-frame="creative" onclick="showFrame('creative')">Creative Calendar Input</button>
+  <button class="top-nav-btn" data-frame="ls" onclick="showFrame('ls')">Linesheet Input</button>
+  <button class="top-nav-btn" data-frame="admin" onclick="showFrame('admin')">Admin Settings</button>
   <div class="nav-right">
     <div class="nav-online-wrap" id="navOnlineWrap" style="display:none">
       <button class="nav-online-btn" id="navOnlineBtn" onclick="btvToggleOnlineList()">
@@ -296,6 +294,7 @@ html, body {
       </div>
     </div>
     <button class="nav-right-btn" id="navNotifyEmailsBtn" onclick="btvOpenNotifyEmails()" style="display:none">Notify Emails</button>
+    <button class="nav-right-btn" id="navUserMgmtBtn" onclick="btvOpenUserMgmt()" style="display:none">Manage Users</button>
     <button class="nav-right-btn" id="navChangePwdBtn" onclick="btvOpenChangePwd()" style="display:none">Change Password</button>
     <button class="nav-right-btn" id="navSignOutBtn" onclick="btvSignOut()" style="display:none">Sign Out</button>
   </div>
@@ -303,10 +302,14 @@ html, body {
 
 <!-- Iframe frames -->
 <div class="frame-wrap">
-  <iframe id="frame-cal-2026" class="frame active" title="Calendar 2026" data-src="./btv_calendar_linesheet_files/calendar.html" allow="downloads"></iframe>
-  <iframe id="frame-cal-2027" class="frame" title="Calendar 2027" data-src="./btv_calendar_linesheet_files/calendar-2027.html" allow="downloads"></iframe>
-  <iframe id="frame-creative" class="frame" title="Global Calendar" data-src="./btv_calendar_linesheet_files/creative-calendar.html" allow="downloads"></iframe>
-  <iframe id="frame-ls" class="frame" title="Linesheet Manager" data-src="./btv_calendar_linesheet_files/linesheet.html" allow="downloads"></iframe>
+  <!-- input calendar-2026.html is year-switchable (see switchCalYear in that file) and
+       now serves both 2026 and 2027 from one management calendar page — input calendar-2027.html
+       (a separate, older fork) has been retired. The id below is kept as "frame-cal-2026"
+       rather than renamed to avoid churn in the JS below; it just means "the cal frame". -->
+  <iframe id="frame-global" class="frame active" title="Global Calendar" data-src="./btv_calendar_linesheet_files/global%20calendar.html?mode=global" allow="downloads"></iframe>
+  <iframe id="frame-cal-2026" class="frame" title="Management Calendar Input" data-src="./btv_calendar_linesheet_files/input%20calendar-2026.html" allow="downloads"></iframe>
+  <iframe id="frame-creative" class="frame" title="Creative Calendar Input" data-src="./btv_calendar_linesheet_files/global%20calendar.html?mode=creative" allow="downloads"></iframe>
+  <iframe id="frame-ls" class="frame" title="Linesheet Input" data-src="./btv_calendar_linesheet_files/linesheet.html" allow="downloads"></iframe>
 </div>
 
 <!-- Module login overlay -->
@@ -375,14 +378,7 @@ html, body {
     <button class="btv-modal-close" onclick="btvCloseUserMgmt()" title="Close">&times;</button>
     <div class="btv-modal-title" id="btvUMTitle">Manage Users</div>
     <div class="btv-modal-sub" id="btvUMSub">Control who can access each module.</div>
-    <div id="btvUMPassWrap">
-      <label class="btv-modal-lbl" for="btvUMPassInput">Admin passcode</label>
-      <input type="password" id="btvUMPassInput" class="btv-modal-inp" placeholder="Enter admin passcode" onkeydown="if(event.key==='Enter') btvUMVerifyPass()">
-      <div id="btvUMPassErr" class="btv-modal-err" style="color:#a23a2f;background:#fdf0ef"></div>
-      <button class="btv-modal-btn" onclick="btvUMVerifyPass()">Verify</button>
-      <button class="btv-modal-btn-ghost" onclick="btvCloseUserMgmt()">Cancel</button>
-    </div>
-    <div id="btvUMPanel" style="display:none">
+    <div id="btvUMPanel">
       <div style="font-size:11px;color:#b0ada9;margin-bottom:10px">
         New users must first be invited via the Supabase dashboard. Once they sign in, they appear here.
       </div>
@@ -398,14 +394,7 @@ html, body {
     <button class="btv-modal-close" onclick="btvCloseNotifyEmails()" title="Close">&times;</button>
     <div class="btv-modal-title">Notify Emails</div>
     <div class="btv-modal-sub">Set who gets emailed every Monday morning with their team's outstanding linesheet items.</div>
-    <div id="btvNEPassWrap">
-      <label class="btv-modal-lbl" for="btvNEPassInput">Admin passcode</label>
-      <input type="password" id="btvNEPassInput" class="btv-modal-inp" placeholder="Enter admin passcode" onkeydown="if(event.key==='Enter') btvNEVerifyPass()">
-      <div id="btvNEPassErr" class="btv-modal-err" style="color:#a23a2f;background:#fdf0ef"></div>
-      <button class="btv-modal-btn" onclick="btvNEVerifyPass()">Verify</button>
-      <button class="btv-modal-btn-ghost" onclick="btvCloseNotifyEmails()">Cancel</button>
-    </div>
-    <div id="btvNEPanel" style="display:none">
+    <div id="btvNEPanel">
       <div id="btvNEFields"></div>
       <div id="btvNEErr" class="btv-modal-err" style="color:#a23a2f;background:#fdf0ef"></div>
       <button class="btv-modal-btn" id="btvNESaveBtn" onclick="btvNESave()">Save</button>
@@ -421,45 +410,30 @@ html, body {
     window.BTV_SUPABASE_CONFIG.anonKey
   );
 
-  const MODULE_LABELS = { cal: 'Product Calendar Input', creative: 'Global Calendar', ls: 'Linesheet' };
-  let _currentModule = 'cal';
+  const MODULE_LABELS = { global: 'Global Calendar', cal: 'Management Calendar Input', creative: 'Creative Calendar Input', ls: 'Linesheet Input', admin: 'Admin Settings' };
+  const MODULE_ORDER = ['global', 'cal', 'creative', 'ls', 'admin'];
+  let _currentModule = 'global';
   let _moduleChosen = true;
   let _session = null;
   let _profile = null;
+  let _profileRequest = 0;
+  let _loginInProgress = false;
 
-  // ── Calendar year selection ────────────────────────────────────────────────
-  var _calYear = (function() {
-    try { return localStorage.getItem('btv-cal-year') || '2026'; } catch(e) { return '2026'; }
-  })();
-
-  function _getCalFrameId() { return 'frame-cal-' + _calYear; }
-
-  function _calPasscode(year) {
-    return year === '2027' ? 'BTV2027' : ((window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026');
+  // There is only one cal frame now (input calendar-2026.html, year-switchable) —
+  // this always resolves to it. Kept as a function (rather than inlining the id)
+  // since callers below still read as "the currently relevant cal frame".
+  function _getCalFrameId() { return 'frame-cal-2026'; }
+  function _frameIdForModule(mod) {
+    if (mod === 'cal' || mod === 'admin') return _getCalFrameId();
+    return 'frame-' + mod;
   }
 
-  function setCalYear(year) {
-    if (year === _calYear) return;
-    var prevFrame = document.getElementById(_getCalFrameId());
-    _calYear = year;
-    try { localStorage.setItem('btv-cal-year', year); } catch(e) {}
-    document.querySelectorAll('.year-btn').forEach(function(b) {
-      b.classList.toggle('active-year', b.id === 'yearBtn' + year);
-    });
-    var calActive = document.querySelector('.top-nav-btn[data-frame="cal"]').classList.contains('active');
-    if (calActive) {
-      document.querySelectorAll('.frame').forEach(function(el) { el.classList.remove('active'); });
-      var frame = document.getElementById(_getCalFrameId());
-      if (frame) {
-        frame.classList.add('active');
-        if (_isUnlocked('cal')) {
-          _bypassFramePasscode(frame, _calPasscode(year));
-          if (_session) _startSyncInFrame(_getCalFrameId(), _session, undefined, true);
-        }
-        _pauseFrameSync(prevFrame);
-        _resumeFrameSync(frame);
-      }
-    }
+  // Both years now load the same page/frame, which only recognizes its own
+  // built-in passcode (PLANNER_DEFAULT_PASSCODE, "BTV2026") — see plannerUnlockWith
+  // in input calendar-2026.html. The old per-year "BTV2027" passcode went away
+  // with the separate 2027 file it belonged to.
+  function _calPasscode() {
+    return (window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026';
   }
 
   // Toggle a frame's Realtime/Presence/polling connections on/off — called whenever the
@@ -473,24 +447,25 @@ html, body {
     try { frame.contentWindow && frame.contentWindow.btvSyncResume && frame.contentWindow.btvSyncResume(); } catch (e) {}
   }
 
-  // Sync year picker button + active frame to _calYear on page load
-  (function _initCalYear() {
-    var btn26 = document.getElementById('yearBtn2026');
-    var btn27 = document.getElementById('yearBtn2027');
-    var f26   = document.getElementById('frame-cal-2026');
-    var f27   = document.getElementById('frame-cal-2027');
-    if (_calYear === '2027') {
-      if (btn26) btn26.classList.remove('active-year');
-      if (btn27) btn27.classList.add('active-year');
-      if (f26)   f26.classList.remove('active');
-      if (f27)   f27.classList.add('active');
+  function _showManagementView(frame, view) {
+    if (!frame) return;
+    function applyView() {
+      try {
+        var w = frame.contentWindow;
+        if (w && typeof w.switchView === 'function') w.switchView(view);
+      } catch (e) {}
     }
-  })();
+    setTimeout(applyView, 80);
+    setTimeout(applyView, 500);
+  }
 
   // ── Lazy-load iframes (called once after auth check completes) ────────────
 
   function _loadFrames() {
+    if (!_session || !_profile) return;
     document.querySelectorAll('iframe[data-src]').forEach(function(f) {
+      var permitted = MODULE_ORDER.some(function(mod) { return _frameIdForModule(mod) === f.id && _canAccess(mod); });
+      if (!permitted) return;
       var dataSrc = f.getAttribute('data-src');
       if (dataSrc && f.getAttribute('src') !== dataSrc) {
         f.setAttribute('src', dataSrc);
@@ -505,6 +480,7 @@ html, body {
   let _presenceReconnectTimer = null; // debounces reconnect attempts after a dropped channel
 
   function _setupPresence(session) {
+    if (!_profile || !_session || _session.user.id !== session.user.id) return;
     if (_presenceReconnectTimer) { clearTimeout(_presenceReconnectTimer); _presenceReconnectTimer = null; }
     if (_presenceChannel) { _sb.removeChannel(_presenceChannel); _presenceChannel = null; }
     _presenceChannel = _sb.channel('btv-online', {
@@ -556,16 +532,21 @@ html, body {
     if (countEl) countEl.textContent = users.length;
     if (wrap)    wrap.style.display  = '';
     if (listEl) {
-      listEl.innerHTML = users.map(function (u) {
+      listEl.replaceChildren();
+      users.forEach(function (u) {
         var email  = u.email || '';
         var name   = email.split('@')[0].replace(/[._]/g, ' ');
         var isYou  = u.user_id === myUserId;
-        return '<div class="online-user-row' + (isYou ? ' is-you' : '') + '">'
-          + '<span class="online-dot"></span>'
-          + '<span class="online-user-name">' + (name || email)
-          + (isYou ? ' <span style="color:#666;font-size:10px">(you)</span>' : '') + '</span>'
-          + '</div>';
-      }).join('');
+        var row = document.createElement('div');
+        row.className = 'online-user-row' + (isYou ? ' is-you' : '');
+        var dot = document.createElement('span');
+        dot.className = 'online-dot';
+        var label = document.createElement('span');
+        label.className = 'online-user-name';
+        label.textContent = (name || email) + (isYou ? ' (you)' : '');
+        row.append(dot, label);
+        listEl.append(row);
+      });
     }
   }
 
@@ -589,15 +570,16 @@ html, body {
   // Presence connection. The other three sit hidden in their iframes for the whole
   // session, so starting them "paused" avoids running 4x the necessary background
   // connections — a major contributor to Supabase Disk IO usage. Passing session/data
-  // still loads normally; btvSyncPause/btvSyncResume (called from showFrame/setCalYear)
+  // still loads normally; btvSyncPause/btvSyncResume (called from showFrame)
   // toggle the live connections on tab switch.
   function _startSyncInFrame(frameId, session, canEdit, startLive) {
     var frame = document.getElementById(frameId);
     if (!frame) return;
     function tryStart() {
+      if (!_session || _session.user.id !== session.user.id || !_profile) return false;
       try {
         if (frame.contentWindow && typeof frame.contentWindow.btvSyncStart === 'function') {
-          frame.contentWindow.btvSyncStart(session, _sb, canEdit !== false, startLive !== false);
+          frame.contentWindow.btvSyncStart(session, _sb, canEdit === true, startLive !== false);
           return true;
         }
       } catch (e) { console.error('[BTV] _startSyncInFrame error (' + frameId + '):', e); }
@@ -611,68 +593,170 @@ html, body {
     }
   }
 
+  var _syncStartedInPage = false; // see unlockCurrentModule — a second sign-in reloads
   function _startSyncInCalFrame(session, activeModule) {
-    var _ec = _profile && _profile.can_edit_product_calendar !== false;
-    var _ee = _profile && _profile.can_edit_global_calendar  !== false;
-    var _el = _profile && _profile.can_edit_linesheet        !== false;
-    var activeFrameId = activeModule === 'cal' ? _getCalFrameId() : 'frame-' + activeModule;
-    _startSyncInFrame('frame-cal-2026', session, _ec, activeFrameId === 'frame-cal-2026');
-    _startSyncInFrame('frame-cal-2027', session, _ec, activeFrameId === 'frame-cal-2027');
-    _startSyncInFrame('frame-creative', session, _ee, activeFrameId === 'frame-creative');
-    _startSyncInFrame('frame-ls',       session, _el, activeFrameId === 'frame-ls');
+    _syncStartedInPage = true;
+    var _ec = _canAccess('cal') && _profile.can_edit_product_calendar === true;
+    var _ee = _canAccess('creative') && _profile.can_edit_global_calendar === true;
+    var _el = _canAccess('ls') && _profile.can_edit_linesheet === true;
+    var activeFrameId = _frameIdForModule(activeModule);
+    if (_canAccess('global')) _startSyncInFrame('frame-global', session, false, activeFrameId === 'frame-global');
+    if (_canAccess('cal') || _canAccess('admin')) _startSyncInFrame('frame-cal-2026', session, _ec, activeFrameId === 'frame-cal-2026');
+    if (_canAccess('creative')) _startSyncInFrame('frame-creative', session, _ee, activeFrameId === 'frame-creative');
+    if (_canAccess('ls')) _startSyncInFrame('frame-ls', session, _el, activeFrameId === 'frame-ls');
   }
+
+  // ── Boot overlay stays up until the active module's data has actually
+  // loaded ──────────────────────────────────────────────────────────────────
+  // Previously #boot was removed the instant sync was *started* in the active
+  // frame, not once it finished — so people would land on a page that still
+  // had to catch up with Supabase in front of them (the "empty on first load"
+  // reports earlier). Each page's supabase-sync.js now calls
+  // window.btvFrameDataReady(frameId) once its own initial pull/fetch cycle
+  // completes; #boot only comes down once the frame the user is actually
+  // about to see has reported in. A safety-net timeout keeps this from
+  // trapping someone indefinitely if a page's sync never connects (offline,
+  // RLS misconfigured, etc.) — matches the 8s pattern used elsewhere for the
+  // same reason.
+  // Hidden (display toggle), never removed from the DOM — it has to be
+  // reusable for BOTH paths that can reveal the app: boot() finding an
+  // already-live session on page load, AND unlockCurrentModule() after
+  // someone actually types their password in and signs in. The first version
+  // of this only handled the boot() path (.remove()'d the element), which is
+  // exactly why logging in fresh — the far more common case — never showed a
+  // loading state at all: #boot was already gone by the time sign-in
+  // succeeded, and unlockCurrentModule() had nothing to wait on.
+  var _btvBootWaitingFrameId = null;
+  var _btvBootTimer          = null;
+  function _btvShowBootOverlay() {
+    const bootEl = document.getElementById('boot');
+    if (bootEl) bootEl.style.display = 'flex';
+  }
+  function _btvHideBootOverlay() {
+    if (_btvBootTimer) { clearTimeout(_btvBootTimer); _btvBootTimer = null; }
+    _btvBootWaitingFrameId = null;
+    const bootEl = document.getElementById('boot');
+    if (bootEl) bootEl.style.display = 'none';
+  }
+  function _btvWaitForFrameData(mod) {
+    _btvBootWaitingFrameId = _frameIdForModule(mod);
+    _btvShowBootOverlay();
+    if (_btvBootTimer) clearTimeout(_btvBootTimer);
+    _btvBootTimer = setTimeout(_btvHideBootOverlay, 20000);
+  }
+  window.btvFrameDataReady = function (frameId) {
+    if (_btvBootWaitingFrameId && frameId === _btvBootWaitingFrameId) _btvHideBootOverlay();
+  };
 
   async function boot() {
     const { data: { session } } = await _sb.auth.getSession();
     _session = session;
-    _loadFrames(); // safe to load iframes now — auth check is complete
     if (session) {
       await _loadProfile(session.user.id);
+      _loadFrames();
       _updateNavButtons(true);
       _setupPresence(session);
       // Auto-unlock all accessible modules and figure out which one shows first —
       // needed before starting sync so only that one page's frame goes live.
-      var _BOOT_MODS = ['cal', 'creative', 'ls'];
+      var _BOOT_MODS = MODULE_ORDER;
       _BOOT_MODS.forEach(function(m) { if (_canAccess(m)) _setUnlocked(m); });
       var _firstMod = _BOOT_MODS.find(function(m) { return _canAccess(m); }) || 'cal';
       _currentModule = _firstMod;
-      _startSyncInCalFrame(session, _firstMod);
-      showFrame(_firstMod);
+      if (_canAccess(_firstMod)) {
+        _startSyncInCalFrame(session, _firstMod);
+        showFrame(_firstMod);
+        _btvWaitForFrameData(_firstMod);
+      } else {
+        _lockWorkspace();
+      }
+    } else {
+      // Not logged in — nothing to wait for, just show the login overlay.
+      _btvHideBootOverlay();
     }
 
-    _sb.auth.onAuthStateChange(async function (event, session) {
+    _sb.auth.onAuthStateChange(function (event, session) {
+      // Supabase auth callbacks must not await another Supabase request.
+      setTimeout(async function () {
+      var previousUser = _session && _session.user.id;
       _session = session;
+      if (_syncStartedInPage && session && previousUser !== session.user.id) {
+        _lockWorkspace();
+        location.reload();
+        return;
+      }
       if (event === 'PASSWORD_RECOVERY') {
         document.getElementById('btvChangePwdModal').classList.add('show');
         return;
       }
       if (session) {
+        if (_loginInProgress) return; // The sign-in flow loads and unlocks its own profile.
         await _loadProfile(session.user.id);
         _updateNavButtons(true);
         if (!_presenceChannel) _setupPresence(session);
       } else {
+        ++_profileRequest;
         _profile = null;
+        _lockWorkspace();
         _updateNavButtons(false);
         _teardownPresence();
       }
+      _refreshOverlay();
+      }, 0);
     });
 
     _refreshOverlay();
-    const bootEl = document.getElementById('boot');
-    if (bootEl) bootEl.remove();
   }
 
   async function _loadProfile(userId) {
-    const { data } = await _sb
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    _profile = data;
+    var request = ++_profileRequest;
+    var previousProfile = _profile;
+    _profile = null;
+    var timeout;
+    try {
+      const { data, error } = await Promise.race([
+        _sb.from('user_profiles').select('*').eq('id', userId).single(),
+        new Promise(function(resolve, reject) { timeout = setTimeout(function() { reject(new Error('Profile timeout')); }, 12000); })
+      ]);
+      if (request !== _profileRequest || !_session || _session.user.id !== userId) return;
+      if (!error && data && data.id === userId) _profile = data;
+    } catch (e) {
+      console.warn('[BTV Planner] Permission profile unavailable; access denied.');
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (request === _profileRequest && !_profile) _lockWorkspace();
+    if (request === _profileRequest && _profile && previousProfile && _syncStartedInPage) {
+      var permissionFields = ['is_admin', 'can_access_product_calendar', 'can_access_global_calendar',
+        'can_access_linesheet', 'can_edit_product_calendar', 'can_edit_global_calendar', 'can_edit_linesheet'];
+      if (permissionFields.some(function(field) { return previousProfile[field] !== _profile[field]; })) {
+        _lockWorkspace();
+        location.reload();
+      }
+    }
+  }
+
+  function _lockWorkspace() {
+    MODULE_ORDER.forEach(function (mod) {
+      try { sessionStorage.removeItem('btv-unlocked-' + mod); } catch (e) {}
+    });
+    document.querySelectorAll('iframe[data-src]').forEach(function (frame) {
+      _pauseFrameSync(frame);
+      frame.setAttribute('src', 'about:blank');
+    });
+    _teardownPresence();
+    _btvHideBootOverlay();
+    document.querySelectorAll('.btv-modal-backdrop').forEach(function(modal) { modal.classList.remove('show'); });
+    document.getElementById('btvUMList').replaceChildren();
+    document.getElementById('btvNEFields').replaceChildren();
+    document.getElementById('moduleLoginOverlay').classList.add('show');
+    document.getElementById('moduleLoginError').textContent = _session
+      ? 'Your permissions could not be verified. Try signing in again or contact your admin.' : '';
   }
 
   function _updateNavButtons(loggedIn) {
-    document.getElementById('navNotifyEmailsBtn').style.display = loggedIn ? '' : 'none';
+    var isAdmin = loggedIn && _profile && _profile.is_admin === true;
+    document.getElementById('navNotifyEmailsBtn').style.display = isAdmin ? '' : 'none';
+    document.getElementById('navUserMgmtBtn').style.display     = isAdmin ? '' : 'none';
     document.getElementById('navChangePwdBtn').style.display = loggedIn ? '' : 'none';
     document.getElementById('navSignOutBtn').style.display   = loggedIn ? '' : 'none';
     _refreshTabVisibility();
@@ -681,9 +765,9 @@ html, body {
   function _refreshTabVisibility() {
     // When profile is loaded, hide tabs the user cannot access.
     // When no profile (logged out / not yet loaded), show all tabs.
-    var MODS = ['cal', 'creative', 'ls'];
+    var MODS = MODULE_ORDER;
     MODS.forEach(function(mod) {
-      var allowed = !_profile || _canAccess(mod);
+      var allowed = !_session || _canAccess(mod);
       // Top nav tab button
       var navBtn = document.querySelector('.top-nav-btn[data-frame="' + mod + '"]');
       if (navBtn) navBtn.style.display = allowed ? '' : 'none';
@@ -693,7 +777,7 @@ html, body {
     });
     // If the currently active module is now inaccessible, switch to first allowed one
     if (_profile && !_canAccess(_currentModule)) {
-      var first = ['cal', 'creative', 'ls'].find(function(m) { return _canAccess(m); });
+      var first = MODULE_ORDER.find(function(m) { return _canAccess(m); });
       if (first) {
         _currentModule = first;
         // Don't call showFrame here (avoids re-triggering overlay); just update active nav button
@@ -707,6 +791,7 @@ html, body {
   // ── Module selection & overlay ─────────────────────────────────────────────
 
   function _isUnlocked(mod) {
+    if (!_canAccess(mod)) return false;
     try { return sessionStorage.getItem('btv-unlocked-' + mod) === '1'; } catch { return false; }
   }
 
@@ -715,10 +800,13 @@ html, body {
   }
 
   function _canAccess(mod) {
-    if (!_profile) return true; // no profile yet → show everything until we know
-    if (mod === 'cal')      return _profile.can_access_product_calendar !== false;
-    if (mod === 'creative') return _profile.can_access_global_calendar !== false;
-    return _profile.can_access_linesheet !== false;
+    if (!_session || !_profile || _profile.id !== _session.user.id) return false;
+    if (mod === 'cal')      return _profile.can_access_product_calendar === true;
+    if (mod === 'global')   return _profile.can_access_global_calendar === true;
+    if (mod === 'creative') return _profile.can_access_global_calendar === true;
+    if (mod === 'admin')    return _profile.is_admin === true;
+    if (mod === 'ls')       return _profile.can_access_linesheet === true;
+    return false;
   }
 
   function _refreshOverlay() {
@@ -746,6 +834,8 @@ html, body {
   // ── Login ──────────────────────────────────────────────────────────────────
 
   async function unlockCurrentModule() {
+    if (_loginInProgress) return;
+    _loginInProgress = true;
     const emailInp = document.getElementById('moduleLoginInput');
     const pwdInp   = document.getElementById('moduleLoginPwd');
     const err      = document.getElementById('moduleLoginError');
@@ -800,6 +890,7 @@ html, body {
       }
       _session = data.session;
       await _loadProfile(data.user.id);
+      _loadFrames();
       _updateNavButtons(true);
       _setupPresence(data.session);
 
@@ -810,17 +901,36 @@ html, body {
         return;
       }
       // Unlock all accessible modules, then navigate to the first one
-      var _LOGIN_MODS = ['cal', 'creative', 'ls'];
+      var _LOGIN_MODS = MODULE_ORDER;
       _LOGIN_MODS.forEach(function(m) { if (_canAccess(m)) _setUnlocked(m); });
       var _loginFirst = _LOGIN_MODS.find(function(m) { return _canAccess(m); }) || 'cal';
       _currentModule = _loginFirst;
+      // Sync inside the iframes latches onto the first user it's started for
+      // (btvSyncStart early-returns once _started), and keeps that user's
+      // in-memory dirty keys / pending saves. If this page already started
+      // sync once — someone signed out and back in without a reload — reload
+      // now: the session is persisted, so boot() picks it up cleanly with
+      // fresh iframes bound to the right user.
+      if (_syncStartedInPage) { location.reload(); return; }
       document.getElementById('moduleLoginOverlay').classList.remove('show');
+      // _loginFirst tells this which frame is actually active — without it,
+      // activeFrameId inside _startSyncInCalFrame resolves to "frame-undefined",
+      // matches none of the four real frame ids, and every frame gets
+      // startLive:false. That meant live sync (Realtime, presence, the per-row
+      // product/entry fetches) never started at all after typing a password in
+      // and signing in — only a page reload (which goes through boot(), which
+      // already passed this) happened to work around it.
+      // Start sync BEFORE showFrame, same order as boot(): showFrame's
+      // btvSyncResume is a no-op until _started is true, so the other order
+      // relied entirely on the startLive flag to trigger the initial pull.
+      _startSyncInCalFrame(data.session, _loginFirst);
       showFrame(_loginFirst);
-      _startSyncInCalFrame(data.session);
+      _btvWaitForFrameData(_loginFirst);
     } catch (ex) {
       console.error('[BTV Planner] Sign-in failed unexpectedly:', ex);
       err.textContent = 'Something went wrong signing in. Please try again — if it keeps happening, let your admin know.';
     } finally {
+      _loginInProgress = false;
       btn.disabled    = false;
       btn.textContent = 'Sign in';
     }
@@ -852,31 +962,56 @@ html, body {
 
   // ── Sign out ───────────────────────────────────────────────────────────────
 
+  // Count saves that haven't reached Supabase yet, across every frame that
+  // exposes a counter. Signing out drops them from this tab (and the next
+  // person to sign in here must never push them under their own name).
+  function _btvUnsyncedCount() {
+    var n = 0;
+    ['frame-global', 'frame-cal-2026', 'frame-creative', 'frame-ls'].forEach(function (id) {
+      var f = document.getElementById(id);
+      try {
+        var w = f && f.contentWindow;
+        if (!w) return;
+        if (typeof w.btvSyncDirtyCount === 'function')      n += w.btvSyncDirtyCount();
+        if (typeof w.btvCalPendingSaveCount === 'function') n += w.btvCalPendingSaveCount();
+        if (typeof w.btvCcPendingSaveCount === 'function')  n += w.btvCcPendingSaveCount();
+        if (typeof w.btvLsPendingCount === 'function')      n += w.btvLsPendingCount();
+      } catch (e) {}
+    });
+    return n;
+  }
+
   async function btvSignOut() {
+    var unsynced = _btvUnsyncedCount();
+    if (unsynced > 0 && !confirm(
+      unsynced + ' change' + (unsynced === 1 ? " hasn't" : "s haven't") +
+      ' been saved to the shared database yet.\n\n' +
+      'If you sign out now, ' + (unsynced === 1 ? 'it' : 'they') + ' will be lost. ' +
+      'Cancel to stay signed in and let them finish saving (or click Retry).'
+    )) return;
     _teardownPresence();
     await _sb.auth.signOut();
     _session  = null;
     _profile  = null;
     _moduleChosen = false;
     sessionStorage.clear();
-    _updateNavButtons(false);
-    _refreshOverlay();
+    // Reload rather than just showing the login overlay: each iframe's sync
+    // module has latched onto this user (id, email, session, dirty keys) and
+    // won't re-initialise for the next person who signs in on this tab.
+    location.reload();
   }
 
   // ── Frame switching ────────────────────────────────────────────────────────
 
   function showFrame(name) {
+    if (!_canAccess(name)) { _refreshOverlay(); return; }
     var prevFrame  = document.querySelector('.frame.active');
     _moduleChosen  = true;
     _currentModule = name;
     document.querySelectorAll('.frame').forEach(function (el) { el.classList.remove('active'); });
     document.querySelectorAll('.top-nav-btn').forEach(function (el) { el.classList.remove('active'); });
 
-    // Show year picker only when Product Calendar Input tab is active
-    var picker = document.getElementById('calYearPicker');
-    if (picker) picker.style.display = name === 'cal' ? 'flex' : 'none';
-
-    var frameId = name === 'cal' ? _getCalFrameId() : 'frame-' + name;
+    var frameId = _frameIdForModule(name);
     var frame = document.getElementById(frameId);
     var btn   = document.querySelector('.top-nav-btn[data-frame="' + name + '"]');
     if (frame) frame.classList.add('active');
@@ -886,12 +1021,14 @@ html, body {
       try { lf.contentWindow.loadFromCalendar && lf.contentWindow.loadFromCalendar(); } catch (e) {}
     }
     if (_isUnlocked(name) && frame) {
-      var pc = (name === 'cal') ? _calPasscode(_calYear) : ((window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026');
+      var pc = (frameId === _getCalFrameId()) ? _calPasscode() : ((window.BTV_SUPABASE_CONFIG || {}).accessPasscode || 'BTV2026');
       _bypassFramePasscode(frame, pc);
     }
     if (!_isUnlocked(name)) {
       _refreshOverlay();
     }
+    if (name === 'admin') _showManagementView(frame, 'admin');
+    if (name === 'cal') _showManagementView(frame, 'calendar');
     // Only the page actually being shown needs a live sync connection — pause the one
     // being left, resume (or start, on first visit) the one being shown.
     if (prevFrame !== frame) _pauseFrameSync(prevFrame);
@@ -988,34 +1125,17 @@ html, body {
   // ── User Management (backed by user_profiles table) ───────────────────────
 
   function btvOpenUserMgmt() {
-    var passWrap = document.getElementById('btvUMPassWrap');
-    var panel    = document.getElementById('btvUMPanel');
-    var passErr  = document.getElementById('btvUMPassErr');
-    var passInp  = document.getElementById('btvUMPassInput');
-    passWrap.style.display = ''; panel.style.display = 'none';
-    passErr.textContent    = ''; passInp.value = '';
+    if (!_profile || _profile.is_admin !== true) return;
     document.getElementById('btvUserMgmtModal').classList.add('show');
-    setTimeout(function () { passInp.focus(); }, 80);
+    _btvUMLoad();
   }
 
   function btvCloseUserMgmt() {
     document.getElementById('btvUserMgmtModal').classList.remove('show');
   }
 
-  function btvUMVerifyPass() {
-    var inp = document.getElementById('btvUMPassInput');
-    var err = document.getElementById('btvUMPassErr');
-    if (!inp) return;
-    if (inp.value.trim() !== window.BTV_SUPABASE_CONFIG.adminPasscode) {
-      err.style.color = '#a23a2f'; err.textContent = 'Incorrect passcode.';
-      inp.select(); inp.focus(); return;
-    }
-    document.getElementById('btvUMPassWrap').style.display = 'none';
-    document.getElementById('btvUMPanel').style.display    = '';
-    _btvUMLoad();
-  }
-
   async function _btvUMLoad() {
+    if (!_canAccess('admin')) return;
     var list = document.getElementById('btvUMList');
     list.innerHTML = '<p style="color:#aaa;font-size:13px;padding:4px">Loading…</p>';
     const { data, error } = await _sb.from('user_profiles').select('*').order('email');
@@ -1027,21 +1147,40 @@ html, body {
       list.innerHTML = '<p style="color:#aaa;font-size:13px;padding:4px 6px">No users yet. Invite users in the Supabase dashboard first.</p>';
       return;
     }
-    list.innerHTML = data.map(function (u, i) {
-      var bg = i % 2 === 0 ? 'background:#f8f6f2' : '';
-      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;' + bg + '">'
-        + '<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (u.email || '') + '">' + (u.email || u.id.substring(0, 8) + '…') + '</span>'
-        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer" title="Product Calendar Input — access"><input type="checkbox"' + (u.can_access_product_calendar !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_product_calendar\',this.checked)"> Product Cal</label>'
-        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#777" title="Product Calendar Input — edit"><input type="checkbox"' + (u.can_edit_product_calendar !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_edit_product_calendar\',this.checked)"> edit</label>'
-        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer" title="Global Calendar — access"><input type="checkbox"' + (u.can_access_global_calendar !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_global_calendar\',this.checked)"> Global Cal</label>'
-        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#777" title="Global Calendar — edit"><input type="checkbox"' + (u.can_edit_global_calendar !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_edit_global_calendar\',this.checked)"> edit</label>'
-        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer" title="Linesheet — access"><input type="checkbox"' + (u.can_access_linesheet !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_access_linesheet\',this.checked)"> Linesheet</label>'
-        + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#777" title="Linesheet — edit"><input type="checkbox"' + (u.can_edit_linesheet !== false ? ' checked' : '') + ' onchange="_btvUMToggle(\'' + u.id + '\',\'can_edit_linesheet\',this.checked)"> edit</label>'
-        + '</div>';
-    }).join('');
+    if (!_canAccess('admin')) return;
+    list.replaceChildren();
+    var controls = [
+      ['can_access_product_calendar', 'Product Cal'], ['can_edit_product_calendar', 'edit'],
+      ['can_access_global_calendar', 'Global Cal'], ['can_edit_global_calendar', 'edit'],
+      ['can_access_linesheet', 'Linesheet'], ['can_edit_linesheet', 'edit']
+    ];
+    data.forEach(function(u, i) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px';
+      if (i % 2 === 0) row.style.background = '#f8f6f2';
+      var name = document.createElement('span');
+      name.style.cssText = 'flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      name.textContent = u.email || String(u.id).substring(0, 8);
+      name.title = u.email || '';
+      row.append(name);
+      controls.forEach(function(control) {
+        var label = document.createElement('label');
+        label.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer';
+        if (control[1] === 'edit') label.style.color = '#777';
+        label.title = control[0].replace(/_/g, ' ');
+        var checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = u[control[0]] === true;
+        checkbox.addEventListener('change', function() { _btvUMToggle(u.id, control[0], checkbox.checked); });
+        label.append(checkbox, document.createTextNode(' ' + control[1]));
+        row.append(label);
+      });
+      list.append(row);
+    });
   }
 
   async function _btvUMToggle(userId, field, value) {
+    if (!_canAccess('admin') || !/^can_(access|edit)_(product_calendar|global_calendar|linesheet)$/.test(field)) return;
     const update = {};
     update[field] = value;
     const { error } = await _sb.from('user_profiles').update(update).eq('id', userId);
@@ -1061,57 +1200,52 @@ html, body {
   ];
 
   function btvOpenNotifyEmails() {
-    var passWrap = document.getElementById('btvNEPassWrap');
-    var panel    = document.getElementById('btvNEPanel');
-    var passErr  = document.getElementById('btvNEPassErr');
-    var passInp  = document.getElementById('btvNEPassInput');
-    passWrap.style.display = ''; panel.style.display = 'none';
-    passErr.textContent    = ''; passInp.value = '';
+    if (!_profile || _profile.is_admin !== true) return;
     document.getElementById('btvNotifyEmailsModal').classList.add('show');
-    setTimeout(function () { passInp.focus(); }, 80);
+    _btvNELoad();
   }
 
   function btvCloseNotifyEmails() {
     document.getElementById('btvNotifyEmailsModal').classList.remove('show');
   }
 
-  function btvNEVerifyPass() {
-    var inp = document.getElementById('btvNEPassInput');
-    var err = document.getElementById('btvNEPassErr');
-    if (!inp) return;
-    if (inp.value.trim() !== window.BTV_SUPABASE_CONFIG.adminPasscode) {
-      err.style.color = '#a23a2f'; err.textContent = 'Incorrect passcode.';
-      inp.select(); inp.focus(); return;
-    }
-    document.getElementById('btvNEPassWrap').style.display = 'none';
-    document.getElementById('btvNEPanel').style.display    = '';
-    _btvNELoad();
-  }
-
   function _btvNERenderFields(values) {
     var wrap = document.getElementById('btvNEFields');
-    wrap.innerHTML = BTV_NE_ROLES.map(function (r) {
-      var v = (values[r.id] || []).join(', ');
-      return '<div class="btv-ne-role-block">'
-        + '<div class="btv-ne-role-title">' + r.label + '</div>'
-        + '<div class="btv-ne-role-tasks">Handles: ' + r.tasks + '</div>'
-        + '<textarea class="btv-modal-textarea" id="btvNEInp_' + r.id + '" placeholder="name@beyondthevines.com, name2@beyondthevines.com" rows="2">' + v + '</textarea>'
-        + '</div>';
-    }).join('');
+    wrap.replaceChildren();
+    BTV_NE_ROLES.forEach(function(r) {
+      var block = document.createElement('div');
+      block.className = 'btv-ne-role-block';
+      var title = document.createElement('div');
+      title.className = 'btv-ne-role-title';
+      title.textContent = r.label;
+      var tasks = document.createElement('div');
+      tasks.className = 'btv-ne-role-tasks';
+      tasks.textContent = 'Handles: ' + r.tasks;
+      var input = document.createElement('textarea');
+      input.className = 'btv-modal-textarea';
+      input.id = 'btvNEInp_' + r.id;
+      input.placeholder = 'name@beyondthevines.com, name2@beyondthevines.com';
+      input.rows = 2;
+      input.value = Array.isArray(values[r.id]) ? values[r.id].join(', ') : '';
+      block.append(title, tasks, input);
+      wrap.append(block);
+    });
   }
 
   async function _btvNELoad() {
+    if (!_canAccess('admin')) return;
     var wrap = document.getElementById('btvNEFields');
     wrap.innerHTML = '<p style="color:#aaa;font-size:13px;padding:4px">Loading…</p>';
     const { data, error } = await _sb.from('app_state').select('value').eq('key', BTV_NE_KEY).maybeSingle();
     if (error) {
-      wrap.innerHTML = '<p style="color:#c00;font-size:13px;padding:4px">Error loading: ' + error.message + '</p>';
+      wrap.textContent = 'Error loading notification recipients.';
       return;
     }
-    _btvNERenderFields((data && data.value) || {});
+    if (_canAccess('admin')) _btvNERenderFields((data && data.value) || {});
   }
 
   async function btvNESave() {
+    if (!_canAccess('admin')) return;
     var err = document.getElementById('btvNEErr');
     var btn = document.getElementById('btvNESaveBtn');
     err.textContent = '';
@@ -1135,16 +1269,19 @@ html, body {
   }
 
   async function btvNESendTest() {
+    if (!_canAccess('admin')) return;
     var err = document.getElementById('btvNEErr');
     var btn = document.getElementById('btvNETestBtn');
     err.textContent = ''; err.style.color = '#a23a2f';
     btn.disabled = true; btn.textContent = 'Sending…';
     try {
+      const { data: { session }, error: sessionError } = await _sb.auth.getSession();
+      if (sessionError || !session) throw new Error('Sign in again before sending a reminder.');
       const resp = await fetch(window.BTV_SUPABASE_CONFIG.url + '/functions/v1/linesheet-monday-reminder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + window.BTV_SUPABASE_CONFIG.anonKey
+          'Authorization': 'Bearer ' + session.access_token
         }
       });
       const out = await resp.json();

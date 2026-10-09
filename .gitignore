@@ -6,3 +6,28 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local Netlify folder
+.netlify
+
+# Local tools, previews, backups and generated artifacts
+/.playwright-cli/
+/_netlify_preview_slice1/
+/_archive/
+/charms .json backup/
+/tmp/
+/supabase/.temp/
+/output/*
+!/output/playwright/
+/output/playwright/*
+!/output/playwright/calendar-concurrency-check.js
+!/output/playwright/shared-sync-lock-check.js
+!/output/playwright/markdown-workflow-check.js
+!/output/playwright/creative-loading-measurements-check.js
+
+# Device-local secrets and database maintenance/data exports
+.env
+.env.*
+!.env.example
+/supabase-import-merch-csv-2026-07-24.sql
+/supabase-wipe-linesheet-products.sql

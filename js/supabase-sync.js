@@ -22,6 +22,16 @@
 (function () {
   'use strict';
 
+  // A stalled settings request must not prevent independent calendar tables loading.
+  window.btvReadWithTimeout = async function(query,label){
+    var timer,controller=new AbortController();
+    if(query && typeof query.abortSignal==='function')query=query.abortSignal(controller.signal);
+    try {
+      return await Promise.race([query,new Promise(function(resolve){timer=setTimeout(function(){resolve({data:null,error:{message:label+' request timed out. Check your connection and retry.'}});controller.abort();},10000);})]);
+    } catch(error){return {data:null,error:{message:label+': '+(error.message||'Request failed')}};}
+    finally{clearTimeout(timer);}
+  };
+
   if (!window.BTV_SUPABASE_CONFIG || !window.supabase) {
     console.warn('[BTV Sync] Config or SDK missing — sync disabled.');
     return;
@@ -31,13 +41,24 @@
 
   // Keys that are synced to Supabase
   const SYNCED_KEYS = [
-    'calendar-2026-working-v5',
+    // 'calendar-2026-working-v5' (the live entries themselves) removed — they used
+    // to be pushed as one whole-blob value on every save, so two people editing
+    // different launches at the same moment could silently overwrite each other's
+    // work. Now synced as individual rows in the calendar_entries table (one row
+    // per entry) by the btvCalEntriesInit / btvCalEntriesTeardown module in
+    // "input calendar-2026.html" — same fix already applied to linesheet_products
+    // and global_cal_entries for the same reason. Its -history/-versions/-changelog
+    // siblings below are unaffected (append-only logs, not live editable state).
     'calendar-2026-working-v5-history',
     'calendar-2026-working-v5-versions',
     'calendar-2026-working-v5-changelog',
     'calendar-2026-marketing-workflow-v1', // blob fallback kept for non-CC pages; CC page uses per-entry tables
     'calendar-2026-markdown-bars-v1',
-    'calendar-2027-working-v5',
+    // 'calendar-2027-working-v5' (the live entries themselves) removed for the
+    // same reason 'calendar-2026-working-v5' was above — input calendar-2027.html
+    // was retired in favor of input calendar-2026.html's year-switcher, so 2027's
+    // entries now sync per-row through calendar_entries (year=2027) too. Its
+    // -history/-versions/-changelog siblings below are unaffected.
     'calendar-2027-working-v5-history',
     'calendar-2027-working-v5-versions',
     'calendar-2027-working-v5-changelog',
@@ -63,10 +84,11 @@
 
   // Keys that trigger a UI re-render when changed remotely.
   const RENDER_KEYS = [
-    'calendar-2026-working-v5',
+    // 'calendar-2026-working-v5' excluded — per-entry table now, see SYNCED_KEYS
+    // comment. Its own Realtime subscription (calendar_entries) re-renders directly.
     'calendar-2026-markdown-bars-v1',
     'calendar-2026-marketing-workflow-v1',
-    'calendar-2027-working-v5',
+    // 'calendar-2027-working-v5' excluded — per-entry table now, see SYNCED_KEYS comment.
     'calendar-2027-markdown-bars-v1',
     'calendar-2027-marketing-workflow-v1',
     'creative-cal-2026-v1',
@@ -101,6 +123,7 @@
   );
   const _SYNCED_KEYS = SYNCED_KEYS.filter(function (k) { return !_pageExcludes.has(k); });
   const _RENDER_KEYS = RENDER_KEYS.filter(function (k) { return !_pageExcludes.has(k); });
+  const isLegacyMarkdownKey = key => /^calendar-\d{4}-markdown-bars-v1$/.test(key);
 
   // Capture the real setItem before we intercept it
   const _origSetItem = localStorage.setItem.bind(localStorage);
@@ -184,7 +207,7 @@
       // Pushing every synced key unconditionally risks overwriting a teammate's
       // newer save with our stale local copy of a key we didn't actually change.
       const rows = [..._dirtyKeys]
-        .filter(function (k) { return _SYNCED_KEYS.includes(k) && localStorage.getItem(k) !== null; })
+        .filter(function (k) { return _SYNCED_KEYS.includes(k) && !isLegacyMarkdownKey(k) && localStorage.getItem(k) !== null; })
         .map(function (key) {
           const raw = localStorage.getItem(key);
           let parsed; try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
@@ -285,11 +308,15 @@
   window.btvCheckVersionConflict = async function (key) {
     if (!_sb || !_lastPullTimes[key]) return false;
     try {
-      const { data } = await _sb
-        .from('app_state')
-        .select('updated_at, updated_by')
-        .eq('key', key)
-        .single();
+      // Race against a timeout — a stalled request (dead connection, no error,
+      // just never resolves) used to leave the caller's await stuck forever,
+      // which for a Save button meant "Saving…" never cleared and the form
+      // could never be submitted again. Treat a stall the same as a network
+      // error: no conflict, let the save proceed.
+      const { data } = await Promise.race([
+        _sb.from('app_state').select('updated_at, updated_by').eq('key', key).single(),
+        new Promise(resolve => setTimeout(() => resolve({ data: null }), 6000))
+      ]);
       if (!data || !data.updated_at) return false;
       const dbTime   = new Date(data.updated_at);
       const pullTime = new Date(_lastPullTimes[key]);
@@ -409,7 +436,7 @@
     _interceptorInstalled = true;
     localStorage.setItem = function (key, value) {
       _origSetItem(key, value);
-      if (!_SYNCED_KEYS.includes(key) || !_sb) return;
+      if (!_SYNCED_KEYS.includes(key) || isLegacyMarkdownKey(key) || !_sb) return;
       // Mark dirty immediately — even if offline — so that applyRow / _pullLatest
       // won't overwrite local storage with a stale remote value while our write is pending.
       _dirtyKeys.add(key);
@@ -664,10 +691,10 @@
   // localStorage. Returns false on a hard error (caller should bail out).
   async function _pullLatest() {
     console.log('[BTV Sync] Pulling latest state from cloud…');
-    const { data, error } = await _sb
+    const { data, error } = await window.btvReadWithTimeout(_sb
       .from('app_state')
       .select('key, value, updated_at')
-      .in('key', _SYNCED_KEYS);
+      .in('key', _SYNCED_KEYS),'Shared settings');
 
     if (error) {
       console.error('[BTV Sync] Pull error:', error.message);
@@ -730,7 +757,7 @@
       // Supabase is empty — push local data up as first migration
       console.log('[BTV Sync] Supabase empty — pushing local data up…');
       const rows = _SYNCED_KEYS
-        .filter(function (k) { return localStorage.getItem(k) !== null; })
+        .filter(function (k) { return !isLegacyMarkdownKey(k) && localStorage.getItem(k) !== null; })
         .map(function (key) {
           const raw = localStorage.getItem(key);
           let parsed; try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
@@ -805,6 +832,10 @@
     let pulled;
     try {
       pulled = await _pullLatest(); // catch up on anything missed while paused
+    } catch (error) {
+      pulled = false;
+      console.warn('[BTV Sync] Shared settings unavailable:', error);
+      showError('Could not load shared settings. Calendar and product sync will still be attempted. Check your connection and reload.');
     } finally {
       _hasEverPulled = true;
       _hideBar('btv-loading-bar');
@@ -814,25 +845,54 @@
     // If _goPaused was called while _pullLatest was in flight (e.g. user switched tabs
     // during the initial load), abort — don't set up Realtime/Presence/Polling on a
     // hidden tab. The connections will be started when the user switches back.
-    if (!pulled || !_liveActive) { _liveActive = false; return; }
-    await setupRealtime();
-    setupPolling();
-    await setupPresence();
+    if (!_liveActive) return;
+    // Per-row tables are independent of app_state and presence availability.
     // Let creative-calendar.html initialize its per-entry sync (global_cal_entries +
     // marketing_entries tables). Only runs on that page — other pages don't define it.
     if (typeof window.btvCcEntriesInit === 'function') {
       await window.btvCcEntriesInit(_session);
     }
-    // Let the linesheet initialize its own presence system if defined
-    if (typeof window.btvLsPresenceInit === 'function') {
-      await window.btvLsPresenceInit(_session);
+    // Same for the Product Calendar Input's own entries (calendar_entries table) —
+    // only defined on that page. See the per-entry sync module in
+    // "input calendar-2026.html". The 'calendar-2026-working-v5' blob key has been
+    // removed from SYNCED_KEYS above (see comment there) now that the live entries
+    // sync per-row instead; only its -history/-versions/-changelog siblings still
+    // go through the generic whole-blob path.
+    if (typeof window.btvCalEntriesInit === 'function') {
+      await window.btvCalEntriesInit(_session);
+    }
+    if (typeof window.btvMarkdownInit === 'function') {
+      try { await window.btvMarkdownInit(); } catch(error) { console.warn('[BTV Markdown] Startup failed:',error.message); }
     }
     // Linesheet products are synced as individual rows (not through the generic
     // whole-blob app_state path above) — see the per-row sync module in linesheet.html.
     if (typeof window.btvLsProductsInit === 'function') {
       await window.btvLsProductsInit(_session);
     }
+    if (typeof window.btvLsPresenceInit === 'function') {
+      try { await window.btvLsPresenceInit(_session); }
+      catch (error) { console.warn('[BTV Sync] Product presence unavailable:', error); }
+    }
+    if (!_liveActive) return;
+    if (pulled) {
+      try { await setupRealtime(); }
+      catch(error) { console.warn('[BTV Sync] Realtime unavailable; using polling:',error); }
+      setupPolling();
+    }
+    try { await setupPresence(); } catch (error) { console.warn('[BTV Sync] Presence unavailable:', error); }
     console.log('[BTV Sync] Live sync active.');
+
+    // Tell index.html this frame's initial data load is actually done — it keeps
+    // its boot/loading overlay up until the frame the user is about to see
+    // reports in here, instead of removing it the instant sync merely *started*
+    // (which used to let people land on a page still catching up with Supabase).
+    try {
+      var _frameId = window.frameElement && window.frameElement.id;
+      if (_frameId && window.parent && window.parent !== window &&
+          typeof window.parent.btvFrameDataReady === 'function') {
+        window.parent.btvFrameDataReady(_frameId);
+      }
+    } catch (e) {}
   }
 
   function _goPaused() {
@@ -849,6 +909,9 @@
     if (_pollingIntervalId) { clearInterval(_pollingIntervalId); _pollingIntervalId = null; }
     // Tear down the Global Calendar's per-entry Realtime channels when hidden.
     if (typeof window.btvCcEntriesTeardown === 'function') window.btvCcEntriesTeardown();
+    // Same for the Product Calendar Input's own per-entry channel.
+    if (typeof window.btvCalEntriesTeardown === 'function') window.btvCalEntriesTeardown();
+    if (typeof window.btvMarkdownTeardown === 'function') window.btvMarkdownTeardown();
     // Linesheet runs its own separate presence channel (see comment in setupPresence) —
     // tear it down too, otherwise a backgrounded Linesheet tab would keep it alive.
     if (typeof window.btvLsPresenceTeardown === 'function') window.btvLsPresenceTeardown();
@@ -864,6 +927,15 @@
     // Store edit permission before anything else; default true for back-compat
     window._btvCanEdit = (canEdit !== false);
     if (_started) {
+      // A different user in the same tab must never inherit this one's
+      // _userId/_session/_dirtyKeys (wrong updated_by, conflict check disabled,
+      // stale blobs pushed). index.html reloads on sign-out and on a second
+      // sign-in; this is the backstop if anything else ever gets here.
+      if (session && session.user && session.user.id !== _userId) {
+        console.warn('[BTV Sync] Different user in the same tab — reloading.');
+        try { window.top.location.reload(); } catch (e) { location.reload(); }
+        return;
+      }
       console.log('[BTV Sync] Already started, skipping.');
       return;
     }
@@ -908,7 +980,13 @@
   // ── Helpers exposed to parent frame / console ──────────────────────────────
 
   window.btvGetCurrentEmail  = function () { return _userEmail; };
+  window.btvGetCurrentActor = function () {
+    var user=_session && _session.user, metadata=user && user.user_metadata || {};
+    var email=user && user.email || _userEmail || '';
+    return {id:user && user.id || _userId || '',email:email,name:metadata.full_name || metadata.name || email.split('@')[0] || 'Unknown user'};
+  };
   window.btvSyncIsActive     = function () { return _started; };
+  window.btvSyncDirtyCount   = function () { return _dirtyKeys.size; };
 
   // Call from DevTools console to diagnose presence state:  window.btvDiagnosePresence to see raw data.
   window.btvDiagnosePresence = function () {
@@ -933,7 +1011,7 @@
     // local copy of a key this user didn't actually change (e.g., clicking "Retry Sync"
     // after a linesheet write failure would otherwise also push a stale calendar blob).
     const dirtyToSync = [..._dirtyKeys].filter(function (k) {
-      return _SYNCED_KEYS.includes(k) && localStorage.getItem(k) !== null;
+      return _SYNCED_KEYS.includes(k) && !isLegacyMarkdownKey(k) && localStorage.getItem(k) !== null;
     });
     if (!dirtyToSync.length) {
       showToast('Nothing to sync — all local changes are already saved.');
@@ -970,6 +1048,14 @@
       .limit(limit || 100);
     if (error) { console.warn('[BTV Sync] change_log error:', error.message); return []; }
     return data || [];
+  };
+  window.btvWriteChangeLog = async function(entries){
+    if(!_sb || !_userId || !entries || !entries.length)return false;
+    try {
+      var result=await _sb.from('change_log').insert(entries.map(function(entry){return {key:(entry.action==='markdown'?'markdown:':'linesheet:')+entry.productName,label:JSON.stringify(entry),changed_by:_userId,email:_userEmail,changed_at:new Date(entry.ts).toISOString()};}));
+      if(result.error)throw result.error;
+      return true;
+    } catch(error){console.warn('[BTV Sync] Detailed audit log was not written:',error.message);return false;}
   };
 
 })();

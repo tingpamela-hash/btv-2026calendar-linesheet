@@ -9,6 +9,11 @@
 
 
 <html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<script src="../js/product-launches.js"></script>
+<script src="../js/linesheet-identity.js"></script>
+<script src="../js/linesheet-products.js"></script>
+<script src="../js/linesheet-approvals.js"></script>
+<script src="../js/linesheet-preview.js"></script>
 
 
 
@@ -1647,6 +1652,33 @@ table.master td img { border-radius: 0 !important; }
 
 
 .table-wrap { background: #ffffff; }
+#view-master > *{flex-shrink:0}
+.variant-card{min-width:0}
+.variant-card .sku-table-wrap{max-width:100%;overflow-x:auto}
+.master-column-controls{margin:12px 0;font-size:12px}
+.master-column-controls summary{cursor:pointer;width:max-content;padding:8px 12px;border:1px solid #d8dde2;background:#fff}
+#masterColumnList{max-height:320px;overflow:auto;width:min(100%,480px);margin:8px 0;border:1px solid #d8dde2;background:#fff}
+.master-column-option{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid #eee;min-height:36px}
+.master-column-option label{flex:1;display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere}
+.master-column-option button{width:28px;height:28px;border:1px solid #d8dde2;background:#fff;cursor:pointer;font-size:16px}
+.master-column-option button:disabled{opacity:.35;cursor:default}
+#masterTable .product-group-heading td{background:#f0f2f4;border-top:1px solid #d8dde2;padding:10px 12px;text-align:left}
+#masterTable .product-group-label{position:sticky;left:12px;display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:8px;max-width:min(560px,calc(100vw - 72px));white-space:normal;overflow-wrap:anywhere}
+#masterTable .product-group-label strong{font-size:12px}
+#masterTable .product-group-count{font-size:11px;color:#61666d;font-weight:400}
+#masterTable .product-open{border:0;background:none;padding:0;color:inherit;font:inherit;font-weight:700;text-align:left;text-decoration:underline;text-decoration-style:dotted;cursor:pointer}
+.approval-controls{border:0;border-top:1px solid #d6d2cc;padding:12px 0;margin:8px 0 16px;display:flex;flex-wrap:wrap;gap:16px}
+.approval-controls legend{font-size:12px;font-weight:700;padding:0 8px 0 0}
+.approval-controls label{display:flex;flex-direction:column;gap:4px;min-width:140px;font-size:12px}
+.approval-controls label span{display:flex;align-items:center;gap:6px}
+.approval-controls small{font-size:11px;color:#61666d;overflow-wrap:anywhere}
+#masterTable{width:100%;min-width:0;table-layout:fixed}
+#masterTable th:first-child{width:56px}
+#masterTable th:nth-child(2){width:46%}
+#masterTable td{white-space:normal;overflow-wrap:anywhere;max-width:none}
+#masterTable th{white-space:normal;overflow-wrap:anywhere;line-height:1.4;vertical-align:top}
+#view-form{width:100%;max-width:none;box-sizing:border-box}
+@media(max-width:600px){#masterTable th,#masterTable td{font-size:11px;padding:8px 5px}#masterTable th:first-child{width:32px}#masterTable th:nth-child(2){width:auto}#masterTable th:nth-child(3){width:84px}#masterTable th:last-child{width:100px}.approval-controls label{min-width:120px}}
 
 
 
@@ -1932,6 +1964,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
       <nav class="nav">
+        <button class="btn" id="btv-product-back" type="button" onclick="btvLsBackToMaster()" title="Back" aria-label="Back" hidden>&#8592;</button>
 
 
 
@@ -1941,7 +1974,6 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <button id="navBtnForm" class="nav-btn active" onclick="switchView(&#39;form&#39;)">Product Form</button>
 
 
 
@@ -1951,7 +1983,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <button class="nav-btn" onclick="switchView(&#39;master&#39;)">Master Data</button>
+        <button class="nav-btn active" data-view="master" onclick="switchView(&#39;master&#39;)">Master Data</button>
 
 
 
@@ -1961,17 +1993,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <button class="nav-btn" onclick="switchView(&#39;linesheet&#39;)">Linesheet View</button>
-
-
-
-
-
-
-
-
-
-        <button class="nav-btn" onclick="switchView(&#39;dashboard&#39;)">KPI Dashboard</button>
+        <button class="nav-btn" data-view="dashboard" onclick="switchView(&#39;dashboard&#39;)">KPI Dashboard</button>
 
 
 
@@ -2030,7 +2052,9 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-      <span class="pill"><span id="selectedCount">0 SKUs</span></span>
+      <span class="pill"><span id="selectedCount">0 SKUs</span><span id="btv-sku-sync-spinner" title="Syncing products to the shared database…" style="display:none;margin-left:6px;width:10px;height:10px;border:2px solid #c9c4bb;border-top-color:#8b6f4e;border-radius:50%;vertical-align:middle;animation:btvSkuSpin .7s linear infinite"></span></span>
+      <span id="btv-ls-pending-badge" title="Click to retry now" onclick="if(typeof window.btvLsRetryPending==='function')window.btvLsRetryPending();" style="display:none;margin-left:6px;cursor:pointer;font-size:11px;font-weight:700;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:.02em;padding:3px 9px;border-radius:20px;background:#f5ead6;color:#8a5a10;border:1px solid #e0c68e;vertical-align:middle;"></span>
+      <style>@keyframes btvSkuSpin{to{transform:rotate(360deg)}}</style>
 
 
 
@@ -2080,7 +2104,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-  <div id="view-form" class="view active">
+  <div id="view-form" class="view">
 
 
 
@@ -2120,7 +2144,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <p class="small-note" style="margin-top:4px">Use one shared product form, then add colour variants underneath. Each saved variant still becomes one line in the master list.</p>
+        <p class="small-note" style="margin-top:4px" id="productApprovalStatus"></p>
 
 
 
@@ -2160,7 +2184,6 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <button class="btn" onclick="clearForm()">Clear</button>
 
 
 
@@ -2321,6 +2344,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
       <div class="section-tag">Shared Product Information</div>
+      <div id="generalApprovalControls"></div>
 
       <div id="calMarketInfo" style="display:none;background:#f0f4fa;border:1px solid #b8cde8;border-radius:6px;padding:8px 12px;font-size:11px;color:#3a5580;margin-bottom:12px;line-height:1.6">
         <span style="font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:10px">Calendar</span>&ensp;
@@ -3562,7 +3586,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-  <div id="view-master" class="view">
+  <div id="view-master" class="view active">
 
 
 
@@ -3602,7 +3626,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <p class="small-note" style="margin-top:4px">Auto-synced from the Product Calendar. Grouped by launch date. Draft &amp; Published entries both appear here.</p>
+        <p class="small-note" style="margin-top:4px">Management Calendar products. Draft &amp; Published.</p>
 
 
 
@@ -3634,6 +3658,10 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
         <button class="btn" onclick="loadFromCalendar()" title="Pull latest data from the calendar">↻ Refresh from Calendar</button>
 
+        <button class="btn" onclick="btvRebuildMasterDataFromCalendar()" title="Delete all shared Master Data and rebuild it from the Product Calendar">Rebuild from Calendar</button>
+
+        <button class="btn" onclick="btvCleanupMasterData()" title="Merge duplicate Product Name + Colour + Size records">Clean Duplicates</button>
+
 
 
 
@@ -3654,7 +3682,6 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <button class="btn btn-primary" onclick="clearForm();switchView(&#39;form&#39;)">+ Add Product</button>
 
 
 
@@ -3818,20 +3845,6 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
         </div>
 
-        <div class="field" style="margin:0">
-          <label>&nbsp;</label>
-          <label style="display:flex;align-items:center;gap:6px;font-weight:400;text-transform:none;letter-spacing:0;font-size:13px;padding:9px 0;cursor:pointer">
-            <input type="checkbox" id="masterFilterRemoved" onchange="renderMaster()">
-            Removed from Calendar only
-          </label>
-
-
-
-
-
-
-
-        </div>
 
 
 
@@ -3841,37 +3854,6 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-        <div class="field" style="margin:0">
-
-
-
-
-
-
-
-
-
-          <label>Filter Launch Date</label>
-
-
-
-
-
-
-
-
-
-          <select id="masterFilterLaunchDate" onchange="renderMaster()"><option value="">All Launch Dates</option></select>
-
-
-
-
-
-
-
-
-
-        </div>
 
 
 
@@ -3911,12 +3893,11 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-            <option value="name">Product Name</option>
+            <option value="name" selected>Product Name</option>
 
 
 
 
-            <option value="launchDate" selected>Launch Date</option>
 
 
 
@@ -4061,12 +4042,11 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
     </details>
 
-    <div id="masterColumnToggles" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:8px 0;padding:8px 12px;background:#f7f3ea;border:1px solid #e7ddc9;border-radius:8px;font-size:12px">
-      <span style="font-weight:700;color:#7a6a55;text-transform:uppercase;font-size:10px;letter-spacing:.04em">Columns</span>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="colToggle-images" onchange="btvApplyMasterColumnPrefs()"> Images</label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="colToggle-details" onchange="btvApplyMasterColumnPrefs()"> Description / Fabric / Sizing / Weight / Measurements / Washcare</label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="colToggle-calendar" onchange="btvApplyMasterColumnPrefs()"> Cal Status / Markets / Channels</label>
-    </div>
+    <details id="masterColumnToggles" class="master-column-controls">
+      <summary>Columns</summary>
+      <div id="masterColumnList"></div>
+      <button type="button" class="btn" onclick="btvResetMasterColumns()">Reset Columns</button>
+    </details>
 
 
 
@@ -4115,32 +4095,10 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
           <tr>
-            <th class="checkbox-cell" title="Select all visible rows">
-              <input type="checkbox" id="masterSelectAll" onchange="toggleSelectAllVisible(this.checked)" style="cursor:pointer">
-              <div style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;margin-top:2px;color:#7a6a55">Pick All</div>
-            </th>
-            <th title="All 3 must be ticked to enable Pick" style="min-width:110px">Approval<br><span style="font-size:9px;font-weight:400;letter-spacing:0">D / SC / M</span></th>
             <th>#</th>
-            <th class="col-images">Product Image</th>
-            <th class="col-images">Lookbook Image</th>
-            <th class="master-sortable" onclick="btvSortMasterBy('sku')" title="Click to sort">SKU<span class="sort-ind" id="sortInd-sku"></span></th>
-            <th>Barcode</th>
-            <th>HS Code (8)</th>
-            <th>HS Code (10)</th>
-            <th class="master-sortable" onclick="btvSortMasterBy('launchDate')" title="Click to sort">Launch Date<span class="sort-ind" id="sortInd-launchDate"></span></th>
             <th class="master-sortable" onclick="btvSortMasterBy('name')" title="Click to sort">Product Name<span class="sort-ind" id="sortInd-name"></span></th>
-            <th class="master-sortable" onclick="btvSortMasterBy('variant')" title="Click to sort">Colour / Variant<span class="sort-ind" id="sortInd-variant"></span></th>
             <th class="master-sortable" onclick="btvSortMasterBy('category')" title="Click to sort">Product Category<span class="sort-ind" id="sortInd-category"></span></th>
-            <th class="col-details">Description</th>
-            <th class="col-details">Fabric Composition</th>
-            <th class="col-details">Sizing</th>
-            <th class="col-details">Product Weight (g)</th>
-            <th class="col-details">Measurement Row</th>
-            <th class="col-details">Washcare</th>
-            <th class="col-pricing" title="Shows SGD RRP — hover a row's Pricing cell to see all other markets">Pricing</th>
-            <th class="col-calendar">Cal Status</th>
-            <th class="col-calendar">Markets (from Cal)</th>
-            <th class="col-calendar">Launch Channels</th>
+            <th class="col-pricing">Singapore Pricing</th>
           </tr>
 
 
@@ -4693,7 +4651,7 @@ details.master-tools-collapsed[open] summary::before{content:'－'}
 
 
 
-    <button class="btn" onclick="clearChangeLog()">Clear Change History</button>
+    <button class="btn" onclick="clearChangeLog()" title="Clear device history; shared audit records are retained">Clear Local History</button>
 
 
 
@@ -5302,6 +5260,21 @@ function _btvLookup(productName,colour){
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Bump this string whenever the shared linesheet_products table is wiped/reset.
+// On mismatch, every browser drops its stale local cache instead of re-pushing
+// deleted products back up to Supabase on next load (see _fetchAll's
+// "local-only rows" push-up, which would otherwise resurrect a wipe).
+var BTV_LS_CACHE_EPOCH = '2026-07-22-wipe3-fix-resurrection';
+(function _btvLsCacheEpochCheck(){
+  try {
+    var stored = localStorage.getItem('btv_linesheet_products_epoch');
+    if (stored !== BTV_LS_CACHE_EPOCH) {
+      localStorage.removeItem('btv_linesheet_products');
+      localStorage.setItem('btv_linesheet_products_epoch', BTV_LS_CACHE_EPOCH);
+    }
+  } catch(e) {}
+})();
+
 let products = [];
 
 
@@ -5315,6 +5288,47 @@ let products = [];
 let editingGroupId = null;
 // Mirror on window so presence event listeners (and any other closure) can always reach it.
 window._btvCurrentGroupId = null;
+
+// Gates Supabase writes from the calendar→linesheet rebuild until the products table
+// has been fetched at least once this session — see _fetchAll / _btvDiffAndSyncProducts.
+window._btvLsRemoteReady = false;
+
+// Purely visual — lets people know the page is showing local data until the real
+// shared list has loaded. Not a blocking wait: the page still renders normally while
+// this is up, since the app is local-first by design (offline banner, retry-on-write,
+// etc.). Auto-hides after 8s regardless, so it can never get stuck up if sync never
+// connects (not logged in yet, offline, etc.) — matches _btvLsRemoteReady staying
+// false forever in that case, which is also the safe outcome for writes.
+(function () {
+  var BAR_ID = 'btv-lsp-initial-load-bar';
+  function show() {
+    if (!document.body || document.getElementById(BAR_ID)) return;
+    var el = document.createElement('div');
+    el.id = BAR_ID;
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10000;pointer-events:none;' +
+      'display:flex;align-items:center;justify-content:center;gap:10px;padding:7px 16px;' +
+      'font-size:12px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.18);' +
+      "font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:#fff7e0;color:#7a5b00;";
+    el.textContent = '⏳ Loading latest data from the shared database…';
+    document.body.insertBefore(el, document.body.firstChild);
+  }
+  function hide() {
+    var el = document.getElementById(BAR_ID);
+    if (el) el.remove();
+  }
+  window._btvLsHideInitialLoadBar = hide;
+  if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+  setTimeout(hide, 8000);
+})();
+
+// Deterministic short hash (djb2) — used to derive stable ids/groupIds from text so
+// that two devices computing "no existing match, create new" at the same moment land
+// on the SAME generated id instead of two different random ones (see uses below).
+function _btvStableHash(str){
+  var h = 5381, s = String(str || '');
+  for(var i=0;i<s.length;i++){ h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; }
+  return h.toString(36);
+}
 
 
 
@@ -5354,19 +5368,63 @@ function escapeHtml(value=''){ return String(value).replace(/&/g,'&amp;').replac
 
 
 
+var _btvLsMasterPosition = null;
+var _btvLsBackPending = false;
+function btvLsCaptureMasterPosition(){
+  var view=document.getElementById('view-master'),table=document.getElementById('masterTable').parentElement;
+  return {x:window.scrollX,y:window.scrollY,top:view.scrollTop,left:view.scrollLeft,tableLeft:table.scrollLeft};
+}
+function btvLsBackToMaster(){
+  if(_btvLsBackPending)return;
+  if(window._btvLsSaving||window._btvLsSaveChecking){alert('Please wait until this product has finished saving.');return;}
+  if(history.state && ['product','overview'].includes(history.state.btvLsRoute)) {_btvLsBackPending=true;history.back();}
+  else switchView('master');
+}
+window.addEventListener('popstate',function(event){
+  _btvLsBackPending=false;
+  var gid=window._btvCurrentGroupId;
+  if(gid && (!event.state || event.state.btvLsRoute!=='product' || event.state.groupId!==gid)){
+    switchView('master');
+    if(document.getElementById('view-form').classList.contains('active')){
+      history.pushState({btvLsRoute:'product',groupId:gid},'');return;
+    }
+  }
+  if(event.state && event.state.btvLsRoute==='overview') {
+    btvLsOpenProduct(event.state.productId);
+  } else if(event.state && event.state.btvLsRoute==='product') {
+    if(gid!==event.state.groupId)editGroup(event.state.groupId);
+  } else {
+    switchView('master');
+    if(document.getElementById('view-form').classList.contains('active')) {
+      history.pushState({btvLsRoute:'product',groupId:gid},'');
+    }
+  }
+});
 function switchView(view){
-            try{ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }catch(e){}
+  if ((window._btvLsSaving || window._btvLsSaveChecking) && view !== 'form') { alert('Please wait until this product has finished saving.'); return false; }
+  if (view === 'form' && (window._btvCanEdit === false || !editingGroupId)) view = 'master';
+  const targetView = document.getElementById('view-' + view);
+  if (!targetView) return;
             // If leaving the product form, guard unsaved changes and clear presence
             if (view !== 'form') {
               if (_btvFormDirty) {
-                if (!confirm('You have unsaved changes in the Product Form. Leave without saving?')) return;
+                if (!confirm('You have unsaved changes in the Product Form. Leave without saving?')) return false;
                 _btvSetDirty(false);
               }
               if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
               window._btvCurrentLaunchItem = null;
               if (window._btvCurrentLsUnlocker) { window.removeEventListener('btv-presence-changed', window._btvCurrentLsUnlocker); window._btvCurrentLsUnlocker = null; }
               var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
+              // Release the hard lock (if held) on every path the form can be left by —
+              // Save, Cancel, Delete, switching tabs — they all end up calling switchView
+              // away from 'form'.
+              if (typeof _btvLsStopLockTimers === 'function') _btvLsStopLockTimers();
+              if (typeof _btvLsRemoveHardLockBanner === 'function') _btvLsRemoveHardLockBanner();
+              if (_btvLsHeldLockId && typeof _btvLsReleaseLock === 'function') _btvLsReleaseLock(_btvLsHeldLockId);
+              window._btvCurrentGroupId = null;
+              editingGroupId = null;
             }
+            try{ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }catch(e){}
             document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
 
 
@@ -5377,7 +5435,7 @@ function switchView(view){
 
 
 
-  var __sv=document.getElementById('view-' + view);
+  var __sv=targetView;
 
 
 
@@ -5388,6 +5446,7 @@ function switchView(view){
 
 
   __sv.classList.add('active');
+  document.getElementById('btv-product-back').hidden = view !== 'form' && view !== 'overview';
 
   // Re-apply field locks and co-edit bar when switching back to the product form.
   var _fvGid = window._btvCurrentGroupId || editingGroupId;
@@ -5424,8 +5483,9 @@ function switchView(view){
 
 
 
-  if (view === 'form' && window._btvCanEdit === false) view = 'master';
-  const map = {form:0, master:1, linesheet:2, dashboard:3};
+  const navView = view === 'form' ? 'master' : view;
+  const navBtn = document.querySelector('.nav-btn[data-view="' + navView + '"]');
+  if (navBtn) navBtn.classList.add('active');
 
 
 
@@ -5435,17 +5495,15 @@ function switchView(view){
 
 
 
-  document.querySelectorAll('.nav-btn')[map[view]].classList.add('active');
-
-
-
-
-
-
-
-
-
-  if(view === 'master'){ btvLoadMasterColumnPrefs(); renderMaster(); }
+  if(view === 'master'){
+    btvLoadMasterColumnPrefs(); renderMaster();
+    if(_btvLsMasterPosition){
+      var position=_btvLsMasterPosition;
+      targetView.scrollTop=position.top;targetView.scrollLeft=position.left;
+      document.getElementById('masterTable').parentElement.scrollLeft=position.tableLeft;
+      window.scrollTo(position.x,position.y);
+    }
+  }
 
 
 
@@ -5499,8 +5557,18 @@ function switchView(view){
 // actually changed (added, edited, or removed) instead of rewriting everything — used by
 // bulk reconciliation passes like loadFromCalendar, which can touch many products at once
 // but should still only ever persist the ones it genuinely changed.
-function _btvDiffAndSyncProducts(beforeArr, afterArr){
+async function _btvDiffAndSyncProducts(beforeArr, afterArr){
+  if (window._btvCanEdit !== true) return;
   if (typeof window.btvLsUpsertProducts !== 'function') return;
+  if (!window._btvLsRemoteReady) {
+    // Remote products haven't been fetched yet this session (see btvLsProductsInit's
+    // _fetchAll), so "existing" matching above ran against an incomplete/empty local
+    // list. Writing now would upsert rows that look blank-but-new to Supabase and
+    // silently wipe out already-saved fields on real products. Skip — _fetchAll()
+    // re-triggers this function once the real remote state is in, which then syncs
+    // any genuine diffs correctly.
+    return;
+  }
   var beforeMap = {};
   beforeArr.forEach(function(p){ beforeMap[p.id] = p; });
   var afterIds = {};
@@ -5510,8 +5578,21 @@ function _btvDiffAndSyncProducts(beforeArr, afterArr){
     return !prev || JSON.stringify(prev) !== JSON.stringify(p);
   });
   var toDelete = beforeArr.filter(function(p){ return !afterIds[p.id]; }).map(function(p){ return p.id; });
-  if (toDelete.length) window.btvLsDeleteProducts(toDelete);
-  if (toUpsert.length) window.btvLsUpsertProducts(toUpsert);
+  if (typeof window.btvLsActiveGroupLocks === 'function' && (toUpsert.length || toDelete.length)) {
+    try {
+      var groups = Array.from(new Set(beforeArr.concat(afterArr).map(function(p){return p.groupId || p.id;})));
+      var blocked = await window.btvLsActiveGroupLocks(groups);
+      var blockedVariants = new Set(beforeArr.filter(function(p){return blocked.has(p.groupId || p.id);}).map(function(p){return btvMasterVariantKey(p.name,p.variant,'');}));
+      function eligible(p){return !blocked.has(p.groupId || p.id) && !blockedVariants.has(btvMasterVariantKey(p.name,p.variant,''));}
+      var deferred = toUpsert.some(function(p){return !eligible(p);}) || toDelete.some(function(id){return !eligible(beforeMap[id]);});
+      toUpsert = toUpsert.filter(eligible);
+      toDelete = toDelete.filter(function(id){return eligible(beforeMap[id]);});
+      if (deferred) window.btvLsScheduleCalendarReconcile();
+    } catch (error) { window.btvLsScheduleCalendarReconcile(); return; }
+  }
+  // Keep original rows until the consolidated data is confirmed saved.
+  if (toUpsert.length && await window.btvLsUpsertProducts(toUpsert,{background:true}) !== true) { if(window.btvLsScheduleCalendarReconcile)window.btvLsScheduleCalendarReconcile(); return; }
+  if (toDelete.length) await window.btvLsDeleteProducts(toDelete,{background:true});
 }
 
 function loadFromCalendar(notifyNew){
@@ -5579,122 +5660,17 @@ function loadFromCalendar(notifyNew){
 
 
       // Preserve any manually-enriched fields (description, washcare, fabric, sku, barcode, images, pricing)
-
-
-
-
-
-
-
-
-
-      const existingMap = {};
-
-
-
-
-
-
-
-
-
-      products.forEach(p => {
-
-
-
-
-
-
-
-
-
-        const key = [p.launchDate, p.category, p.name, p.variant].join('|');
-
-
-
-
-
-
-
-
-
-        existingMap[key] = p;
-
-
-
-
-
-
-
-
-
-      });
-
-
-
-
-
-
-
-
-
-      const __btvFuzzyMap = {};
-
-
-
-
-
-
-
-
-
-      products.forEach(p => {
-
-
-
-
-
-
-
-
-
-        var fk = _btvNorm(p.name) + '|' + _btvNorm(p.variant);
-
-
-
-
-
-
-
-
-
-        if(fk && !__btvFuzzyMap[fk]) __btvFuzzyMap[fk] = p;
-      });
-
-      // Stable per-line identifier lookup — takes priority over every fuzzy match below,
-      // since a calLineId survives renames/recolours/reprices/date shifts that break
-      // the name+colour-based matching those fallbacks rely on.
-      const __btvLineIdMap = {};
-      products.forEach(p => {
-        if(p.calLineId) __btvLineIdMap[p.calLineId] = p;
-
-
-
-
-
-
-
-
-
-      });
-
-
-
-
-
-
-
-
+      //
+      // Deterministic defaults for genuinely new calendar records. Existing Master
+      // Data is matched by stable colour links or exact name/colour/size identity.
+      function _btvComputeProductId(row){
+        if(row.calColourId) return 'p_' + row.calColourId;
+        if(row.calLineId)   return 'p_' + row.calLineId + '_' + _btvStableHash(row.colour);
+        // Fully legacy row with neither id (shouldn't occur once the calendar-side
+        // backfill has run) — hash the row's own content so that even this fallback
+        // is deterministic rather than random, and can't itself cause duplication.
+        return 'p_' + _btvStableHash([row.launchDate, row.category, row.productName, row.colour].join('|'));
+      }
 
       const __btvKeyToGroupId = new Map();
 
@@ -5770,7 +5746,7 @@ function loadFromCalendar(notifyNew){
 
 
 
-      // Deduplicate: same name+category+colour keeps the earliest launch date; collects all sizes
+      // Category text must not fork a Master Data colour; collect dates and sizes.
 
 
 
@@ -5785,7 +5761,7 @@ function loadFromCalendar(notifyNew){
 
 
 
-        const dk = [(row.productName||'').trim().toLowerCase(),(row.category||'').trim(),(row.colour||'').trim().toLowerCase()].join('|');
+        const dk = JSON.stringify([btvNormaliseMasterPart(row.productName), btvNormaliseMasterPart(row.colour)]);
 
 
 
@@ -5865,7 +5841,8 @@ function loadFromCalendar(notifyNew){
 
 
 
-      products = __btvCalRows.map(row => {
+      var __btvConsumedProductIds = new Set();
+      products = __btvCalRows.flatMap(row => {
 
 
 
@@ -5875,38 +5852,16 @@ function loadFromCalendar(notifyNew){
 
 
 
-        const key = [row.launchDate, row.category, row.productName, row.colour].join('|');
+        const __btvComputedId = _btvComputeProductId(row);
 
 
 
 
 
-
-
-
-
-        let existing = row.calLineId ? __btvLineIdMap[row.calLineId] : null;
-        if(!existing) existing = existingMap[key];
-
-
-
-
-
-
-
-
-
-        if(!existing){ var __btvFk=_btvNorm(row.productName)+'|'+_btvNorm(row.colour); existing=__btvFuzzyMap[__btvFk]||null; }
-
-
-
-
-
-
-
-
-
-        if(!existing){ var __btvBest=null,__btvBestSc=0; products.forEach(function(p){ if(_btvNorm(p.name)===_btvNorm(row.productName)){ var sc=_btvColourScore(row.colour,p.variant); if(sc>__btvBestSc){__btvBestSc=sc;__btvBest=p;} } }); if(__btvBestSc>=50) existing=__btvBest; }
+        // Reuse saved size-level identities; calendar IDs are only defaults for new rows.
+        return BtvLinesheetIdentity.calendarRecords(row, __btvPreSyncProducts, __btvComputedId).map(function(plan){
+        plan.consumedIds.forEach(function(id){ __btvConsumedProductIds.add(id); });
+        let existing = plan.existing;
 
 
 
@@ -5947,7 +5902,11 @@ function loadFromCalendar(notifyNew){
 
 
 
-          __btvGid = (existing && existing.groupId) || uid('group');
+          // Deterministic fallback (not a random uid) — if two devices resync at the
+          // same time before either has fetched the other's Supabase state, they must
+          // independently compute the SAME groupId for the same product name, or the
+          // product's colours end up scattered across two groups until the next sync.
+          __btvGid = (existing && existing.groupId) || (__btvCompound ? ('g_' + _btvStableHash(__btvCompound)) : uid('group'));
 
 
 
@@ -5978,6 +5937,8 @@ function loadFromCalendar(notifyNew){
 
 
         const __btvRow = {
+          // Calendar refresh replaces launch properties, not departmental work.
+          ...(existing || {}),
 
 
 
@@ -5987,7 +5948,13 @@ function loadFromCalendar(notifyNew){
 
 
 
-          id: existing ? existing.id : uid('product'),
+          // Existing IDs and departmental metadata survive editor/calendar round trips.
+          id: plan.id,
+
+          uniqueId: existing ? (existing.uniqueId || existing.id) : plan.id,
+          size: plan.size,
+          variantFormId: existing ? BtvLinesheetIdentity.formId(existing) : __btvComputedId,
+          variantLocalId: (existing ? BtvLinesheetIdentity.formId(existing) : __btvComputedId) + '::' + btvNormaliseMasterPart(plan.size),
 
 
 
@@ -6009,6 +5976,7 @@ function loadFromCalendar(notifyNew){
 
           calEntryId: row.calEntryId || "",
           calLineId: row.calLineId || "",
+          calColourId: row.calColourId || "",
           calRemoved: false,
           calSection: row.calSection || "global",
           calWeekId: row.calWeekId || "",
@@ -6123,7 +6091,7 @@ function loadFromCalendar(notifyNew){
 
 
 
-          measurementMatrix:   existing ? existing.measurementMatrix   : (__btvGS.measurementMatrix || []),
+          measurementMatrix: JSON.parse(JSON.stringify((existing ? existing.measurementMatrix : __btvGS.measurementMatrix) || [])),
 
 
 
@@ -6317,7 +6285,14 @@ if(__btvLk){
   if(!__btvRow.fabric&&__btvLk.f) __btvRow.fabric=__btvLk.f;
   if(!__btvRow.description&&__btvLk.d) __btvRow.description=__btvLk.d;
 }
-return __btvEnrichRowWithPrices(__btvRow);
+var enriched=__btvEnrichRowWithPrices(__btvRow);
+if(existing){
+  ['general','variant'].forEach(function(scope){
+    if(BtvLinesheetApprovals.signature(existing,scope)!==BtvLinesheetApprovals.signature(enriched,scope))enriched[scope+'Approvals']={};
+  });
+}
+return BtvLinesheetApprovals.derive(enriched);
+        });
 
 
 
@@ -6338,43 +6313,13 @@ return __btvEnrichRowWithPrices(__btvRow);
 
 
 
-      // SAFETY — two gaps that caused historical data loss:
-      //
-      // GAP A: products not in linesheetCalendarData silently vanish.
-      //   Fix: re-add any pre-sync product that was not matched (by calEntryId or name+variant)
-      //   by any incoming calendar row.
-      //
-      // GAP B: empty linesheetCalendarData (e.g. another session with blank calendar)
-      //   wipes everything.
-      //   Fix: if the rebuilt list is empty but we had products before, restore the snapshot.
-      (function(){
-        // Orphan rescue (Gap A) — a product whose calLineId is still present in this sync's
-        // calendar rows was already matched above and is already in `products`, so it can't
-        // reach this filter. What's left are lines that genuinely no longer exist in the
-        // calendar (deleted, or legacy products from before calLineId existed that no
-        // matching fell back to). Per team decision: never auto-delete — flag as
-        // "Removed from Calendar" so it's easy to find and review, keeping every field
-        // (SKU, barcode, images, HS code) intact until someone deliberately removes it.
-        var _calLineIds   = new Set(products.map(function(p){ return p.calLineId; }).filter(Boolean));
-        var _calFuzzyKeys = new Set(products.map(function(p){ return _btvNorm(p.name)+'|'+_btvNorm(p.variant); }).filter(Boolean));
-        var _calEntryIds  = new Set(products.map(function(p){ return p.calEntryId; }).filter(Boolean));
-        var _orphans = __btvPreSyncProducts.filter(function(p){
-          if(p.calLineId) return !_calLineIds.has(p.calLineId);
-          if(p.calEntryId && _calEntryIds.has(p.calEntryId)) return false;
-          var fk = _btvNorm(p.name)+'|'+_btvNorm(p.variant);
-          return !(fk && _calFuzzyKeys.has(fk));
-        });
-        if(_orphans.length){
-          console.warn('[BTV LS] Orphan rescue: keeping', _orphans.length, 'products no longer found in the calendar (flagged Removed from Calendar):', _orphans.map(function(p){return p.name+'/'+p.variant;}));
-          products = products.concat(_orphans.map(function(p){ return Object.assign({}, p, {calRemoved:true}); }));
-        }
-        // Total-wipe guard (Gap B)
-        if(products.length === 0 && __btvPreSyncProducts.length > 0){
-          console.warn('[BTV LS] Total-wipe guard: calendarRows produced 0 products but', __btvPreSyncProducts.length, 'existed — restoring snapshot.');
-          products = __btvPreSyncProducts;
-        }
-      })();
-      var __btvNewPush=products.filter(function(p){var k=[p.launchDate,p.category,p.name,p.variant].join("|");return !existingMap[k];});
+      // The calendar snapshot is authoritative, including removal of its final row.
+      // Keep only legacy/manual records outside calendar ownership.
+      const manualProducts = __btvPreSyncProducts.filter(p => !__btvConsumedProductIds.has(p.id) && !p.calEntryId && !p.calLineId && !p.calColourId);
+      const activeIds = new Set(products.map(p => p.id));
+      products = products.concat(manualProducts.filter(p => !activeIds.has(p.id)));
+      var __btvPreSyncIds = new Set(__btvPreSyncProducts.map(function(p){ return p.id; }));
+      var __btvNewPush = products.filter(function(p){ return !__btvPreSyncIds.has(p.id); });
 
 
 
@@ -6574,7 +6519,10 @@ return __btvEnrichRowWithPrices(__btvRow);
 
 
 
-  products.forEach(function(p){ p.linesheetComplete=false; });
+  products.forEach(function(p){
+    p.linesheetComplete = btvAllApproved(p);
+    if (!p.linesheetComplete) p.selectedForLinesheet = false;
+  });
 
 
 
@@ -7732,6 +7680,7 @@ function getMeasurementMatrix(){
 
 
     point: row.label.trim(),
+    tolerance: row.tolerance ?? '',
 
 
 
@@ -7771,7 +7720,7 @@ function getMeasurementMatrix(){
 
 
 
-      return {size: size || '', inch: entry.inch || '', cm: entry.cm || ''};
+      return {size: size || '', inch: entry.inch ?? '', cm: entry.cm ?? ''};
 
 
 
@@ -7927,6 +7876,8 @@ function buildSKUBarcodeTable(sizes, sizeSKUs, sizeBarcodes){
 
 
   sizeSKUs = sizeSKUs || {}; sizeBarcodes = sizeBarcodes || {};
+  var knownSizes=Array.from(new Set(Object.keys(sizeSKUs).concat(Object.keys(sizeBarcodes))));
+  if(knownSizes.length)sizes=knownSizes;
 
 
 
@@ -8134,6 +8085,41 @@ function btvMovePricingCardBelowShared(){
   sharedCard.parentNode.insertBefore(pricingCard, sharedCard.nextSibling);
 }
 
+function btvApprovalHtml(approvals,scope){
+  return '<fieldset class="approval-controls" data-approval-scope="'+scope+'"><legend>'+(scope==='general'?'General Information Approval':'Variant Information Approval')+'</legend>'+BtvLinesheetApprovals.roles.map(function(role){
+    var a=approvals && approvals[role],label={designer:'Design',sc:'Supply Chain',merch:'Merch'}[role];
+    var detail=a && a.approved?((a.actorName||a.actorEmail||'Approved')+(a.at?' · '+new Date(a.at).toLocaleDateString('en-SG',{timeZone:'Asia/Singapore'}):'')):'Pending';
+    return '<label><span><input type="checkbox" data-approval-role="'+role+'" '+(a&&a.approved?'checked':'')+' onchange="btvConfirmScopeApproval(this)"> '+label+'</span><small>'+escapeHtml(detail)+'</small></label>';
+  }).join('')+'</fieldset>';
+}
+function btvApprovalReviewSnapshot(container){
+  var scope=container.closest('.variant-card'),root=scope||document.getElementById('view-form');
+  return JSON.stringify(Array.from(root.querySelectorAll('input,select,textarea')).filter(function(input){return !input.matches('[data-approval-role],#productSearch') && (scope || !input.closest('.variant-card'));}).map(function(input){return [input.id||input.className,input.dataset.size||'',input.value];}));
+}
+function btvConfirmScopeApproval(input){
+  input.dataset.confirmed=input.checked?'true':'false';
+  input._btvReviewSnapshot=btvApprovalReviewSnapshot(input.closest('.approval-controls'));
+  input.closest('label').querySelector('small').textContent='Pending save';
+  _btvSetDirty(true);
+}
+function btvReadApprovalControls(container){
+  var flags={},confirmed={};
+  var snapshot=btvApprovalReviewSnapshot(container);
+  container.querySelectorAll('[data-approval-role]').forEach(function(input){flags[input.dataset.approvalRole]=input.checked;confirmed[input.dataset.approvalRole]=input.dataset.confirmed==='true' && input._btvReviewSnapshot===snapshot;});
+  return {flags:flags,confirmed:confirmed};
+}
+function btvScopeApprovals(rows,scope){
+  return Object.fromEntries(BtvLinesheetApprovals.roles.map(function(role){return [role,rows.length && rows.every(function(p){return !!p[scope]?.[role]?.approved;})?rows[0][scope][role]:{approved:false}];}));
+}
+function btvLoadGeneralApprovals(rows){
+  document.getElementById('generalApprovalControls').innerHTML=btvApprovalHtml(btvScopeApprovals(rows,'generalApprovals'),'general');
+  document.getElementById('productApprovalStatus').textContent=rows.every(BtvLinesheetApprovals.ready)?'Approved':'Awaiting general or variant approval';
+}
+document.addEventListener('input',function(event){
+  if(!event.target.closest('#view-form') || event.target.matches('[data-approval-role],#productSearch'))return;
+  var scope=event.target.closest('.variant-card')||document.getElementById('generalApprovalControls');
+  scope.querySelectorAll('[data-approval-role]').forEach(function(input){input.checked=false;input.dataset.confirmed='false';input.closest('label').querySelector('small').textContent='Pending';});
+});
 function addVariantCard(prefill={}){
 
 
@@ -8204,6 +8190,7 @@ function addVariantCard(prefill={}){
 
 
 
+    ${btvApprovalHtml(prefill.variantApprovals,'variant')}
     <div class="variant-head" style="margin-bottom:8px">
 
 
@@ -8254,7 +8241,6 @@ function addVariantCard(prefill={}){
 
 
 
-      <div class="field" style="margin:0">
 
 
 
@@ -8264,37 +8250,7 @@ function addVariantCard(prefill={}){
 
 
 
-        <label>Launch Date <span class="team-badge merch">Merch</span></label>
-
-
-
-
-
-
-
-
-
-        <input type="date" class="variant-launch-date" value="${escapeHtml(prefill.launchDate || '')}">
-
-
-
-
-
-
-
-
-
-      </div>
-
-
-
-
-
-
-
-
-
-      <div class="field" style="margin:0">
+      <div class="field" style="margin:0;grid-column:1 / -1">
 
 
 
@@ -8526,6 +8482,8 @@ function addVariantCard(prefill={}){
 
 
   wrap.appendChild(div);
+  div._btvApprovalSignature=BtvLinesheetApprovals.signature(prefill,'variant');
+  div._btvApprovals=prefill.variantApprovals||{};
 
 
 
@@ -8595,7 +8553,6 @@ function removeVariantCard(btn){
 
 
 
-    const ld = cards[0].querySelector('.variant-launch-date'); if(ld) ld.value = '';
 
 
 
@@ -8811,18 +8768,13 @@ function processVariantFile(file, card, type){
 
 
       if(typeof renderDashboard==='function') renderDashboard();
-
-
-
-
-      var __btvWebUrl=BTV_LS_WEBHOOK_URL;
-
-
-
-
-      if(__btvWebUrl && typeof btvNotifyChangeBatch==='function') btvNotifyChangeBatch(__btvWebUrl, buildLsTeamsSummary([_entry]));
-
-
+      // Deliberately no webhook send here — picking/dropping a file is not the
+      // same as saving. This used to fire a Teams message immediately, before
+      // the user had even clicked Save (or if they went on to Cancel), which is
+      // why an "Uploaded" message could show up for a change that was never
+      // actually saved. The changelog entry above is enough: the product-save
+      // handler already sends one webhook per Save covering every field changed
+      // since the form opened, image uploads included.
 
 
     }catch(_e){}
@@ -9091,6 +9043,7 @@ function collectVariantData(){
 
 
       cardEl: card,
+      approvalInput: btvReadApprovalControls(card),
 
 
 
@@ -9100,7 +9053,6 @@ function collectVariantData(){
 
 
 
-      launchDate: (card.querySelector('.variant-launch-date')||{value:''}).value||'',
 
 
 
@@ -9157,6 +9109,178 @@ function collectVariantData(){
 
 }
 
+// Master Data is stored one row per product name, colour and size. The form keeps
+// SKU fields together in a colour card, so expand each card only at save time.
+function btvNormaliseMasterPart(value){
+  return String(value || '').trim().toLowerCase();
+}
+
+function btvMasterVariantKey(name, colour, size){
+  return [name, colour, size].map(btvNormaliseMasterPart).join('|');
+}
+
+function btvFormSizeTokens(){
+  var sizes = getSizeTokens().map(function(size){ return String(size || '').trim(); }).filter(Boolean);
+  return sizes.length ? sizes : ['One Size'];
+}
+
+function btvExpandFormVariants(variants){
+  var sizes = btvFormSizeTokens();
+  return variants.reduce(function(rows, variant){
+    if(!(variant.variant || variant.sku || variant.barcode || variant.productImg || variant.lookbookImg)) return rows;
+    var variantSizes=Array.from(new Set(Object.keys(variant.sizeSKUs||{}).concat(Object.keys(variant.sizeBarcodes||{}))));
+    (variantSizes.length?variantSizes:sizes).forEach(function(size){
+      var row = Object.assign({}, variant);
+      row.variantFormId = variant.variantLocalId;
+      row.size = size;
+      row.variantLocalId = variant.variantLocalId + '::' + btvNormaliseMasterPart(size);
+      row.sizeSKUs = {};
+      row.sizeBarcodes = {};
+      row.sku = (variant.sizeSKUs && variant.sizeSKUs[size]) || '';
+      row.barcode = (variant.sizeBarcodes && variant.sizeBarcodes[size]) || '';
+      row.sizeSKUs[size] = row.sku;
+      row.sizeBarcodes[size] = row.barcode;
+      rows.push(row);
+    });
+    return rows;
+  }, []);
+}
+
+function btvMasterRecordKeys(product){
+  var sizes = btvMasterSizesForRecord(product);
+  return sizes.map(function(size){ return btvMasterVariantKey(product.name, product.variant, size); });
+}
+
+function btvMasterSizesForRecord(product){
+  var sizes = product && product.size ? [product.size] : [];
+  if(!sizes.length){
+    sizes = String((product && product.sizing) || '').split(',').map(function(size){ return size.trim(); }).filter(Boolean);
+    Object.keys((product && product.sizeSKUs) || {}).forEach(function(size){ if(sizes.indexOf(size) < 0) sizes.push(size); });
+    Object.keys((product && product.sizeBarcodes) || {}).forEach(function(size){ if(sizes.indexOf(size) < 0) sizes.push(size); });
+  }
+  if(!sizes.length) sizes = ['One Size'];
+  return sizes;
+}
+
+function btvValueIsPresent(value){
+  if(Array.isArray(value)) return value.length > 0;
+  if(value && typeof value === 'object') return Object.keys(value).length > 0;
+  return value !== undefined && value !== null && String(value).trim() !== '';
+}
+
+function btvMergeMasterRows(survivor, duplicate){
+  var merged = Object.assign({}, survivor);
+  Object.keys(duplicate).forEach(function(field){
+    if(field === 'id' || field === 'uniqueId' || field === 'groupId' || field === 'variantLocalId' || field === 'variantFormId' || field === 'size') return;
+    if((field === 'approvedDesigner' || field === 'approvedSC' || field === 'approvedMerch' || field === 'selectedForLinesheet') && duplicate[field]){
+      merged[field] = true;
+      return;
+    }
+    if((field === 'calMarkets' || field === 'calStores') && Array.isArray(duplicate[field])){
+      merged[field] = Array.from(new Set((merged[field] || []).concat(duplicate[field])));
+      return;
+    }
+    if((field === 'sizeSKUs' || field === 'sizeBarcodes') && duplicate[field]){
+      var sizeValues = Object.assign({}, merged[field] || {});
+      Object.keys(duplicate[field]).forEach(function(size){
+        if(!btvValueIsPresent(sizeValues[size]) && btvValueIsPresent(duplicate[field][size])) sizeValues[size] = duplicate[field][size];
+      });
+      merged[field] = sizeValues;
+      return;
+    }
+    if(!btvValueIsPresent(merged[field]) && btvValueIsPresent(duplicate[field])) merged[field] = duplicate[field];
+  });
+  return merged;
+}
+
+function btvExpandLegacyMasterRecord(product){
+  var sizes = btvMasterSizesForRecord(product);
+  var formId = product.variantFormId || String(product.variantLocalId || uid('variant')).split('::')[0];
+  return sizes.map(function(size, index){
+    var row = Object.assign({}, product);
+    var rowId = index === 0 ? (product.id || uid('product')) : uid('product');
+    row.id = rowId;
+    row.uniqueId = index === 0 ? (product.uniqueId || rowId) : rowId;
+    row.variantFormId = formId;
+    row.variantLocalId = formId + '::' + btvNormaliseMasterPart(size);
+    row.size = size;
+    row.sizeSKUs = {};
+    row.sizeBarcodes = {};
+    row.sku = ((product.sizeSKUs || {})[size]) || (sizes.length === 1 ? (product.sku || '') : '');
+    row.barcode = ((product.sizeBarcodes || {})[size]) || (sizes.length === 1 ? (product.barcode || '') : '');
+    row.sizeSKUs[size] = row.sku;
+    row.sizeBarcodes[size] = row.barcode;
+    return row;
+  });
+}
+
+async function btvCleanupMasterData(){
+  if(!products.length){ alert('There are no Master Data records to clean.'); return; }
+  if(typeof window.btvLsReplaceAllProducts !== 'function' || !window._btvSb){
+    alert('Cannot clean Master Data until the shared database connection is ready. Please refresh, sign in, and try again.');
+    return;
+  }
+
+  var expanded = products.reduce(function(rows, product){ return rows.concat(btvExpandLegacyMasterRecord(product)); }, []);
+  var byCombination = {};
+  var merged = [];
+  var duplicateCount = 0;
+  expanded.forEach(function(row){
+    var key = btvMasterVariantKey(row.name, row.variant, row.size);
+    if(!byCombination[key]){
+      byCombination[key] = row;
+      merged.push(row);
+      return;
+    }
+    byCombination[key] = btvMergeMasterRows(byCombination[key], row);
+    var position = merged.indexOf(merged.find(function(candidate){ return candidate.id === byCombination[key].id; }));
+    if(position >= 0) merged[position] = byCombination[key];
+    duplicateCount += 1;
+  });
+
+  var convertedCount = expanded.length - products.length;
+  if(!duplicateCount && !convertedCount){
+    alert('Master Data is already clean: every Product Name + Colour + Size combination has exactly one record.');
+    return;
+  }
+  if(!confirm('Clean Master Data now?\n\n' +
+    duplicateCount + ' duplicate record(s) will be merged and ' + convertedCount + ' size-level record(s) will be created from legacy multi-size rows.\n\n' +
+    'The first record keeps its Unique ID; missing information from duplicates is retained. This will sync to Supabase for all users.')) return;
+
+  var saved = await window.btvLsReplaceAllProducts(merged);
+  if(!saved){ alert('Master Data cleanup was not synced. No local changes were made.'); return; }
+  products = merged;
+  localStorage.setItem('btv_linesheet_products', JSON.stringify(products));
+  updateCount();
+  populateCategoryFilter();
+  renderMaster();
+  renderLinesheet();
+  if(document.getElementById('changeLogList')) renderDashboard();
+  alert('Master Data cleaned: ' + duplicateCount + ' duplicate record(s) merged.');
+}
+
+async function btvRebuildMasterDataFromCalendar(){
+  if(typeof window.btvLsDeleteProducts !== 'function' || typeof window.btvLsUpsertProducts !== 'function' || !window._btvSb){
+    alert('Cannot rebuild Master Data until the shared database connection is ready. Please refresh, sign in, and try again.');
+    return;
+  }
+  if(!confirm('Delete every Master Data record and rebuild it from the current Product Calendar?\n\nThis permanently removes manual Linesheet-only records. Calendar products will be re-synced immediately for all users.')) return;
+
+  var ids = products.map(function(product){ return product.id; }).filter(Boolean);
+  if(ids.length){
+    var deleted = await window.btvLsDeleteProducts(ids);
+    if(!deleted){ alert('The shared Master Data could not be cleared. No local data was changed.'); return; }
+  }
+  products = [];
+  try { localStorage.removeItem('btv_linesheet_products'); } catch(e) {}
+  loadFromCalendar(true);
+  updateCount();
+  populateCategoryFilter();
+  renderMaster();
+  renderLinesheet();
+  alert('Master Data was rebuilt from the current Product Calendar.');
+}
+
 
 
 
@@ -9175,7 +9299,7 @@ function collectVariantData(){
 
 
 
-var BTV_LS_WEBHOOK_URL = (function(){ try{ return localStorage.getItem('btvLsWebhook')||'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }catch(e){ return 'https://defaultdf870fcb9b7a466b99dd3a74cbd76a.d1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/05e3654a9bd84fa3a0949743b9e3ee57/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=0Q1_30CfTZ0XSsnSyj3v1gH1Lig_KmF3b9HPIMSbNOA'; }})();
+var BTV_LS_WEBHOOK_URL = (function(){ try{ return localStorage.getItem('btvLsWebhook') || ''; }catch(e){ return ''; }})();
 
 
 
@@ -9265,6 +9389,7 @@ function btvNotifyChange(url, source, product, field, fromVal, toVal){
 
 
 
+          {"name":"Edited by","value":window.btvGetCurrentActor?window.btvGetCurrentActor().name+' ('+window.btvGetCurrentActor().email+')':'Unknown user'},
           {"name":"Product","value":product||"—"},
 
 
@@ -9384,8 +9509,8 @@ function buildLsTeamsSummary(entries){
 
   var productName = clean(entries[0].productName || 'Unknown Product');
   var now = new Date();
-  var dateStr = now.toLocaleDateString('en-SG', { day:'2-digit', month:'2-digit', year:'numeric' });
-  var timeStr = now.toLocaleTimeString('en-SG', { hour:'numeric', minute:'2-digit', second:'2-digit', hour12:true }).toLowerCase();
+  var dateStr = now.toLocaleDateString('en-SG', { timeZone:'Asia/Singapore',day:'2-digit', month:'2-digit', year:'numeric' });
+  var timeStr = now.toLocaleTimeString('en-SG', { timeZone:'Asia/Singapore',hour:'numeric', minute:'2-digit', second:'2-digit', hour12:true }).toLowerCase();
 
   function boldLine(v){
     v = clean(v);
@@ -9398,6 +9523,7 @@ function buildLsTeamsSummary(entries){
   ];
 
   entries.forEach(function(e){
+    if(lines.length===2)lines.push('Edited by: '+clean(e.actorName || e.actorEmail || 'Unknown user')+(e.actorEmail?' ('+clean(e.actorEmail)+')':''));
     var field = clean(e.field || 'Update');
     var variant = clean(e.variant || '');
     var fromVal = clean(e.from || '—');
@@ -9572,7 +9698,11 @@ const BTV_CHANGE_LOG_KEY = 'btvLinesheetChangeLog';
 
 
 
-function getChangeLog(){ try{ return JSON.parse(localStorage.getItem(BTV_CHANGE_LOG_KEY)||'[]'); }catch(e){ return []; } }
+function getChangeLog(){
+  var local=[];try{local=JSON.parse(localStorage.getItem(BTV_CHANGE_LOG_KEY)||'[]');}catch(e){}
+  var seen=new Set();
+  return local.concat(window._btvLsSharedLog||[],products.flatMap(function(p){return p.changeHistory||[];})).filter(function(e){var key=JSON.stringify([e.ts,e.actorId,e.productName,e.variant,e.field,e.from,e.to]);if(seen.has(key))return false;seen.add(key);return true;}).sort(function(a,b){return b.ts-a.ts;}).slice(0,300);
+}
 
 
 
@@ -9582,8 +9712,14 @@ function getChangeLog(){ try{ return JSON.parse(localStorage.getItem(BTV_CHANGE_
 
 
 
-function addChangeEntry(entry){ var log=getChangeLog(); log.unshift(entry); if(log.length>300) log.length=300; localStorage.setItem(BTV_CHANGE_LOG_KEY,JSON.stringify(log)); }
-function addChangeEntries(entries){ if(!entries||!entries.length) return; var log=getChangeLog(); entries.forEach(function(e){ log.unshift(e); }); if(log.length>300) log.length=300; localStorage.setItem(BTV_CHANGE_LOG_KEY,JSON.stringify(log)); }
+var _btvLsBuildingSave=false;
+function addChangeEntry(entry){
+  if(_btvLsBuildingSave)return;
+  var actor=window.btvGetCurrentActor?window.btvGetCurrentActor():{id:'',name:'Unknown user',email:''};
+  entry=Object.assign({actorId:actor.id,actorName:actor.name,actorEmail:actor.email},entry);
+  var log=getChangeLog();log.unshift(entry);localStorage.setItem(BTV_CHANGE_LOG_KEY,JSON.stringify(log.slice(0,300)));
+}
+function addChangeEntries(entries){(entries||[]).forEach(addChangeEntry);}
 
 
 
@@ -9624,6 +9760,19 @@ var BTV_TRACKED_FIELDS = {name:'Product Name',category:'Category',description:'D
 
 
 async function saveProductGroup(){
+  if (window._btvLsSaving || window._btvLsSaveChecking) return;
+  window._btvLsSaveChecking = true;
+  try {
+    if (_btvLsHeldLockId && _btvLsHeldLockId === editingGroupId) await _btvLsRefreshHeldLock(editingGroupId);
+  } finally {window._btvLsSaveChecking=false;}
+  if (window._btvCanEdit === false || window._btvLsHardLockBlocked || !_btvLsHeldLockId || _btvLsHeldLockId !== editingGroupId) {
+    alert('Editing is locked until the shared database confirms your product lock.');
+    return;
+  }
+  if (!editingGroupId || !products.some(p => p.groupId === editingGroupId)) {
+    alert('Open an existing product from Master Data. New products come from Management Calendar launches.');
+    return;
+  }
 
 
 
@@ -9654,30 +9803,27 @@ async function saveProductGroup(){
 
 
   const variants = collectVariantData();
+  const masterVariants = btvExpandFormVariants(variants);
 
-  // Every colour must be unique for a given product name in the master data — otherwise
-  // launch-to-linesheet matching (by product name + colour) becomes ambiguous. Block save
-  // and ask the user to change the colour rather than silently creating a duplicate.
+  // The true Master Data identity is Product Name + Colour + Size. Check both
+  // the current form and all other product groups before changing any local data.
   {
-    const _btvNormColour = c => (c || '').trim().toLowerCase();
-    const _btvSeenColours = new Set();
-    for (const v of variants) {
-      const c = _btvNormColour(v.variant);
-      if (!c) continue;
-      if (_btvSeenColours.has(c)) {
-        alert('The colour "' + v.variant.trim() + '" is entered more than once for this product. Please give each variant a unique colour.');
+    const seen = new Set();
+    for(const v of masterVariants){
+      const key = btvMasterVariantKey(name, v.variant, v.size);
+      if(seen.has(key)){
+        alert('"' + name + '" already has the variant "' + (v.variant || 'No colour') + '" in size "' + v.size + '" in this form. Each Product Name + Colour + Size combination must be unique.');
         return;
       }
-      _btvSeenColours.add(c);
+      seen.add(key);
     }
-    const _btvNameLower = name.toLowerCase();
-    const _btvDupExisting = products.find(p =>
-      p.groupId !== editingGroupId &&
-      (p.name || '').trim().toLowerCase() === _btvNameLower &&
-      _btvSeenColours.has(_btvNormColour(p.variant))
-    );
-    if (_btvDupExisting) {
-      alert('"' + name + '" already has a colour "' + _btvDupExisting.variant + '". Please change the colour of this product before saving.');
+    const existingKeys = new Set();
+    products.filter(function(p){ return p.groupId !== editingGroupId; }).forEach(function(p){
+      btvMasterRecordKeys(p).forEach(function(key){ existingKeys.add(key); });
+    });
+    const duplicate = masterVariants.find(function(v){ return existingKeys.has(btvMasterVariantKey(name, v.variant, v.size)); });
+    if(duplicate){
+      alert('Master Data already contains "' + name + '" / "' + (duplicate.variant || 'No colour') + '" / "' + duplicate.size + '". Change the product name, colour, or size before saving.');
       return;
     }
   }
@@ -10039,12 +10185,14 @@ async function saveProductGroup(){
 
 
   var __btvIsNewProduct = !editingGroupId;
+  _btvLsBuildingSave=true;
   var __btvLogBefore = getChangeLog().length;
 
 
 
 
-  var __btvOldGroup = editingGroupId ? products.filter(function(p){ return p.groupId === editingGroupId; }) : [];
+  var __btvOldGroup = window._btvLsEditBaseline && window._btvLsEditBaseline.groupId===editingGroupId
+    ? window._btvLsEditBaseline.rows : (editingGroupId ? products.filter(function(p){return p.groupId===editingGroupId;}) : []);
 
 
 
@@ -10160,6 +10308,7 @@ async function saveProductGroup(){
 
 
   var __btvOldVariantsMap = {};
+  var __btvClaimedLegacyIds = new Set();
 
 
 
@@ -10176,27 +10325,15 @@ async function saveProductGroup(){
 
   if(editingGroupId){ products = products.filter(p => p.groupId !== editingGroupId); }
 
-  // Version-conflict check -- mirrors the same guard calendar.html already uses before saving.
-  // This module writes the ENTIRE products array on every save, so if a teammate saved a
-  // different product since this form opened, saving blindly would silently overwrite their
-  // change with this browser's now-stale copy of the rest of the list.
-  if (typeof window.btvCheckVersionConflict === 'function') {
-    const _lsConflict = await window.btvCheckVersionConflict('btv_linesheet_products');
-    if (_lsConflict) {
-      // Pull in the latest saved data first so this save layers on top of it instead of
-      // overwriting it outright.
-      try {
-        const _latest = localStorage.getItem('btv_linesheet_products');
-        if (_latest) products = JSON.parse(_latest);
-      } catch (e) {}
-      const _proceed = confirm(
-        'The linesheet was updated by a teammate since this editor opened.\n\n' +
-        'Saving now will apply your changes on top of the latest linesheet data.\n\n' +
-        'Click OK to save, or Cancel to review first.'
-      );
-      if (!_proceed) return;
-    }
-  }
+  // A btvCheckVersionConflict('btv_linesheet_products') guard used to run here — removed
+  // as dead code. It was written back when this module saved the ENTIRE products array
+  // on every save (so any teammate's concurrent save needed a blob-level warning), but
+  // btv_linesheet_products is now per-row synced (see supabase-linesheet-products-migration.sql)
+  // and deliberately excluded from the blob-sync key list, so _lastPullTimes[key] was never
+  // populated and the check silently no-op'd on every save. The real protection against two
+  // people saving the SAME product concurrently is the hard lock acquired when this editor
+  // opened (see _btvLsAcquireLock / supabase-linesheet-products-lock-migration.sql), which
+  // this blob-level check predates and is now fully superseded by.
 
 
 
@@ -10207,7 +10344,7 @@ async function saveProductGroup(){
 
 
 
-  variants.forEach(v => {
+  masterVariants.forEach(v => {
 
 
 
@@ -10227,7 +10364,6 @@ async function saveProductGroup(){
 
 
 
-    const existingIndex = v.sku ? products.findIndex(p => (p.sku || '').trim().toLowerCase() === v.sku.trim().toLowerCase()) : -1;
 
 
 
@@ -10237,14 +10373,18 @@ async function saveProductGroup(){
 
 
 
-    // Recover this variant's own prior row (by its stable variantLocalId) FIRST — the
-    // group's old rows were already filtered out of `products` above, so the SKU search
-    // below can never find them, and every edit-save was minting a brand-new database id
-    // for every variant even when nothing about it changed. That forced every edit to
-    // depend on the follow-up delete-old-id call succeeding, and any missed delete
-    // (offline, closed tab, race with another save) left a duplicate copy behind.
-    const __btvPrevVariant = v.variantLocalId ? __btvOldVariantsMap[v.variantLocalId] : null;
-    const existingItem = __btvPrevVariant || (existingIndex >= 0 ? products[existingIndex] : null);
+    // Locate the existing record by its stable ID, never by an editable SKU or
+    // Product Name / Colour / Size value. The fallback converts one legacy
+    // colour-level record to its first size-level record without changing its ID.
+    var __btvPrevVariant = v.variantLocalId ? __btvOldVariantsMap[v.variantLocalId] : null;
+    if(!__btvPrevVariant){
+      __btvPrevVariant = __btvOldGroup.find(function(ov){
+        return !__btvClaimedLegacyIds.has(ov.id) && !ov.variantFormId && BtvLinesheetIdentity.formId(ov) === v.variantFormId;
+      }) || null;
+      if(__btvPrevVariant) __btvClaimedLegacyIds.add(__btvPrevVariant.id);
+    }
+    const existingItem = __btvPrevVariant;
+    const __btvUniqueId = existingItem ? (existingItem.uniqueId || existingItem.id) : uid('product');
 
 
 
@@ -10255,6 +10395,7 @@ async function saveProductGroup(){
 
 
     const nextRow = {
+      ...(existingItem || {}),
 
 
 
@@ -10264,7 +10405,11 @@ async function saveProductGroup(){
 
 
 
-      id: existingItem ? existingItem.id : uid('product'),
+      id: existingItem ? existingItem.id : __btvUniqueId,
+
+      // The unique ID is generated only for new Master Data records and is
+      // intentionally independent of values users can edit in the form.
+      uniqueId: __btvUniqueId,
 
 
 
@@ -10284,7 +10429,11 @@ async function saveProductGroup(){
 
 
 
-      variantLocalId: existingItem ? existingItem.variantLocalId : v.variantLocalId,
+      variantLocalId: v.variantLocalId,
+
+      variantFormId: v.variantFormId,
+
+      size: v.size,
 
 
 
@@ -10294,7 +10443,7 @@ async function saveProductGroup(){
 
 
 
-      launchDate: v.launchDate || (existingItem ? existingItem.launchDate : ''),
+      launchDate: existingItem ? existingItem.launchDate : '',
 
 
 
@@ -10567,6 +10716,7 @@ async function saveProductGroup(){
       // Calendar-sourced fields — read-only, must survive form save
       calEntryId:  existingItem ? (existingItem.calEntryId  || '') : '',
       calLineId:   existingItem ? (existingItem.calLineId   || '') : '',
+      calColourId: existingItem ? (existingItem.calColourId || '') : '',
       calRemoved:  existingItem ? !!existingItem.calRemoved : false,
       calSection:  existingItem ? (existingItem.calSection  || 'global') : 'global',
       calWeekId:   existingItem ? (existingItem.calWeekId   || '') : '',
@@ -10611,7 +10761,7 @@ async function saveProductGroup(){
 
 
 
-        addChangeEntry({ts:Date.now(),productName:shared.name,variant:v.variant||v.sku||'(new)',field:'Variant Added',from:'—',to:[v.variant,v.launchDate,v.sku].filter(Boolean).join(' · ')||'(variant)',action:'update'});
+        addChangeEntry({ts:Date.now(),productName:shared.name,variant:v.variant||v.sku||'(new)',field:'Variant Added',from:'—',to:[v.variant,v.sku].filter(Boolean).join(' · ')||'(variant)',action:'update'});
 
 
 
@@ -10621,7 +10771,7 @@ async function saveProductGroup(){
 
 
 
-        ['launchDate','variant','sku','barcode'].forEach(function(vf){
+        ['variant','sku','barcode'].forEach(function(vf){
 
 
 
@@ -10656,7 +10806,7 @@ async function saveProductGroup(){
 
 
 
-    if(existingIndex >= 0){ products.splice(existingIndex, 1, nextRow); } else { products.push(nextRow); }
+    products.push(nextRow);
 
 
 
@@ -10681,7 +10831,8 @@ async function saveProductGroup(){
 
 
 
-    var __btvNewVarIds = new Set(variants.filter(function(v){return !!v.variantLocalId;}).map(function(v){return v.variantLocalId;}));
+    var __btvNewVarIds = new Set(masterVariants.filter(function(v){return !!v.variantLocalId;}).map(function(v){return v.variantLocalId;}));
+    var __btvNewMasterIds = new Set(products.filter(function(p){ return p.groupId === __btvResolvedGroupId; }).map(function(p){ return p.id; }));
 
 
 
@@ -10691,7 +10842,7 @@ async function saveProductGroup(){
 
 
 
-      if(!__btvNewVarIds.has(lid)){
+      if(!__btvNewVarIds.has(lid) && !__btvNewMasterIds.has(__btvOldVariantsMap[lid].id)){
 
 
 
@@ -10701,7 +10852,7 @@ async function saveProductGroup(){
 
 
 
-        addChangeEntry({ts:Date.now(),productName:shared.name,variant:rv.variant||'(removed)',field:'Variant Removed',from:[rv.variant,rv.launchDate,rv.sku].filter(Boolean).join(' · ')||'(variant)',to:'—',action:'delete'});
+        addChangeEntry({ts:Date.now(),productName:shared.name,variant:rv.variant||'(removed)',field:'Variant Removed',from:[rv.variant,rv.sku].filter(Boolean).join(' · ')||'(variant)',to:'—',action:'delete'});
 
 
 
@@ -10732,18 +10883,74 @@ async function saveProductGroup(){
   // clobbering each other: neither save ever touches a row it didn't change.
   try { localStorage.setItem('btv_linesheet_products', JSON.stringify(products)); } catch(e) {}
   var _btvSavedGroupRows = groupProductsById(__btvResolvedGroupId);
+  var _btvSaveActor=window.btvGetCurrentActor?window.btvGetCurrentActor():{id:'',name:'Unknown user',email:''};
+  var generalInput=btvReadApprovalControls(document.getElementById('generalApprovalControls'));
+  var generalApprovals=BtvLinesheetApprovals.next(btvScopeApprovals(__btvOldGroup,'generalApprovals'),generalInput.flags,BtvLinesheetApprovals.signature(__btvOldGroup[0]||{},'general')!==BtvLinesheetApprovals.signature(shared,'general'),_btvSaveActor,generalInput.confirmed);
+  var variantApprovals=new Map(variants.map(function(v){return [v.variantLocalId,BtvLinesheetApprovals.next(v.cardEl._btvApprovals,v.approvalInput.flags,v.cardEl._btvApprovalSignature!==BtvLinesheetApprovals.signature(v,'variant'),_btvSaveActor,v.approvalInput.confirmed)];}));
+  _btvSavedGroupRows.forEach(function(row){row.generalApprovals=structuredClone(generalApprovals);row.variantApprovals=structuredClone(variantApprovals.get(row.variantFormId)||{});BtvLinesheetApprovals.derive(row);});
+  var _btvSaveEntries=BtvLinesheetProducts.changes(__btvOldGroup,_btvSavedGroupRows,_btvSaveActor,Date.now());
+  _btvSavedGroupRows.forEach(function(row){
+    var old=__btvOldGroup.find(function(p){return p.id===row.id;})||__btvOldGroup[0]||{};
+    ['changeHistory','lastEditedBy','lastEditedAt'].forEach(function(key){if(old[key]!==undefined)row[key]=old[key];});
+  });
+  _btvSaveEntries.forEach(function(entry){entry.field=BTV_TRACKED_FIELDS[entry.field]||({sizeSKUs:'SKU by size',sizeBarcodes:'Barcode by size',measurementMatrix:'Measurements',productImg:'Product image',lookbookImg:'Lookbook image'}[entry.field])||entry.field;});
+  if(_btvSaveEntries.length) {
+    var _btvHistory=(_btvSaveEntries.concat(__btvOldGroup[0]&&__btvOldGroup[0].changeHistory||[])).slice(0,100);
+    _btvSavedGroupRows.forEach(function(row){row.lastEditedBy=_btvSaveActor;row.lastEditedAt=new Date().toISOString();row.changeHistory=_btvHistory;});
+  }
   var _btvOldGroupIds = __btvOldGroup.map(function(p){ return p.id; });
   var _btvNewGroupIds = _btvSavedGroupRows.map(function(p){ return p.id; });
   var _btvIdsToDelete = _btvOldGroupIds.filter(function(id){ return _btvNewGroupIds.indexOf(id) === -1; });
-  if (_btvIdsToDelete.length && typeof window.btvLsDeleteProducts === 'function') window.btvLsDeleteProducts(_btvIdsToDelete);
-  if (typeof window.btvLsUpsertProducts === 'function') window.btvLsUpsertProducts(_btvSavedGroupRows);
+  window._btvLsSaving = true;
+  _btvLsSetFormDisabled(true);
+  var _btvSaveConfirmed = false;
+  try {
+    _btvSaveConfirmed = typeof window.btvLsUpsertProducts === 'function' && await window.btvLsUpsertProducts(_btvSavedGroupRows) === true;
+    if (_btvSaveConfirmed && _btvIdsToDelete.length) _btvSaveConfirmed = await window.btvLsDeleteProducts(_btvIdsToDelete) === true;
+  } catch (error) { console.warn('[BTV LS] Product save failed:', error); }
+  finally {
+    _btvLsBuildingSave=false;
+    window._btvLsSaving = false;
+    _btvLsSetFormDisabled(!!window._btvLsHardLockBlocked);
+  }
+  if (!_btvSaveConfirmed) {
+    _btvSavedGroupRows.forEach(function(row){
+      var old=__btvOldGroup.find(function(p){return p.id===row.id;})||{};
+      ['changeHistory','lastEditedBy','lastEditedAt'].forEach(function(key){if(old[key]!==undefined)row[key]=old[key];else delete row[key];});
+    });
+    try{localStorage.setItem('btv_linesheet_products',JSON.stringify(products));}catch(e){}
+    _btvSetDirty(true);
+    if (window._btvLsConflictGroups && window._btvLsConflictGroups.has(__btvResolvedGroupId)) {
+      _btvLsStopLockTimers();
+      _btvLsHeldLockId = null;
+      window._btvLsHardLockBlocked = true;
+      _btvLsSetFormDisabled(true);
+      _btvLsRenderHardLockBanner(null,'Edit ownership changed. Your unsaved draft remains here. Reopen the product to load the latest shared version before editing again.');
+      return;
+    }
+    alert('This product has not finished saving to the shared database. Keep it open and retry Save Product.');
+    return;
+  }
   _btvSetDirty(false);
+  window._btvLsEditBaseline={groupId:__btvResolvedGroupId,rows:structuredClone(_btvSavedGroupRows)};
+  btvLoadGeneralApprovals(_btvSavedGroupRows);
+  variants.forEach(function(v){v.cardEl._btvApprovals=variantApprovals.get(v.variantLocalId)||{};v.cardEl._btvApprovalSignature=BtvLinesheetApprovals.signature(v,'variant');v.cardEl.querySelector('.approval-controls').outerHTML=btvApprovalHtml(v.cardEl._btvApprovals,'variant');});
+  addChangeEntries(_btvSaveEntries);
+  if(window.btvWriteChangeLog && _btvSaveEntries.length) window.btvWriteChangeLog(_btvSaveEntries);
   if (typeof window.btvClearEditing === 'function') window.btvClearEditing();
   var _w = document.getElementById('btv-ls-presence-warn'); if (_w) _w.style.display = 'none';
 
   editingGroupId = __btvResolvedGroupId; window._btvCurrentGroupId = __btvResolvedGroupId;
 
-
+  // Hard lock: if saving changed which group_id this product resolves to (e.g. the
+  // first save of a brand-new product, which had no lock to hold yet), release any
+  // stale lock and acquire the new one so this session stays continuously locked
+  // while the form remains open.
+  if (typeof _btvLsHeldLockId !== 'undefined' && _btvLsHeldLockId !== __btvResolvedGroupId) {
+    if (_btvLsHeldLockId && typeof _btvLsReleaseLock === 'function') _btvLsReleaseLock(_btvLsHeldLockId);
+    if (typeof _btvLsStopLockTimers === 'function') _btvLsStopLockTimers();
+    if (__btvResolvedGroupId && typeof _btvLsOpenWithHardLock === 'function') _btvLsOpenWithHardLock(__btvResolvedGroupId);
+  }
 
 
   (function(){
@@ -10781,7 +10988,7 @@ async function saveProductGroup(){
 
 
 
-    document.querySelectorAll('#variantList .variant-launch-date,#variantList .variant-colour').forEach(function(el){
+    document.querySelectorAll('#variantList .variant-colour').forEach(function(el){
 
 
 
@@ -10869,6 +11076,7 @@ async function saveProductGroup(){
 
 
   setTimeout(()=>document.getElementById('confirmBanner').classList.remove('show'),3000);
+  if (window._btvLsPaused) switchView('master');
 
 
 
@@ -10887,7 +11095,7 @@ async function saveProductGroup(){
     });
     variants.forEach(function(v){
       if(v.variant||v.sku){
-        addChangeEntry({ts:Date.now(),productName:shared.name,variant:v.variant||v.sku||'(new)',field:'New Variant',from:'—',to:[v.variant,v.sku,v.launchDate].filter(Boolean).join(' · ')||'(variant)',action:'new'});
+        addChangeEntry({ts:Date.now(),productName:shared.name,variant:v.variant||v.sku||'(new)',field:'New Variant',from:'—',to:[v.variant,v.sku].filter(Boolean).join(' · ')||'(variant)',action:'new'});
       }
     });
   }
@@ -10898,10 +11106,9 @@ async function saveProductGroup(){
 
 
     if(!BTV_LS_WEBHOOK_URL) return;
-    var __btvCurrentLog = getChangeLog();
-    var __btvNewCount = __btvCurrentLog.length - __btvLogBefore;
+    var __btvNewCount = _btvSaveEntries.length;
     if(__btvNewCount <= 0) return;
-    var __btvNewEntries = __btvCurrentLog.slice(0, __btvNewCount);
+    var __btvNewEntries = _btvSaveEntries;
     var __btvSummaryText = buildLsTeamsSummary(__btvNewEntries);
     var __btvTa = document.getElementById('lsTeamsSummaryText');
     if(__btvTa) __btvTa.value = __btvSummaryText;
@@ -11116,7 +11323,15 @@ function groupProductsById(groupId){ return products.filter(p => p.groupId === g
 
 
 
-function editGroup(groupId){
+function editGroup(groupId, options){
+  if(window._btvCanEdit===false)return;
+  if(_btvFormDirty && !(options&&options.lockGranted)){
+    switchView('master');
+    if(document.getElementById('view-form').classList.contains('active'))return;
+  }
+  if(!(options&&options.lockGranted) && document.getElementById('view-master').classList.contains('active')) {
+    _btvLsMasterPosition=btvLsCaptureMasterPosition();
+  }
   _btvSetDirty(false); // opening a product = clean slate
 
 
@@ -11138,6 +11353,7 @@ function editGroup(groupId){
 
 
   if(!items.length) return;
+  window._btvLsEditBaseline={groupId:groupId,rows:structuredClone(items)};
 
 
 
@@ -11148,6 +11364,7 @@ function editGroup(groupId){
 
 
   const base = items[0];
+  btvLoadGeneralApprovals(items);
 
 
 
@@ -11217,7 +11434,7 @@ function editGroup(groupId){
 
 
 
-  document.getElementById('f_sizing').value = base.sizing || '';
+  document.getElementById('f_sizing').value = base.sizing || base.size || '';
 
 
 
@@ -11401,7 +11618,7 @@ function editGroup(groupId){
 
 
 
-  syncMeasurementTable((base.measurementMatrix || []).map(row=>({
+  syncMeasurementTable(BtvLinesheetPreview.measurements(items).map(row=>({
 
 
 
@@ -11412,6 +11629,7 @@ function editGroup(groupId){
 
 
     label: row.point,
+    tolerance: row.tolerance ?? '',
 
 
 
@@ -11421,7 +11639,7 @@ function editGroup(groupId){
 
 
 
-    values: Object.fromEntries((row.values || []).map(v=>[(v.size || '_default'), {inch:v.inch || '', cm:v.cm || ''}]))
+    values: Object.fromEntries((row.values || []).map(v=>[(v.size || '_default'), {inch:v.inch ?? '', cm:v.cm ?? ''}]))
 
 
 
@@ -11451,7 +11669,27 @@ function editGroup(groupId){
 
 
 
-  items.forEach(item => addVariantCard(item));
+  // Size-level Master Data records belong to one colour card in the Product Form.
+  // Rebuild those cards by their stable form ID and merge the size-specific codes.
+  var __btvVariantPrefills = {};
+  items.forEach(function(item){
+    var formId = BtvLinesheetIdentity.formId(item);
+    var prefill = __btvVariantPrefills[formId];
+    if(!prefill){
+      prefill = Object.assign({}, item, { variantLocalId: formId, sizeSKUs: {}, sizeBarcodes: {} });
+      __btvVariantPrefills[formId] = prefill;
+    }
+    Object.assign(prefill.sizeSKUs, item.sizeSKUs || {});
+    Object.assign(prefill.sizeBarcodes, item.sizeBarcodes || {});
+    var size = item.size || Object.keys(item.sizeSKUs || {})[0] || 'One Size';
+    if(item.sku) prefill.sizeSKUs[size] = item.sku;
+    if(item.barcode) prefill.sizeBarcodes[size] = item.barcode;
+  });
+  Object.keys(__btvVariantPrefills).forEach(function(formId){
+    var prefill=__btvVariantPrefills[formId];
+    prefill.variantApprovals=btvScopeApprovals(items.filter(function(item){return BtvLinesheetIdentity.formId(item)===formId;}),'variantApprovals');
+    addVariantCard(prefill);
+  });
 
 
 
@@ -11531,7 +11769,7 @@ function editGroup(groupId){
 
 
 
-  document.querySelectorAll('#variantList .variant-launch-date,#variantList .variant-colour').forEach(function(el){
+  document.querySelectorAll('#variantList .variant-colour').forEach(function(el){
 
 
 
@@ -11586,6 +11824,17 @@ function editGroup(groupId){
   if (typeof window.btvSetEditing === 'function') window.btvSetEditing(_btvLsKey);
   // Apply per-field locks from any teammates currently focused on fields in this product
   if (typeof _btvLsApplyFieldLocks === 'function') _btvLsApplyFieldLocks(groupId);
+
+  // ── Hard lock (server-enforced) ───────────────────────────────────────
+  // Disables the form until Postgres itself has actually granted the lock, so
+  // two people opening the same product within the same instant can never
+  // both end up with an editable form. See supabase-linesheet-products-lock-migration.sql.
+  if (groupId && !(options && options.lockGranted) && typeof _btvLsOpenWithHardLock === 'function') _btvLsOpenWithHardLock(groupId);
+  window._btvLsRenderedGroupSnapshot = {groupId:groupId, value:_btvLsGroupSnapshot(groupId)};
+  if(!(options&&options.lockGranted)) {
+    if(!history.state || !history.state.btvLsRoute)history.replaceState({btvLsRoute:'master'},'');
+    if(!history.state || history.state.btvLsRoute!=='product' || history.state.groupId!==groupId)history.pushState({btvLsRoute:'product',groupId:groupId},'');
+  }
 
 
 
@@ -11738,7 +11987,7 @@ function deleteGroup(groupId){
 
 
 function isProductComplete(p){
-  var req=['sku','barcode','hscode','hscode10','launchDate','name','variant','category','sizing','sgd'];
+  var req=['sku','barcode','hscode','hscode10','name','variant','category','sizing','sgd'];
   return req.every(function(f){ return p[f] && String(p[f]).trim()!==''; });
 }
 function toggleLinesheetSelection(id, checked){
@@ -11816,7 +12065,7 @@ function toggleLinesheetSelection(id, checked){
 
 
 
-function btvAllApproved(p){ return !!(p.approvedDesigner && p.approvedSC && p.approvedMerch); }
+function btvAllApproved(p){ return BtvLinesheetApprovals.ready(p); }
 
 function btvToggleApproval(id, role, checked){
   var p = products.find(function(pr){ return pr.id === id; });
@@ -12014,77 +12263,6 @@ function populateCategoryFilter(){
 
 
 
-  const ldSel = document.getElementById('masterFilterLaunchDate');
-
-
-
-
-
-
-
-
-
-  if(ldSel){
-
-
-
-
-
-
-
-
-
-    const currentLD = ldSel.value;
-
-
-
-
-
-
-
-
-
-    const dates = [...new Set(products.map(p => p.launchDate).filter(Boolean))].sort();
-
-
-
-
-
-
-
-
-
-    const fmt = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-SG', {day:'2-digit', month:'short', year:'numeric'}); } catch(e){ return d; } };
-
-
-
-
-
-
-
-
-
-    ldSel.innerHTML = '<option value="">All Launch Dates</option>' + dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(fmt(d))}</option>`).join('');
-
-
-
-
-
-
-
-
-
-    ldSel.value = dates.includes(currentLD) ? currentLD : '';
-
-
-
-
-
-
-
-
-
-  }
 
 
 
@@ -12104,7 +12282,7 @@ function populateCategoryFilter(){
 
 
 
-function toggleSelectAllVisible(checked){
+async function toggleSelectAllVisible(checked){
 
 
 
@@ -12114,7 +12292,9 @@ function toggleSelectAllVisible(checked){
 
 
 
-  const visible = filteredSortedProducts();
+  const summaries = BtvLinesheetProducts.summaries(filteredSortedProducts(),products);
+  const eligible = new Set(summaries.filter(function(p){return !checked || btvAllApproved(p);}).flatMap(function(p){return p.memberIds;}));
+  const visible = products.filter(function(p){return eligible.has(p.id);}).map(function(p){return Object.assign({},p,{selectedForLinesheet:checked});});
 
 
 
@@ -12124,7 +12304,6 @@ function toggleSelectAllVisible(checked){
 
 
 
-  const visibleIds = new Set(visible.map(p => p.id));
 
 
 
@@ -12134,8 +12313,8 @@ function toggleSelectAllVisible(checked){
 
 
 
-  products.forEach(p => { if(visibleIds.has(p.id)){ if(!checked) p.selectedForLinesheet=false; else if(p.linesheetComplete) p.selectedForLinesheet=true; } });
-  if (typeof window.btvLsUpsertProducts === 'function') window.btvLsUpsertProducts(visible);
+  if(visible.length && !await window.btvLsUpsertProducts(visible)){renderMaster();return;}
+  products=products.map(function(p){return visible.find(function(row){return row.id===p.id;})||p;});
 
 
 
@@ -12227,7 +12406,7 @@ function __btvUpdateSelectAllState(){
 
 
 
-  const visible = filteredSortedProducts();
+  const visible = BtvLinesheetProducts.summaries(filteredSortedProducts(),products);
 
 
 
@@ -12327,7 +12506,6 @@ function filteredSortedProducts(){
 
 
 
-  const filterLaunchDate = (document.getElementById('masterFilterLaunchDate') || {value:''}).value;
 
 
 
@@ -12367,7 +12545,7 @@ function filteredSortedProducts(){
 
 
 
-    const haystack = [p.name,p.variant,p.sku,p.barcode,p.hscode,p.hscode10,p.launchDate,p.category,p.description,p.fabric,p.sizing,p.measurementSummary,p.weightGrams,p.washcare,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn].join(' ').toLowerCase();
+    const haystack = [p.name,p.variant,p.sku,p.barcode,p.hscode,p.hscode10,p.category,p.description,p.fabric,p.sizing,p.measurementSummary,p.weightGrams,p.washcare,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn].join(' ').toLowerCase();
 
 
 
@@ -12397,10 +12575,6 @@ function filteredSortedProducts(){
 
 
 
-    const matchesLaunchDate = !filterLaunchDate || (p.launchDate || '') === filterLaunchDate;
-
-    const removedOnlyEl = document.getElementById('masterFilterRemoved');
-    const matchesRemoved = !(removedOnlyEl && removedOnlyEl.checked) || !!p.calRemoved;
 
 
 
@@ -12410,7 +12584,8 @@ function filteredSortedProducts(){
 
 
 
-    return matchesSearch && matchesCategory && matchesLaunchDate && matchesRemoved;
+
+    return matchesSearch && matchesCategory;
 
 
 
@@ -12542,29 +12717,12 @@ function filteredSortedProducts(){
 
 // Master Data column visibility is a local display preference only — it never touches
 // `products` or anything synced to Supabase, purely which columns the table shows.
-var BTV_MASTER_COL_PREF_KEY = 'btv-ls-master-columns-v1';
-
 function btvLoadMasterColumnPrefs(){
-  var prefs = {};
-  try { prefs = JSON.parse(localStorage.getItem(BTV_MASTER_COL_PREF_KEY)) || {}; } catch(e) {}
-  ['images','details','calendar'].forEach(function(group){
-    var cb = document.getElementById('colToggle-' + group);
-    if(cb) cb.checked = !!prefs[group];
-  });
-  btvApplyMasterColumnPrefs(true);
+  if (window.btvMasterColumnManager) window.btvMasterColumnManager.load();
 }
 
 function btvApplyMasterColumnPrefs(skipSave){
-  var table = document.getElementById('masterTable');
-  if(!table) return;
-  var prefs = {};
-  ['images','details','calendar'].forEach(function(group){
-    var cb = document.getElementById('colToggle-' + group);
-    var on = !!(cb && cb.checked);
-    prefs[group] = on;
-    table.classList.toggle('show-' + group, on);
-  });
-  if(!skipSave){ try { localStorage.setItem(BTV_MASTER_COL_PREF_KEY, JSON.stringify(prefs)); } catch(e) {} }
+  if (window.btvMasterColumnManager) window.btvMasterColumnManager.apply(skipSave);
 }
 
 // Click-to-sort table headers — just sets the same masterSortBy/masterSortDir controls
@@ -12591,6 +12749,43 @@ function btvUpdateSortIndicators(){
   if(active) active.textContent = dirEl.value === 'asc' ? '▲' : '▼';
 }
 
+function btvLsOpenProduct(id){
+  var members=btvLsProductMembers(id);
+  if(!members.length)return;
+  var gids=Array.from(new Set(members.map(function(p){return p.groupId;})));
+  if(gids.length===1 && window._btvCanEdit!==false){editGroup(gids[0]);return;}
+  // Legacy separate groups remain separate edit/lock boundaries, but share one overview.
+  if(document.getElementById('view-master').classList.contains('active'))_btvLsMasterPosition=btvLsCaptureMasterPosition();
+  var view=document.getElementById('view-overview');
+  if(!view){view=document.createElement('div');view.id='view-overview';view.className='view';document.getElementById('view-master').parentNode.appendChild(view);}
+  view.innerHTML='<h2>'+escapeHtml(members[0].name)+'</h2><p>'+escapeHtml(members[0].description||'')+'</p><div style="overflow:auto;margin-top:16px"><table class="ls-table"><thead><tr><th>Colour</th><th>Size</th><th>SKU</th><th>Barcode</th><th>Product image</th><th>Lookbook image</th><th>Fabric</th><th>Washcare</th><th></th></tr></thead><tbody>'+members.map(function(p){return '<tr><td>'+escapeHtml(p.variant||'')+'</td><td>'+escapeHtml(p.size||p.sizing||'')+'</td><td>'+escapeHtml(p.sku||Object.values(p.sizeSKUs||{}).filter(Boolean).join(', '))+'</td><td>'+escapeHtml(p.barcode||Object.values(p.sizeBarcodes||{}).filter(Boolean).join(', '))+'</td><td>'+(p.productImg?'<img src="'+escapeHtml(p.productImg)+'" alt="Product" style="width:72px;height:72px;object-fit:contain">':'')+'</td><td>'+(p.lookbookImg?'<img src="'+escapeHtml(p.lookbookImg)+'" alt="Lookbook" style="width:72px;height:72px;object-fit:contain">':'')+'</td><td>'+escapeHtml(p.fabric||'')+'</td><td>'+escapeHtml(p.washcare||'')+'</td><td><button class="btn" data-gid="'+escapeHtml(p.groupId)+'" onclick="editGroup(this.dataset.gid)">Edit</button></td></tr>';}).join('')+'</tbody></table></div>';
+  if(window._btvCanEdit===false)view.querySelectorAll('button').forEach(function(button){button.remove();});
+  switchView('overview');
+  if(!view.classList.contains('active'))return;
+  if(!history.state || !history.state.btvLsRoute)history.replaceState({btvLsRoute:'master'},'');
+  if(history.state.btvLsRoute!=='overview' || history.state.productId!==id)history.pushState({btvLsRoute:'overview',productId:id},'');
+}
+function btvLsProductMembers(id){
+  var base=products.find(function(p){return p.id===id;});
+  return base?products.filter(function(p){return BtvLinesheetProducts.nameKey(p.name)===BtvLinesheetProducts.nameKey(base.name);}):[];
+}
+async function btvLsGroupAction(id,role,checked){
+  if(window._btvCanEdit===false)return;
+  var rows=btvLsProductMembers(id).map(function(p){return Object.assign({},p);});
+  var field=role==='selection'?'selectedForLinesheet':null;
+  if(!field || !rows.length || (role==='selection'&&checked&&!rows.every(btvAllApproved)))return;
+  var from=rows.every(function(p){return !!p[field];})?'Yes':rows.some(function(p){return !!p[field];})?'Mixed':'No';
+  if(!rows.some(function(p){return !!p[field]!==checked;})){renderMaster();return;}
+  rows.forEach(function(p){p[field]=checked;p.linesheetComplete=btvAllApproved(p);if(!p.linesheetComplete)p.selectedForLinesheet=false;});
+  if(!await window.btvLsUpsertProducts(rows)){renderMaster();return;}
+  rows.forEach(function(p){var i=products.findIndex(function(row){return row.id===p.id;});products[i]=p;});
+  var actor=window.btvGetCurrentActor?window.btvGetCurrentActor():{id:'',name:'Unknown user',email:''};
+  var entry={ts:Date.now(),productName:rows[0].name,variant:'(shared)',field:field,from:from,to:checked?'Yes':'No',action:'update',actorId:actor.id,actorName:actor.name,actorEmail:actor.email};
+  addChangeEntry(entry);
+  if(window.btvWriteChangeLog)window.btvWriteChangeLog([entry]);
+  if(BTV_LS_WEBHOOK_URL)btvNotifyChangeBatch(BTV_LS_WEBHOOK_URL,buildLsTeamsSummary([entry]));
+  localStorage.setItem('btv_linesheet_products',JSON.stringify(products));renderMaster();renderLinesheet();updateCount();
+}
 function renderMaster(){
   btvUpdateSortIndicators();
 
@@ -12622,7 +12817,7 @@ function renderMaster(){
 
 
 
-  if(!list.length){ tbody.innerHTML = `<tr><td colspan="23"><div class="empty-state">No matching rows yet. Add products or loosen the filters.</div></td></tr>`; return; }
+  if(!list.length){ tbody.innerHTML = `<tr><td colspan="${document.querySelectorAll('#masterTable thead th').length}"><div class="empty-state">No matching products.</div></td></tr>`; btvApplyMasterColumnPrefs(true); return; }
 
 
 
@@ -12642,128 +12837,8 @@ function renderMaster(){
 
 
 
-  // Group by product NAME only (colours of the same product stay adjacent; category
-  // and launch date never split a product into separate groups). Launch date is a
-  // plain sortable column now — click its header to sort, it no longer groups rows.
-
-
-
-
-
-
-
-
-
-  const grouped = {};
-
-
-
-
-
-
-
-
-
-  const dateOrder = [];
-
-
-
-
-
-
-
-
-
-  list.forEach(p => {
-
-
-
-
-
-
-
-
-
-    const key = (p.name || '').trim().toLowerCase() || '—';
-
-
-
-
-
-
-
-
-
-    if(!grouped[key]){ grouped[key] = []; dateOrder.push(key); }
-
-
-
-
-
-
-
-
-
-    grouped[key].push(p);
-
-
-
-
-
-
-
-
-
-  });
-
-
-
-
-
-
-
-
-
-  // Dedupe dateOrder while preserving insertion order
-
-
-
-
-
-
-
-
-
-  const seenKeys = new Set();
-
-
-
-
-
-
-
-
-
-  const orderedKeys = dateOrder.filter(k => { if(seenKeys.has(k)) return false; seenKeys.add(k); return true; });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  // Summaries preserve the selected sort without expanding variants into list rows.
+  const groupedList = BtvLinesheetProducts.summaries(list,products);
   let rowIndex = 0;
 
 
@@ -12774,463 +12849,15 @@ function renderMaster(){
 
 
 
-  tbody.innerHTML = orderedKeys.map(dateKey => {
-
-
-
-
-
-
-
-
-
-    const rows = grouped[dateKey];
-
-
-
-
-
-
-
-
-
-    const groupLabel = (rows[0] && rows[0].name) || '—';
-
-
-
-
-
-
-
-
-
-    let html = `<tr style="background:#f0ebe0"><td colspan="23" style="padding:8px 10px;font-weight:700;font-size:12px;color:#5a4e40;letter-spacing:.03em;border-bottom:2px solid #d7c9b2">${escapeHtml(groupLabel)}</td></tr>`;
-
-
-
-
-
-
-
-
-
-    rows.forEach(p => {
-
-
-
-
-
-
-
-
-
-      rowIndex++;
-
-
-
-
-
-
-
-
-
-      const img1 = p.productImg ? `<img src="${p.productImg}" alt="product image">` : '—';
-
-
-
-
-
-
-
-
-
-      const img2 = p.lookbookImg ? `<img src="${p.lookbookImg}" alt="lookbook image">` : '—';
-
-
-
-
-
-
-
-
-
-      const removedBadge = p.calRemoved ? `<span class="badge" style="background:#f5d0d0;color:#8a1f1f;margin-left:4px" title="Its line no longer appears in the Product Calendar Input — data is kept, review and delete if it's no longer needed.">Removed from Calendar</span>` : '';
-      const statusBadge = p.workflowStatus === 'published'
-
-
-
-
-
-
-
-
-
-        ? `<span class="badge badge-green">Published</span>`
-
-
-
-
-
-
-
-
-
-        : `<span class="badge badge-amber">Draft</span>`;
-
-
-
-
-
-
-
-
-
-      const _trLockKey = 'ls::group::' + (p.groupId || '');
-      const _trHolder = (typeof _btvLsGetLockHolder === 'function') ? _btvLsGetLockHolder(_trLockKey) : null;
-      const _trLockStyle = _trHolder ? 'outline:2px solid #e6a817;outline-offset:-2px;' : '';
-      // Build SKU and barcode cells â€“ show all sizes when sizeSKUs/sizeBarcodes populated
-      const _szOrd = ['XXS','XS','S','M','L','XL','XXL'];
-      const _szSort = ks => ks.slice().sort((a,b)=>{ const ai=_szOrd.indexOf(a),bi=_szOrd.indexOf(b); return (ai>=0&&bi>=0)?ai-bi:a.localeCompare(b); });
-      const _hasSzSku = p.sizeSKUs && Object.keys(p.sizeSKUs).length > 0;
-      const _hasSzBc  = p.sizeBarcodes && Object.keys(p.sizeBarcodes).length > 0;
-      const skuCellHtml = _hasSzSku
-        ? `<td class="td-sku">${_szSort(Object.keys(p.sizeSKUs)).filter(sz=>p.sizeSKUs[sz]).map(sz=>`<span style="color:#999;font-size:9px;display:inline-block;min-width:22px">${escapeHtml(sz)}</span> ${escapeHtml(p.sizeSKUs[sz])}`).join('<br>')}</td>`
-        : `<td style="font-family:monospace;font-size:11px">${escapeHtml(p.sku||'—')}</td>`;
-      const bcCellHtml  = _hasSzBc
-        ? `<td class="td-sku">${_szSort(Object.keys(p.sizeBarcodes)).filter(sz=>p.sizeBarcodes[sz]).map(sz=>`<span style="color:#999;font-size:9px;display:inline-block;min-width:22px">${escapeHtml(sz)}</span> ${escapeHtml(p.sizeBarcodes[sz])}`).join('<br>')}</td>`
-        : `<td style="font-family:monospace;font-size:11px">${escapeHtml(p.barcode||'—')}</td>`;
-      html += `<tr data-gid="${escapeHtml(p.groupId||'')}" style="${_trLockStyle}">
-
-
-
-
-
-
-
-
-
-        <td class="checkbox-cell"><input type="checkbox" title="${btvAllApproved(p) ? '' : 'All 3 approvals required'}" ${p.selectedForLinesheet ? 'checked' : ''} ${btvAllApproved(p) ? '' : 'disabled'} onchange="toggleLinesheetSelection('${p.id}', this.checked)" style="${btvAllApproved(p) ? '' : 'opacity:0.35;cursor:not-allowed'}"></td>
-
-
-
-
-
-
-
-
-
-        <td class="checkbox-cell" style="text-align:left;padding:6px 10px"><div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start"><label style="font-size:10px;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap" title="Designer approval"><input type="checkbox" ${p.approvedDesigner?"checked":""} onchange="btvToggleApproval('${p.id}','designer',this.checked)" style="cursor:pointer"> D</label><label style="font-size:10px;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap" title="Supply Chain approval"><input type="checkbox" ${p.approvedSC?"checked":""} onchange="btvToggleApproval('${p.id}','sc',this.checked)" style="cursor:pointer"> SC</label><label style="font-size:10px;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap" title="Merchandiser approval"><input type="checkbox" ${p.approvedMerch?"checked":""} onchange="btvToggleApproval('${p.id}','merch',this.checked)" style="cursor:pointer"> M</label></div></td>
-
-
-
-
-
-
-
-
-
-        <td>${rowIndex}</td>
-
-
-
-
-
-
-
-
-
-        <td class="col-images">${img1}</td>
-
-
-
-
-
-        <td class="col-images">${img2}</td>
-
-
-
-
-
-
-
-
-
-        ${skuCellHtml}
-
-
-
-
-
-
-
-
-
-        ${bcCellHtml}
-
-
-
-
-
-
-
-
-
-        <td>${escapeHtml(p.hscode || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td>${escapeHtml(p.hscode10 || (p.hscode ? (p.hscode + '.00') : '—'))}</td>
-
-
-
-
-
-
-
-
-
-        <td>${escapeHtml(p.launchDate || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td style="font-weight:700;cursor:pointer;text-decoration:underline;text-decoration-style:dotted" onclick="editGroup('${escapeHtml(p.groupId||'')}')" title="Click to open in Product Form">${escapeHtml(p.name || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td>${escapeHtml(p.variant || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td>${escapeHtml(p.category || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td class="td-wrap col-details">${escapeHtml(p.description || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td class="td-wrap col-details">${escapeHtml(p.fabric || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td class="col-details">${escapeHtml(p.sizing || '—')}</td>
-
-
-
-        <td class="col-details">${escapeHtml(p.weightGrams || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td class="td-wrap col-details">${escapeHtml(p.measurementSummary || '—')}</td>
-
-
-
-
-
-
-
-
-
-        <td class="td-wrap col-details">${escapeHtml(p.washcare || '—')}</td>
-
-
-
-
-
-
-
-
-
-        ${(function(){
-          var _pxFmt = [
-            ['SGD', p.sgd ? 'S$' + Number(p.sgd).toFixed(2) : ''],
-            ['SGD ex-GST', p.sgdNoGST ? 'S$' + Number(p.sgdNoGST).toFixed(2) : ''],
-            ['JPY', p.jp ? '¥' + p.jp : ''],
-            ['IDR', p.idRrp ? 'Rp ' + Number(p.idRrp).toLocaleString() : ''],
-            ['THB', p.th ? '฿' + p.th : ''],
-            ['PHP', p.ph ? '₱' + p.ph : ''],
-            ['CNY', p.cn ? '¥' + p.cn : ''],
-          ].filter(function(x){ return x[1]; });
-          var _pxPrimary = p.sgd ? 'S$' + Number(p.sgd).toFixed(2) : (_pxFmt.length ? _pxFmt[0][1] : '—');
-          var _pxTitle = _pxFmt.length ? _pxFmt.map(function(x){ return x[0] + ': ' + x[1]; }).join('\n') : 'No pricing entered';
-          return '<td class="col-pricing" title="' + escapeHtml(_pxTitle) + '">' + escapeHtml(_pxPrimary) + '</td>';
-        })()}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        <td class="col-calendar">${statusBadge}${removedBadge}</td>
-
-        <td class="col-calendar" style="color:#555;font-size:11px">${escapeHtml((p.calMarkets||[]).join(', ') || '—')}</td>
-
-        <td class="col-calendar" style="color:#555;font-size:11px;white-space:pre-line">${(p.calStores||[]).length ? (p.calStores).map(s => escapeHtml(s)).join('\n') : '—'}</td>
-
-
-
-
-
-
-
-
-
-      </tr>`;
-
-
-
-
-
-
-
-
-
-    });
-
-
-
-
-
-
-
-
-
-    return html;
-
-
-
-
-
-
-
-
-
+  tbody.innerHTML = groupedList.map(function(p){
+    rowIndex++;
+    var price=p.sgd!=='' && p.sgd!=null && Number.isFinite(Number(p.sgd))?'S$'+Number(p.sgd).toFixed(2):'Not entered';
+    return '<tr data-gid="'+escapeHtml(p.groupId||'')+'"><td>'+rowIndex+'</td>'
+      +'<td><button type="button" class="product-open" data-product-id="'+escapeHtml(p.id)+'" onclick="btvLsOpenProduct(this.dataset.productId)" title="Open all colours and sizes">'+escapeHtml(p.name||'')+'</button></td>'
+      +'<td>'+escapeHtml(p.category||'')+'</td><td>'+escapeHtml(price)+'</td></tr>';
   }).join('');
-
-
-
-
-
-
-
-
-
-  __btvUpdateSelectAllState();
-  if (typeof _btvLsApplyLockBadges === 'function') _btvLsApplyLockBadges();
-
-
-
-
-
-
-
-
-
+  if(typeof _btvLsApplyLockBadges==='function')_btvLsApplyLockBadges();
+  btvApplyMasterColumnPrefs(true);
 }
 
 
@@ -13812,7 +13439,6 @@ function renderLinesheet(){
 
 
 
-            <div class="ls-field"><span class="ls-field-label">Launch Date: </span>${escapeHtml(p.launchDate || '—')}</div>
 
             ${(p.calMarkets||[]).length ? `<div class="ls-field"><span class="ls-field-label">Markets: </span>${escapeHtml((p.calMarkets||[]).join(', '))}</div>` : ''}
 
@@ -14043,7 +13669,7 @@ function exportCSV(){
 
 
 
-  const headers = ['SKU','Barcode','HS Code (8)','HS Code (10)','Launch Date','Product Name','Colour/Variant','Product Category','Description','Fabric Composition','Sizing','Product Weight (g)','Measurements','Washcare','SGD RRP','SGD w/o GST','JP RRP','ID RRP','TH RRP','PH RRP','CN RRP','Selected for Linesheet','Cal Status','Markets','Stores'];
+  const headers = ['Unique ID','SKU','Barcode','HS Code (8)','HS Code (10)','Product Name','Colour/Variant','Size','Product Category','Description','Fabric Composition','Sizing','Product Weight (g)','Measurements','Washcare','SGD RRP','SGD w/o GST','JP RRP','ID RRP','TH RRP','PH RRP','CN RRP','Selected for Linesheet','Cal Status','Markets','Stores'];
 
 
 
@@ -14053,7 +13679,7 @@ function exportCSV(){
 
 
 
-  const rows = products.map(p => [p.sku,p.barcode,p.hscode,p.hscode10,p.launchDate,p.name,p.variant,p.category,p.description,p.fabric,p.sizing,p.weightGrams,p.measurementSummary,p.washcare,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn,p.selectedForLinesheet ? 'Yes' : 'No', p.workflowStatus || 'draft',(p.calMarkets||[]).join('; '),(p.calStores||[]).join(' | ')].map(v => `"${String(v || '').replace(/"/g,'""')}"`));
+  const rows = products.map(p => [p.uniqueId || p.id,p.sku,p.barcode,p.hscode,p.hscode10,p.name,p.variant,p.size || p.sizing,p.category,p.description,p.fabric,p.sizing,p.weightGrams,p.measurementSummary,p.washcare,p.sgd,p.sgdNoGST,p.jp,p.idRrp,p.th,p.ph,p.cn,p.selectedForLinesheet ? 'Yes' : 'No', p.workflowStatus || 'draft',(p.calMarkets||[]).join('; '),(p.calStores||[]).join(' | ')].map(v => `"${String(v || '').replace(/"/g,'""')}"`));
 
 
 
@@ -14131,7 +13757,7 @@ function exportLinesheetJSON(){
     type: 'btv-linesheet-export',
     version: 1,
     exportedAt: new Date().toISOString(),
-    products: products,
+    products: products.map(function(product){ const row = Object.assign({}, product); delete row.launchDate; return row; }),
     changeLog: getChangeLog()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
@@ -14167,13 +13793,31 @@ function importLinesheetJSON(input){
       return;
     }
 
+    const previousProductsById = new Map(products.map(function(p){ return [p.id, p]; }));
     const nextProducts = incomingProducts.map(function(p){
       p = p || {};
       if(!p.id) p.id = uid('product');
+      if(!p.uniqueId) p.uniqueId = p.id;
       if(!p.groupId) p.groupId = uid('group');
       if(!p.variantLocalId) p.variantLocalId = uid('variant');
+      // Legacy reminder metadata is not an editable master-data property.
+      const previous = previousProductsById.get(p.id);
+      if(previous && previous.launchDate) p.launchDate = previous.launchDate;
       return p;
     });
+    var importedCombinations = new Set();
+    var duplicateImport = nextProducts.find(function(p){
+      return btvMasterRecordKeys(p).some(function(key){
+        if(importedCombinations.has(key)) return true;
+        importedCombinations.add(key);
+        return false;
+      });
+    });
+    if(duplicateImport){
+      alert('Import stopped: the file contains more than one record for "' + (duplicateImport.name || 'Unnamed product') + '" / "' + (duplicateImport.variant || 'No colour') + '". Master Data allows only one record per Product Name + Colour + Size.');
+      input.value = '';
+      return;
+    }
     // Explicit, user-confirmed bulk replace — diffed against the table so it only
     // deletes rows that truly aren't in the imported file, not a blind overwrite.
     if (typeof window.btvLsReplaceAllProducts === 'function') window.btvLsReplaceAllProducts(nextProducts);
@@ -14210,7 +13854,7 @@ function exportLinesheetExcel(){
 
   var HDR_COLS = [
     ['SKU',70],['Barcode',90],['HS Code (8)',70],['HS Code (10)',70],
-    ['Launch Date',80],['Product Name',150],['Colour / Variant',90],
+    ['Product Name',150],['Colour / Variant',90],
     ['Category',80],['Sizes',90],['Weight (g)',60],
     ['Description',180],['Fabric',120],['Washcare',120],['Measurements',140],
     ['SGD RRP',60],['SGD ex GST',65],['JP RRP',60],['ID RRP',60],
@@ -14241,7 +13885,7 @@ function exportLinesheetExcel(){
   list.forEach(function(p,i){
     var s = i%2===0?'a':'b';
     var vals = [
-      p.sku, p.barcode, p.hscode, p.hscode10, p.launchDate,
+      p.sku, p.barcode, p.hscode, p.hscode10,
       p.name, p.variant, p.category, p.sizing, p.weightGrams,
       p.description, p.fabric, p.washcare, p.measurementSummary,
       p.sgd, p.sgdNoGST, p.jp, p.idRrp, p.th, p.ph, p.cn,
@@ -14264,6 +13908,7 @@ function exportLinesheetExcel(){
 function printLinesheet(){
   renderLinesheet();
   switchView('linesheet');
+  window.addEventListener('afterprint', function(){ switchView('master'); }, {once:true});
   setTimeout(function(){ window.print(); }, 350);
 }
 
@@ -14296,7 +13941,20 @@ function printLinesheet(){
 
 
 
+function btvProductLaunchIndex(){
+  let rows=null;
+  try{rows=JSON.parse(localStorage.getItem('linesheetCalendarData'));}catch(e){}
+  return BtvProductLaunches.createIndex(rows);
+}
+
 function renderDashboard(){
+  if(window.btvFetchChangeLog && (!window._btvLsAuditFetchedAt || Date.now()-window._btvLsAuditFetchedAt>20000)){
+    window._btvLsAuditFetchedAt=Date.now();
+    window.btvFetchChangeLog(100).then(function(rows){
+      window._btvLsSharedLog=rows.map(function(row){try{return JSON.parse(row.label);}catch(e){return null;}}).filter(function(entry){return entry&&entry.productName&&entry.ts;});
+      if(document.getElementById('view-dashboard').classList.contains('active'))renderDashboard();
+    }).catch(function(error){console.warn('[BTV LS] Could not load shared audit:',error.message);});
+  }
 
 
 
@@ -14316,7 +13974,8 @@ function renderDashboard(){
 
 
 
-  var today=new Date(); today.setHours(0,0,0,0);
+  var todayISO=BtvProductLaunches.todayISO();
+  var launchIndex=btvProductLaunchIndex();
 
 
 
@@ -14346,7 +14005,7 @@ function renderDashboard(){
 
 
 
-     fields:[{key:'name',label:'Product Name'},{key:'category',label:'Category'},{key:'variant',label:'Colour/Variant'},{key:'sgd',label:'SGD RRP'},{key:'launchDate',label:'Launch Date'}]},
+     fields:[{key:'name',label:'Product Name'},{key:'category',label:'Category'},{key:'variant',label:'Colour/Variant'},{key:'sgd',label:'SGD RRP'}]},
 
 
 
@@ -14401,116 +14060,6 @@ function renderDashboard(){
 
 
   ];
-
-
-
-
-
-
-
-
-
-  function daysTo(dt){
-
-
-
-
-
-
-
-
-
-    if(!dt) return null;
-
-
-
-
-
-
-
-
-
-    var d=new Date(dt); d.setHours(0,0,0,0);
-
-
-
-
-
-
-
-
-
-    d.setDate(d.getDate()-30);
-
-
-
-
-
-
-
-
-
-    return Math.round((d-today)/86400000);
-
-
-
-
-
-
-
-
-
-  }
-
-
-
-
-
-
-
-
-
-  function getDueDate(dt){
-
-
-
-
-
-
-
-
-
-    if(!dt) return '';
-
-
-
-
-
-
-
-
-
-    var d=new Date(dt); d.setDate(d.getDate()-30);
-
-
-
-
-
-
-
-
-
-    return d.toISOString().split('T')[0];
-
-
-
-
-
-
-
-
-
-  }
 
 
 
@@ -14631,7 +14180,8 @@ function renderDashboard(){
 
 
         if(p.linesheetComplete) return false;
-        if(p.launchDate && new Date(p.launchDate + 'T00:00:00') < new Date()) return false;
+        var launchDate=launchIndex.dateFor(p);
+        if(p.calRemoved || (launchDate&&launchDate<todayISO)) return false;
 
 
 
@@ -14671,7 +14221,7 @@ function renderDashboard(){
 
 
 
-        var da=daysTo(a.launchDate), db=daysTo(b.launchDate);
+        var da=BtvProductLaunches.daysUntilDue(launchIndex.dateFor(a),todayISO), db=BtvProductLaunches.daysUntilDue(launchIndex.dateFor(b),todayISO);
 
 
 
@@ -14731,7 +14281,8 @@ function renderDashboard(){
 
 
 
-        var days=daysTo(p.launchDate);
+        var launchDate=launchIndex.dateFor(p);
+        var days=BtvProductLaunches.daysUntilDue(launchDate,todayISO);
 
 
 
@@ -14831,7 +14382,7 @@ function renderDashboard(){
 
 
 
-          +(getDueDate(p.launchDate)?'<div style="font-size:10px;font-weight:700;color:#b45309;margin-bottom:1px">Due: '+getDueDate(p.launchDate)+'</div>':'')
+          +(launchDate?'<div style="font-size:10px;font-weight:700;color:#b45309;margin-bottom:1px">Due: '+BtvProductLaunches.shiftDate(launchDate,-30)+'</div>':'')
 
 
 
@@ -14841,7 +14392,7 @@ function renderDashboard(){
 
 
 
-          +(p.launchDate?'<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Launch: '+escapeHtml(p.launchDate)+'</div>':'')
+          +(launchDate?'<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Launch: '+escapeHtml(launchDate)+'</div>':'')
 
 
 
@@ -15031,7 +14582,7 @@ function renderDashboard(){
 
 
 
-    var timeStr=d.toLocaleDateString("en-SG",{day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("en-SG",{hour:"2-digit",minute:"2-digit"});
+    var timeStr=d.toLocaleDateString("en-SG",{timeZone:"Asia/Singapore",day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("en-SG",{timeZone:"Asia/Singapore",hour:"2-digit",minute:"2-digit"});
 
 
 
@@ -15062,6 +14613,7 @@ function renderDashboard(){
 
 
     var nameStr=escapeHtml(entry.productName||"Unknown");
+    if(entry.actorName || entry.actorEmail)nameStr+=' <span style="font-weight:400;font-size:11px">by '+escapeHtml(entry.actorName||entry.actorEmail)+'</span>';
 
 
 
@@ -15830,8 +15382,10 @@ function btvNotifyNewCalendarPush(newItems){
   if(!url||!newItems||!newItems.length) return;
   var lines=['**BTV Planner — New Items Synced from Calendar**',''];
   lines.push(newItems.length+' new product(s) pushed to the linesheet:','');
+  var launchIndex=btvProductLaunchIndex();
   newItems.forEach(function(p){
-    lines.push('• '+(p.name||'Unnamed')+(p.variant?' — '+p.variant:'')+(p.launchDate?' [Launch: '+p.launchDate+']':'')+(p.category?' ('+p.category+')':''));
+    var date=launchIndex.dateFor(p);
+    lines.push('• '+(p.name||'Unnamed')+(p.variant?' — '+p.variant:'')+(date?' [Launch: '+date+']':'')+(p.category?' ('+p.category+')':''));
   });
   lines.push('','Please update the linesheet with full product details.');
   btvSendTeamsSummary(url, lines.join('\n'));
@@ -15846,26 +15400,24 @@ function btvNotifyNewCalendarPush(newItems){
 
 
 function btvCheckMondayReminder(){
-  var today=new Date();
-  if(today.getDay()!==1) return;
-  var mondayKey=today.toISOString().split('T')[0];
+  var mondayKey=BtvProductLaunches.todayISO();
+  if(new Date(mondayKey+'T00:00:00Z').getUTCDay()!==1) return;
+  var launchIndex=btvProductLaunchIndex();
   var sentKey='btvMondayReminderSent_'+mondayKey;
   try{ if(localStorage.getItem(sentKey)) return; }catch(e){ return; }
   var url; try{ url=localStorage.getItem('btvLsWebhook')||''; }catch(e){ url=''; }
   if(!url) return;
-  var cutoff=new Date(today); cutoff.setDate(cutoff.getDate()+30); cutoff.setHours(23,59,59,999);
+  var cutoff=BtvProductLaunches.shiftDate(mondayKey,30);
   var TDEF=[
-    {label:'Merch',fields:['name','category','variant','sgd','launchDate'],flabels:['Product Name','Category','Colour/Variant','SGD RRP','Launch Date']},
+    {label:'Merch',fields:['name','category','variant','sgd'],flabels:['Product Name','Category','Colour/Variant','SGD RRP']},
     {label:'Design',fields:['description','washcare','fabric','productImg','lookbookImg'],flabels:['Description','Washcare','Fabric','Product Image','Lookbook Image']},
     {label:'Prod',fields:['hscode','sku','barcode'],flabels:['HS Code','SKU','Barcode']},
     {label:'Product Designers',fields:['fabric','weightGrams','measurementSummary'],flabels:['Fabric Composition','Product Weight','Measurement Chart']}
   ];
   var relevant=products.filter(function(p){
     if(p.linesheetComplete) return false;
-    if(!p.launchDate) return false;
-    var d=new Date(p.launchDate); d.setHours(0,0,0,0);
-    var due=new Date(d); due.setDate(due.getDate()-30);
-    return due<=cutoff;
+    var date=launchIndex.dateFor(p);
+    return !p.calRemoved&&date&&date>=mondayKey&&date<=cutoff;
   });
   var lines=['**BTV Planner — Weekly Monday Reminder ('+mondayKey+')**','Outstanding tasks due within 30 days of launch:',''];
   var hasAny=false;
@@ -15876,7 +15428,7 @@ function btvCheckMondayReminder(){
     lines.push('**'+team.label+'** ('+out.length+' item(s))');
     out.forEach(function(p){
       var missing=team.fields.map(function(fk,i){ return !p[fk]?team.flabels[i]:null; }).filter(Boolean);
-      lines.push('  • '+(p.name||'Unnamed')+(p.variant?' — '+p.variant:'')+' [Launch: '+(p.launchDate||'?')+'] Missing: '+missing.join(', '));
+      lines.push('  • '+(p.name||'Unnamed')+(p.variant?' — '+p.variant:'')+' [Launch: '+launchIndex.dateFor(p)+'] Missing: '+missing.join(', '));
     });
     lines.push('');
   });
@@ -16210,27 +15762,29 @@ function _btvLsApplyFieldLocks(groupId) {
   var editors = allUsers.filter(function(u) { return u.item === itemId && (u.field || u.dirty); });
   var isLocked = editors.length > 0;
 
+  // The hard lock (see _btvLsOpenWithHardLock) is authoritative — if we're still waiting
+  // to acquire it, this presence check must never re-enable the form just because the
+  // holder hasn't focused a field yet. Both checks OR together; whichever says "locked"
+  // wins.
+  var isHardBlocked = !!window._btvLsHardLockBlocked || _btvLsHeldLockId !== groupId || window._btvCanEdit === false;
+
   // Remove any leftover per-field badges from the old mechanism
   document.querySelectorAll('.btv-fl-badge').forEach(function(b) { b.remove(); });
 
-  // Lock or unlock every editable input in the form as a unit
-  document.querySelectorAll('#view-form [data-field-key]').forEach(function(el) {
-    if (el.type === 'hidden' || el.readOnly) return;
-    el.disabled = isLocked;
-    el.style.outline = '';
-    el.title = '';
-  });
+  // Preserve permission-disabled controls while applying the shared edit lock.
+  _btvLsSetFormDisabled(isLocked || isHardBlocked);
 
   // Also lock/unlock the save button
   var saveBtn = document.querySelector('button[onclick="saveProductGroup()"]');
   if (saveBtn) {
-    saveBtn.disabled = isLocked;
-    saveBtn.title = isLocked ? '🔒 Locked while another user is editing' : '';
+    saveBtn.disabled = isLocked || isHardBlocked;
+    saveBtn.title = (isLocked || isHardBlocked) ? '🔒 Locked while another user is editing' : '';
   }
 
-  // Show or hide the product lock banner
+  // Show or hide the product lock banner — suppressed while the hard-lock banner
+  // (_btvLsRenderHardLockBanner) is already showing, so the two don't stack.
   var banner = document.getElementById('btv-form-lock-banner');
-  if (isLocked) {
+  if (isLocked && !isHardBlocked) {
     if (!banner) {
       banner = document.createElement('div');
       banner.id = 'btv-form-lock-banner';
@@ -16246,6 +15800,195 @@ function _btvLsApplyFieldLocks(groupId) {
   }
 
   _btvLsRenderCoEditBar(groupId);
+}
+
+// ── Hard product-group lock (server-enforced) ─────────────────────────────
+// The presence-based "who's editing" signal above is instant but soft — it's
+// a courtesy broadcast each browser sends about what it's looking at, not a
+// guarantee. Nothing stops two people opening the same product within the
+// same instant from both passing that check before either heard about the
+// other. These functions call Postgres functions (see
+// supabase-linesheet-products-lock-migration.sql) that resolve the race with
+// a single atomic upsert, and a trigger on linesheet_products that rejects
+// any write to a locked group's rows server-side — so this holds even if a
+// bug or a race lets a client attempt to save one it doesn't actually hold.
+var _btvLsHeldLockId      = null; // group_id this browser currently holds the lock for
+var _btvLsLockHeartbeatId = null;
+var _btvLsLockPollId      = null;
+var _btvLsLockGeneration = 0;
+
+function _btvLsStopLockTimers(){
+  ++_btvLsLockGeneration;
+  if (_btvLsLockHeartbeatId) { clearInterval(_btvLsLockHeartbeatId); _btvLsLockHeartbeatId = null; }
+  if (_btvLsLockPollId)      { clearInterval(_btvLsLockPollId);      _btvLsLockPollId = null; }
+  window._btvLsHardLockBlocked = false;
+}
+
+// Attempts to acquire the lock. Resolves { acquired: true } on success, or
+// { acquired: false, email/error } on denial or unavailable shared connection.
+async function _btvLsAcquireLock(groupId){
+  if (!window._btvSb) return { acquired: false, error: 'Not connected to the shared database.' };
+  var email = (typeof window.btvGetCurrentEmail === 'function' && window.btvGetCurrentEmail()) || '';
+  try {
+    var timeout;
+    var res;
+    try {
+      res = await Promise.race([
+        window._btvSb.rpc('try_lock_linesheet_group', { p_group_id: groupId, p_email: email }),
+        new Promise(function(resolve,reject){ timeout=setTimeout(function(){reject(new Error('Lock request timed out.'));},8000); })
+      ]);
+    } finally { clearTimeout(timeout); }
+    if (res.error) return { acquired: false, error: 'Could not verify the edit lock. Check connection and database lock setup.' };
+    if (res.data === true) return { acquired: true };
+    var sel;
+    try {
+      sel = await Promise.race([
+        window._btvSb.from('linesheet_product_locks').select('locked_by_email').eq('group_id', groupId).maybeSingle(),
+        new Promise(function(resolve){ timeout=setTimeout(function(){resolve({data:null});},4000); })
+      ]);
+    } finally { clearTimeout(timeout); }
+    return { acquired: false, email: (sel.data && sel.data.locked_by_email) || null };
+  } catch(err) {
+    console.warn('[BTV LS] lock acquire failed:', err);
+    return { acquired: false, error: 'Could not verify the edit lock. Try reopening this product.' };
+  }
+}
+
+function _btvLsReleaseLock(groupId){
+  if (_btvLsHeldLockId === groupId) _btvLsHeldLockId = null;
+  if (window._btvSb) {
+    window._btvSb.rpc('unlock_linesheet_group', { p_group_id: groupId }).then(function(res){
+      if (res && res.error) console.warn('[BTV LS] unlock error:', res.error.message);
+    }).catch(function(){});
+  }
+}
+
+function _btvLsSetFormDisabled(disabled){
+  document.querySelectorAll('#view-form input, #view-form select, #view-form textarea, #view-form button').forEach(function(el){
+    if (el.type === 'hidden') return;
+    if (el.tagName === 'BUTTON' && /switchView|close|Back/.test(el.getAttribute('onclick') || '')) return;
+    if (disabled) {
+      if (!el.hasAttribute('data-btv-lock-disabled')) el.setAttribute('data-btv-lock-disabled', el.disabled ? '1' : '0');
+      el.disabled = true;
+    } else if (el.hasAttribute('data-btv-lock-disabled')) {
+      el.disabled = el.getAttribute('data-btv-lock-disabled') === '1';
+      el.removeAttribute('data-btv-lock-disabled');
+    }
+  });
+  var saveBtn = document.querySelector('button[onclick="saveProductGroup()"]');
+  if (saveBtn) saveBtn.disabled = disabled;
+}
+
+function _btvLsRenderHardLockBanner(email, error){
+  var banner = document.getElementById('btv-ls-hardlock-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'btv-ls-hardlock-banner';
+    banner.style.cssText = 'margin-bottom:12px;padding:10px 14px;background:#fef9e7;border:1.5px solid #e6a817;border-radius:4px;font-size:12px;color:#7a5a00;line-height:1.6;';
+    var fv = document.getElementById('view-form');
+    if (fv) fv.insertBefore(banner, fv.firstChild);
+  }
+  banner.innerHTML = '🔒 <strong>' + escapeHtml(email || 'Someone') + '</strong> is currently editing this product. Inputs are locked to protect their work.';
+  if (error) banner.textContent = error + ' Editing remains locked.';
+  banner.style.display = 'block';
+}
+
+function _btvLsRemoveHardLockBanner(){
+  var banner = document.getElementById('btv-ls-hardlock-banner');
+  if (banner) banner.remove();
+}
+
+// Called when the product form opens for an existing product. Disables the
+// form immediately, then acquires (or waits for) the hard lock before
+// re-enabling it. Mirrors the same flow used by Product Calendar Input.
+async function _btvLsRefreshHeldLock(groupId){
+  var generation = _btvLsLockGeneration;
+  if (_btvLsHeldLockId !== groupId || window._btvCurrentGroupId !== groupId) return;
+  var timer;
+  var result;
+  try {
+    result = await Promise.race([
+      window._btvSb.rpc('refresh_linesheet_group_lock', { p_group_id: groupId }),
+      new Promise(function(resolve){timer=setTimeout(function(){resolve({error:true});},8000);})
+    ]);
+  } catch (error) { result = {error:error}; }
+  finally { clearTimeout(timer); }
+  if (generation !== _btvLsLockGeneration || _btvLsHeldLockId !== groupId || window._btvCurrentGroupId !== groupId) return;
+  if (result && !result.error && result.data === true) return;
+  _btvLsHeldLockId = null;
+  _btvLsOpenWithHardLock(groupId);
+}
+
+async function _btvLsGrantLock(groupId){
+  var generation = _btvLsLockGeneration;
+  _btvLsHeldLockId = groupId;
+  try {
+    if (_btvFormDirty) throw new Error('The edit lock was interrupted. Reopen this product to load the latest saved version before editing again.');
+    if (typeof window.btvLsRefreshGroupForEdit !== 'function') throw new Error('Shared product loading is not ready. Reopen this product.');
+    await window.btvLsRefreshGroupForEdit(groupId);
+    if (generation !== _btvLsLockGeneration) return;
+    if (window._btvCurrentGroupId !== groupId) { _btvLsReleaseLock(groupId); return; }
+    editGroup(groupId, {lockGranted:true});
+    window._btvLsHardLockBlocked = false;
+    _btvLsRemoveHardLockBanner();
+    _btvLsSetFormDisabled(false);
+    _btvLsLockHeartbeatId = setInterval(function(){ _btvLsRefreshHeldLock(groupId); },30000);
+  } catch (error) {
+    if (generation !== _btvLsLockGeneration) return;
+    _btvLsReleaseLock(groupId);
+    if (window._btvCurrentGroupId !== groupId) return;
+    window._btvLsHardLockBlocked = true;
+    _btvLsSetFormDisabled(true);
+    _btvLsRenderHardLockBanner(null, error.message || 'Could not load the latest saved product.');
+  }
+}
+
+function _btvLsOpenWithHardLock(groupId){
+  _btvLsStopLockTimers();
+  var generation = _btvLsLockGeneration;
+  _btvLsHeldLockId = null;
+  window._btvLsHardLockBlocked = true;
+  _btvLsSetFormDisabled(true);
+  _btvLsAcquireLock(groupId).then(function(result){
+    if (generation !== _btvLsLockGeneration) {
+      if (result.acquired && window._btvCurrentGroupId !== groupId) _btvLsReleaseLock(groupId);
+      return;
+    }
+    if (window._btvCurrentGroupId !== groupId) {
+      // Form was navigated away from while the lock request was in flight —
+      // release immediately rather than leaving an orphaned lock behind.
+      if (result.acquired) _btvLsReleaseLock(groupId);
+      return;
+    }
+    if (result.acquired) {
+      _btvLsGrantLock(groupId);
+    } else {
+      window._btvLsHardLockBlocked = true;
+      _btvLsRenderHardLockBanner(result.email, result.error);
+      _btvRefreshFormFromSaved(groupId);
+      // Poll rather than relying solely on presence timing — the lock is
+      // decided in Postgres, not by whatever presence message happens to
+      // have arrived, so re-checking with the same authoritative call is
+      // what actually detects release.
+      var retryBusy = false;
+      _btvLsLockPollId = setInterval(function(){
+        if (retryBusy) return;
+        if (window._btvCurrentGroupId !== groupId) { _btvLsStopLockTimers(); return; }
+        retryBusy = true;
+        _btvLsAcquireLock(groupId).then(async function(retry){
+          if (generation !== _btvLsLockGeneration) {
+            if (retry.acquired && window._btvCurrentGroupId !== groupId) _btvLsReleaseLock(groupId);
+            return;
+          }
+          if (!retry.acquired) { _btvRefreshFormFromSaved(groupId); return; }
+          if (window._btvCurrentGroupId !== groupId) { _btvLsReleaseLock(groupId); return; }
+          _btvLsStopLockTimers();
+          window._btvLsHardLockBlocked = true;
+          await _btvLsGrantLock(groupId);
+        }).finally(function(){retryBusy=false;});
+      }, 4000);
+    }
+  });
 }
 
 // Event delegation: when any tracked field is focused/blurred, update presence.
@@ -16329,23 +16072,42 @@ window.addEventListener('beforeunload', function(e) {
   if (_btvFormDirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
-// Save-sync layer: refresh form fields from the saved product data after another user saves.
-// Only updates fields the local user isn't currently focused on, and only for simple f_ fields.
+// Batch size-row events into one complete refresh; never overwrite a local draft.
+var _btvFormRefreshTimer = null;
+var _btvFormRefreshBusy = false;
+function _btvLsGroupSnapshot(gid) {
+  return JSON.stringify(groupProductsById(gid).slice().sort(function(a,b){return String(a.id).localeCompare(String(b.id));}));
+}
+function _btvLsCanRefreshForm(gid) {
+  var form = document.getElementById('view-form');
+  return !!(form && form.classList.contains('active') && window._btvCurrentGroupId === gid &&
+    !_btvFormDirty && !window._btvLsSaving && !window._btvLsSaveChecking && !window._btvLsPaused);
+}
 function _btvRefreshFormFromSaved(gid) {
   if (!gid) return;
-  var grpItems = products.filter(function(p) { return p.groupId === gid; });
-  if (!grpItems.length) return;
-  var base = grpItems[0];
-  var activeEl = document.activeElement;
-  document.querySelectorAll('#view-form [data-field-key]').forEach(function(el) {
-    if (el === activeEl || el.type === 'hidden') return;
-    var fk = el.dataset.fieldKey;
-    if (!fk || !fk.startsWith('f_')) return; // skip measurement table rows (handled separately)
-    var prop = fk.slice(2); // 'f_description' → 'description'
-    if (base[prop] === undefined) return;
-    var newVal = base[prop] == null ? '' : String(base[prop]);
-    if (el.value !== newVal) el.value = newVal;
-  });
+  clearTimeout(_btvFormRefreshTimer);
+  _btvFormRefreshTimer = setTimeout(async function() {
+    _btvFormRefreshTimer = null;
+    if (_btvFormRefreshBusy || !_btvLsCanRefreshForm(gid)) return;
+    _btvFormRefreshBusy = true;
+    try {
+      if (typeof window.btvLsRefreshGroupForEdit === 'function') {
+        await window.btvLsRefreshGroupForEdit(gid, {viewOnly:true});
+      }
+      if (!_btvLsCanRefreshForm(gid)) return;
+      var snapshot = window._btvLsRenderedGroupSnapshot;
+      if (snapshot && snapshot.groupId === gid && snapshot.value === _btvLsGroupSnapshot(gid)) return;
+      var form = document.getElementById('view-form');
+      if (!groupProductsById(gid).length) { switchView('master'); return; }
+      var x = window.scrollX, y = window.scrollY, formScroll = form.scrollTop;
+      // Rebuild every field without starting a new lock request.
+      editGroup(gid, {lockGranted: true});
+      form.scrollTop = formScroll;
+      window.scrollTo(x, y);
+    } catch(error) {
+      console.warn('[BTV LS] Waiting product refresh failed; will retry:', error.message);
+    } finally { _btvFormRefreshBusy = false; }
+  }, 250);
 }
 
 // Called by supabase-sync.js when a remote change arrives in this iframe.
@@ -16618,7 +16380,88 @@ window.btvReloadAndRender = function() {
   var _channel        = null;
   var _lastSession    = null;  // kept so a dropped channel can reconnect without a fresh init call
   var _reconnectTimer = null;  // debounces reconnect attempts after a dropped channel
+  var _calendarReconcileTimer = null;
+  window._btvLsConflictGroups = new Set();
   var _upsertInProgress = false; // prevents _fetchAll from overwriting products mid-write
+
+  // Ids this browser has actually attempted to save but doesn't yet know landed
+  // (added right before the upsert call, removed on confirmed success). This is
+  // what _fetchAll's "resurrect local-only rows" step below checks against —
+  // NOT simply "local minus remote" — because after a deliberate wipe, every
+  // cached product looks identical to "a save that silently failed" from that
+  // check's point of view. Without this distinction, _fetchAll would push the
+  // entire local cache straight back up the moment it saw an empty remote
+  // table, undoing the wipe within seconds. Genuine failed-save recovery still
+  // works exactly as before: an id stays in this set until its upsert actually
+  // succeeds, so a real network blip still gets retried on the next fetch.
+  var _pendingUpsertIds = new Set();
+
+  // ── Durable pending-save queue ──────────────────────────────────────────
+  // _pendingUpsertIds above only ever lived in memory — closing the tab (or
+  // the laptop sleeping, or a crash) mid-retry wiped it along with the tab,
+  // so a save that hadn't yet landed in Supabase was gone with no trace and
+  // never retried, even though the edit looked "saved" on screen right up
+  // until the tab disappeared. Mirroring the same ids to localStorage means
+  // btvLsProductsInit can reload this set on the NEXT time this browser opens
+  // Linesheet (see _loadPersistedPendingIds) and resume exactly where it left
+  // off, using the same resurrection path _fetchAll already has for a normal
+  // failed save. _markPending/_clearPending keep the in-memory Set and its
+  // localStorage mirror in lockstep — every existing call site that used to
+  // touch _pendingUpsertIds directly goes through these instead.
+  var PENDING_IDS_KEY   = 'btv_ls_pending_ids_v1';
+  // Whose edits the queue above holds. On a shared machine the next person to
+  // sign in must not resurrect and push someone else's unsaved products under
+  // their own name — so a queue owned by a different user is dropped on load.
+  var PENDING_OWNER_KEY = 'btv_ls_pending_owner_v1';
+
+  function _persistPendingIds() {
+    try {
+      localStorage.setItem(PENDING_IDS_KEY, JSON.stringify(Array.from(_pendingUpsertIds)));
+      if (_uid) localStorage.setItem(PENDING_OWNER_KEY, _uid);
+    } catch (e) {}
+    _updatePendingBadge();
+  }
+  function _markPending(id) { _pendingUpsertIds.add(id); _persistPendingIds(); }
+  function _clearPending(id) { _pendingUpsertIds.delete(id); _persistPendingIds(); }
+  function _loadPersistedPendingIds() {
+    try {
+      var owner = localStorage.getItem(PENDING_OWNER_KEY);
+      if (owner && _uid && owner !== _uid) {
+        console.warn('[BTV LS Products] Discarding unsynced queue left by a different user on this device.');
+        _persistPendingIds(); // overwrite with this user's (in-memory) set + owner
+        return;
+      }
+      var arr = JSON.parse(localStorage.getItem(PENDING_IDS_KEY) || '[]');
+      arr.forEach(function (id) { _pendingUpsertIds.add(id); });
+    } catch (e) {}
+    _updatePendingBadge();
+  }
+  window.btvLsPendingCount = function () { return _pendingUpsertIds.size; };
+
+  // Small always-visible pill next to the SKU count (see #btv-ls-pending-badge
+  // in the page markup) — unlike the spinner (which only shows while a write is
+  // actively in flight), this reflects the durable queue itself, so it stays
+  // visible across a reload if something is still genuinely unsynced, instead
+  // of only ever showing during the ~17s a save is actively retrying.
+  function _updatePendingBadge() {
+    var el = document.getElementById('btv-ls-pending-badge');
+    if (!el) return;
+    var n = _pendingUpsertIds.size;
+    if (!n) { el.style.display = 'none'; return; }
+    el.textContent = '● ' + n + ' not synced';
+    el.title = n + ' change' + (n === 1 ? '' : 's') + " saved on this device but not yet confirmed in the shared database. Click to retry now — they'll also retry automatically next time Linesheet opens.";
+    el.style.display = 'inline-block';
+  }
+
+  // Warn before leaving with unsynced changes still sitting only on this device —
+  // same reasoning as Product Calendar Input's own beforeunload guard.
+  window.addEventListener('beforeunload', function (ev) {
+    if (_pendingUpsertIds.size > 0) {
+      ev.preventDefault();
+      ev.returnValue = '';
+      return ev.returnValue;
+    }
+  });
 
   // Retry delays: 3 attempts with increasing backoff.
   // Also adds a 300 ms inter-chunk pause so rapid sequential upserts don't
@@ -16654,28 +16497,51 @@ window.btvReloadAndRender = function() {
     if (el) el.style.display = 'none';
   }
 
+  // Small spinner next to the SKU count (see the pill next to #selectedCount in the
+  // header) — this is the routine "saving products" indicator, shown on every
+  // upsert regardless of size. Kept separate from _showSyncBar/_hideSyncBar, which
+  // are reserved for things that actually need a person's attention (load errors,
+  // write failures after all retries).
+  var _skuSyncSpinnerCount = 0; // ref-counted — overlapping saves shouldn't hide it early
+  function _showSkuSyncSpinner() {
+    _skuSyncSpinnerCount++;
+    var el = document.getElementById('btv-sku-sync-spinner');
+    if (el) el.style.display = 'inline-block';
+  }
+  function _hideSkuSyncSpinner() {
+    _skuSyncSpinnerCount = Math.max(0, _skuSyncSpinnerCount - 1);
+    if (_skuSyncSpinnerCount > 0) return;
+    var el = document.getElementById('btv-sku-sync-spinner');
+    if (el) el.style.display = 'none';
+  }
+
   // ── Row ↔ product conversion ───────────────────────────────────────────────
   function _rowToProduct(row) {
     var p = Object.assign({}, row.data || {});
     p.id = row.id;
+    if (!p.uniqueId) p.uniqueId = p.id;
     p.groupId = row.group_id;
     return p;
   }
 
-  // Strip base64 image fields before sending to Supabase — they can be
-  // several hundred KB each and quickly push a chunk over the HTTP body limit.
-  // Images remain in the local `products` array and in localStorage; they are
-  // restored from localStorage when _fetchAll merges remote rows back in.
-  function _stripImagesForRemote(p) {
-    var out = Object.assign({}, p);
-    if (out.productImg  && out.productImg.length  > 512) out.productImg  = '';
-    if (out.lookbookImg && out.lookbookImg.length > 512) out.lookbookImg = '';
-    return out;
+  // Bound batch size instead of silently deleting shared image data.
+  function _productRowChunks(rows) {
+    var chunks = [], chunk = [], bytes = 2;
+    var encoder = new TextEncoder();
+    rows.forEach(function(row) {
+      var size = encoder.encode(JSON.stringify(row)).length + 1;
+      if (chunk.length && (chunk.length >= _CHUNK || bytes + size > 1024 * 1024)) {
+        chunks.push(chunk); chunk = []; bytes = 2;
+      }
+      chunk.push(row); bytes += size;
+    });
+    if (chunk.length) chunks.push(chunk);
+    return chunks;
   }
 
   // ── Fetch all products from Supabase ──────────────────────────────────────
   // • Never overwrites local products while a write is in flight.
-  // • After loading remote rows, merges back local images (stripped before write).
+  // • Local images are retained only for legacy rows that omit image fields.
   // • If local storage has products Supabase doesn't know about (e.g. a previous
   //   write failed), those rows are pushed up so they aren't silently lost.
   async function _fetchAll() {
@@ -16688,6 +16554,7 @@ window.btvReloadAndRender = function() {
     var res = await _sb.from('linesheet_products').select('id,group_id,data,updated_at,updated_by');
     if (res.error) {
       console.warn('[BTV LS Products] fetch error:', res.error.code, res.error.message);
+      if (typeof window._btvLsHideInitialLoadBar === 'function') window._btvLsHideInitialLoadBar();
       _showSyncBar('⚠ Could not load shared products: ' + (res.error.message || res.error.code) +
         '. Showing locally cached data.', '#fee2e2', '#7f1d1d');
       setTimeout(_hideSyncBar, 8000);
@@ -16706,18 +16573,28 @@ window.btvReloadAndRender = function() {
     var merged = remoteRows.map(function (p) {
       var local = localMap[p.id];
       if (!local) return p;
-      if (!p.productImg  && local.productImg)  p.productImg  = local.productImg;
-      if (!p.lookbookImg && local.lookbookImg) p.lookbookImg = local.lookbookImg;
+      if (!Object.prototype.hasOwnProperty.call(p,'productImg') && local.productImg) p.productImg = local.productImg;
+      if (!Object.prototype.hasOwnProperty.call(p,'lookbookImg') && local.lookbookImg) p.lookbookImg = local.lookbookImg;
       return p;
     });
 
-    // Products that exist locally but not yet in Supabase (write may have failed
-    // previously) — push them up now, silently, without blocking the render.
-    var localOnlyRows = products.filter(function (p) { return p.id && !remoteIds.has(p.id); });
+    // Products this browser actually tried to save but doesn't yet know landed —
+    // push them up now, silently, without blocking the render.
+    //
+    // REWRITE NOTE: this used to be "any local product Supabase doesn't have,
+    // for any reason" (products.filter(p => !remoteIds.has(p.id))). That's
+    // indistinguishable from "someone just deliberately wiped the table" —
+    // every cached product looks like a failed save from that check's point of
+    // view, so this was pushing the ENTIRE local cache straight back up moments
+    // after every wipe, undoing it completely. Now scoped to _pendingUpsertIds —
+    // ids this browser genuinely attempted to save and hasn't confirmed yet —
+    // so a deliberate wipe (nothing pending) stays wiped, while a real failed
+    // save (its id still pending) still gets retried correctly.
+    var localOnlyRows = products.filter(function (p) { return p.id && !remoteIds.has(p.id) && _pendingUpsertIds.has(p.id); });
     if (localOnlyRows.length) {
-      console.log('[BTV LS Products] Pushing', localOnlyRows.length, 'local-only rows to Supabase');
+      console.log('[BTV LS Products] Pushing', localOnlyRows.length, 'pending local-only rows to Supabase');
       // Fire-and-forget: don't await so render isn't delayed
-      window.btvLsUpsertProducts(localOnlyRows).catch(function (e) {
+      window.btvLsUpsertProducts(localOnlyRows,{background:true}).catch(function (e) {
         console.warn('[BTV LS Products] Background push of local-only rows failed:', e);
       });
       // Include them in the merged set so the UI shows them immediately
@@ -16726,10 +16603,99 @@ window.btvReloadAndRender = function() {
 
     products = merged;
     try { localStorage.setItem('btv_linesheet_products', JSON.stringify(products)); } catch (e) {}
+
+    // The calendar→linesheet rebuild (loadFromCalendar) can run before this very
+    // first fetch completes — on a fresh load, `products` starts empty, so its
+    // "does this product already exist" check fails for everything and it would
+    // otherwise persist rows with blanked-out description/fabric/measurements.
+    // window._btvLsRemoteReady gates those writes off until we have a real remote
+    // picture (see _btvDiffAndSyncProducts); now that we do, re-run the rebuild so
+    // it matches against real data and syncs any genuine diffs correctly.
+    var __wasReady = window._btvLsRemoteReady;
+    window._btvLsRemoteReady = true;
+    if (typeof window._btvLsHideInitialLoadBar === 'function') window._btvLsHideInitialLoadBar();
+    if (!__wasReady && typeof loadFromCalendar === 'function') loadFromCalendar(false);
+
     _rerenderAll();
+    if (window._btvCurrentGroupId && typeof _btvRefreshFormFromSaved === 'function') {
+      _btvRefreshFormFromSaved(window._btvCurrentGroupId);
+    }
   }
 
   // ── UI re-render ──────────────────────────────────────────────────────────
+  window.btvLsActiveGroupLocks = async function(groupIds){
+    if (!_sb) throw new Error('Shared lock lookup is unavailable.');
+    var blocked = new Set();
+    for (var i=0;i<groupIds.length;i+=100) {
+      var res = await _sb.from('linesheet_product_locks').select('group_id,locked_by,locked_at').in('group_id',groupIds.slice(i,i+100));
+      if (res.error) throw new Error('Shared lock lookup failed.');
+      (res.data || []).forEach(function(row){
+        if (row.locked_by && Date.parse(row.locked_at)>Date.now()-120000) blocked.add(row.group_id);
+      });
+    }
+    return blocked;
+  };
+
+  window.btvLsScheduleCalendarReconcile = function(){
+    if (_calendarReconcileTimer || window._btvLsPaused) return;
+    _showSyncBar('Calendar product updates are waiting for editing to finish.', '#e0edff', '#1e3a5f');
+    _calendarReconcileTimer = setTimeout(async function(){
+      _calendarReconcileTimer = null;
+      if (window._btvLsPaused || document.hidden) return;
+      if (window._btvCurrentGroupId || _upsertInProgress) {window.btvLsScheduleCalendarReconcile();return;}
+      _hideSyncBar();
+      try {await _fetchAll();loadFromCalendar(false);}
+      catch (error) {window.btvLsScheduleCalendarReconcile();}
+    },15000);
+  };
+
+  var _viewGroupRevisions = new Map();
+  function _groupRevision(rows) {
+    if (!rows || rows.some(function(row){return !row.updated_at;})) return null;
+    return JSON.stringify(rows.map(function(row){return [row.id,row.updated_at];}).sort(function(a,b){return String(a[0]).localeCompare(String(b[0]));}));
+  }
+  window.btvLsRefreshGroupForEdit = async function(groupId, options){
+    if (!_sb) throw new Error('Not connected to the shared database.');
+    var timer;
+    var res;
+    try {
+      if (options && options.viewOnly) {
+        var probe = await Promise.race([
+          _sb.from('linesheet_products').select('id,updated_at').eq('group_id',groupId),
+          new Promise(function(resolve,reject){timer=setTimeout(function(){reject(new Error('Checking the shared product timed out.'));},10000);})
+        ]);
+        clearTimeout(timer);
+        if (probe.error) throw new Error('Could not check the latest shared product.');
+        if (!_btvLsCanRefreshForm(groupId)) return;
+        var revision = _groupRevision(probe.data);
+        if (revision !== null && _viewGroupRevisions.get(groupId) === revision) return;
+      }
+      res = await Promise.race([
+        _sb.from('linesheet_products').select('id,group_id,data,updated_at,updated_by').eq('group_id',groupId),
+        new Promise(function(resolve,reject){timer=setTimeout(function(){reject(new Error('Loading the shared product timed out. Reopen this product.'));},10000);})
+      ]);
+    } finally {clearTimeout(timer);}
+    if (res.error) throw new Error('Could not load the latest shared product. Editing remains locked.');
+    if (options && options.viewOnly && !_btvLsCanRefreshForm(groupId)) return;
+    _viewGroupRevisions.set(groupId,_groupRevision(res.data));
+    if (options && options.viewOnly && (!res.data || !res.data.length)) {
+      products = products.filter(function(p){return p.groupId !== groupId;});
+      localStorage.setItem('btv_linesheet_products',JSON.stringify(products));
+      return;
+    }
+    if (!res.data || !res.data.length) throw new Error('This product was removed from the shared database.');
+    var latest = res.data.map(_rowToProduct);
+    latest.forEach(function(p){
+      var old = products.find(function(item){return item.id === p.id;});
+      if (old) {
+        if (!Object.prototype.hasOwnProperty.call(p,'productImg')) p.productImg = old.productImg;
+        if (!Object.prototype.hasOwnProperty.call(p,'lookbookImg')) p.lookbookImg = old.lookbookImg;
+      }
+    });
+    products = products.filter(function(p){return p.groupId !== groupId;}).concat(latest);
+    localStorage.setItem('btv_linesheet_products',JSON.stringify(products));
+  };
+
   function _rerenderAll() {
     if (typeof updateCount === 'function') updateCount();
     if (typeof populateCategoryFilter === 'function') populateCategoryFilter();
@@ -16741,6 +16707,8 @@ window.btvReloadAndRender = function() {
   // ── Realtime row-level change handler ────────────────────────────────────
   function _applyRealtimeChange(payload) {
     if (_upsertInProgress) return; // our own writes — skip to avoid flip-flop
+    var deletedProduct = payload.eventType === 'DELETE' && payload.old
+      ? products.find(function(p) { return p.id === payload.old.id; }) : null;
     if (payload.eventType === 'DELETE') {
       var oldId = payload.old && payload.old.id;
       if (!oldId) return;
@@ -16749,11 +16717,11 @@ window.btvReloadAndRender = function() {
       var row = payload.new;
       if (!row) return;
       var p = _rowToProduct(row);
-      // Restore local images if the remote row has them stripped
+      // Explicit remote blanks are removals, not a reason to restore stale images.
       var existing = products.find(function (pr) { return pr.id === p.id; });
       if (existing) {
-        if (!p.productImg  && existing.productImg)  p.productImg  = existing.productImg;
-        if (!p.lookbookImg && existing.lookbookImg) p.lookbookImg = existing.lookbookImg;
+        if (!Object.prototype.hasOwnProperty.call(p,'productImg')) p.productImg = existing.productImg;
+        if (!Object.prototype.hasOwnProperty.call(p,'lookbookImg')) p.lookbookImg = existing.lookbookImg;
       }
       var idx = products.findIndex(function (pr) { return pr.id === p.id; });
       if (idx >= 0) products[idx] = p; else products.push(p);
@@ -16761,7 +16729,7 @@ window.btvReloadAndRender = function() {
     try { localStorage.setItem('btv_linesheet_products', JSON.stringify(products)); } catch (e) {}
 
     var changedGroupId = payload.eventType === 'DELETE'
-      ? (payload.old && payload.old.group_id)
+      ? ((payload.old && payload.old.group_id) || (deletedProduct && deletedProduct.groupId))
       : (payload.new && payload.new.group_id);
     var openGroupId = window._btvCurrentGroupId || (typeof editingGroupId !== 'undefined' ? editingGroupId : null);
     var formOpenOnThisGroup = !!(openGroupId && changedGroupId && openGroupId === changedGroupId);
@@ -16780,10 +16748,16 @@ window.btvReloadAndRender = function() {
 
   // ── Init / teardown ───────────────────────────────────────────────────────
   window.btvLsProductsInit = async function (session) {
+    window._btvLsPaused = false;
     _sb = window._btvSb;
     if (!_sb) return;
     _lastSession = session;
     _uid = session && session.user && session.user.id;
+
+    // Reload any ids a previous tab/session attempted to save but never confirmed —
+    // must happen before _fetchAll so its existing "resurrect local-only rows"
+    // step (which checks _pendingUpsertIds) actually finds them and pushes them.
+    _loadPersistedPendingIds();
 
     await _fetchAll(); // also serves as the resume-catch-up when re-activated
 
@@ -16808,6 +16782,9 @@ window.btvReloadAndRender = function() {
   };
 
   window.btvLsProductsTeardown = function () {
+    clearTimeout(_calendarReconcileTimer); _calendarReconcileTimer = null;
+    window._btvLsPaused = true;
+    if (window._btvCurrentGroupId && !_btvFormDirty && !window._btvLsSaving && !window._btvLsSaveChecking) switchView('master');
     if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
     if (_channel) { try { _channel.unsubscribe(); } catch (e) {} _channel = null; }
   };
@@ -16815,7 +16792,7 @@ window.btvReloadAndRender = function() {
   // ── Retry wrapper ─────────────────────────────────────────────────────────
   // Shows the ACTUAL Supabase error (code + message) in the alert so failures
   // are diagnosable without opening DevTools.
-  async function _withRetry(fn, label, attempt) {
+  async function _withRetry(fn, label, attempt, context) {
     attempt = attempt || 0;
     try {
       var res = await fn();
@@ -16823,10 +16800,20 @@ window.btvReloadAndRender = function() {
       return true;
     } catch (err) {
       var errDetail = (err && (err.message || err.code || JSON.stringify(err))) || 'unknown error';
+      if (/locked by another user/i.test(errDetail)) {
+        if (context) context.lockConflict = true;
+        if (context && context.background) {
+          window.btvLsScheduleCalendarReconcile();
+        } else {
+          alert('This product is currently locked by another editor. Your draft has not been saved to the shared database. Do not retry the old row after the lock changes; reopen the product to load the latest saved version.\n\n' + errDetail);
+        }
+        return false;
+      }
+      if (context && context.background) { window.btvLsScheduleCalendarReconcile(); return false; }
       if (attempt < _retryMs.length) {
         console.warn('[BTV LS Products] ' + label + ' failed (attempt ' + (attempt + 1) + '/' + (_retryMs.length + 1) + '):', errDetail);
         await new Promise(function (resolve) { setTimeout(resolve, _retryMs[attempt]); });
-        return _withRetry(fn, label, attempt + 1);
+        return _withRetry(fn, label, attempt + 1, context);
       }
       console.error('[BTV LS Products] ' + label + ' failed after all retries:', errDetail);
       // Show the actual Supabase error so it can be diagnosed
@@ -16845,10 +16832,16 @@ window.btvReloadAndRender = function() {
 
   // ── Upsert (batched) ──────────────────────────────────────────────────────
   // Sends rows in small chunks with a pause between each to avoid connection-
-  // pool exhaustion. Images are stripped from the remote payload to keep each
-  // chunk under Supabase's HTTP body limit; they stay in the local array.
-  window.btvLsUpsertProducts = async function (list) {
+  // pool exhaustion. Image-bearing rows use smaller, byte-limited chunks.
+  window.btvLsUpsertProducts = async function (list, options) {
     if (!_sb || !list || !list.length) return false;
+    var context = {background:!!(options && options.background),lockConflict:false};
+    if (context.background) {
+      try {
+        var blocked = await window.btvLsActiveGroupLocks(Array.from(new Set(list.map(function(p){return p.groupId || p.id;}))));
+        if (blocked.size) {window.btvLsScheduleCalendarReconcile();return false;}
+      } catch (error) {window.btvLsScheduleCalendarReconcile();return false;}
+    }
     _upsertInProgress = true;
     var now  = new Date().toISOString();
     // Deduplicate by id — PostgreSQL throws "ON CONFLICT DO UPDATE command cannot
@@ -16860,43 +16853,71 @@ window.btvReloadAndRender = function() {
       return true;
     });
     var rows = deduped.map(function (p) {
-      return { id: p.id, group_id: p.groupId || p.id, data: _stripImagesForRemote(p), updated_at: now, updated_by: _uid };
+      return { id: p.id, group_id: p.groupId || p.id, data: Object.assign({},p), updated_at: now, updated_by: _uid };
     });
-    var total    = rows.length;
-    var chunkNum = 0;
-    var totalChunks = Math.ceil(total / _CHUNK);
+    // Mark every id as pending BEFORE attempting the save — this is the set
+    // _fetchAll checks before "resurrecting" anything (see its comment), and is
+    // also mirrored to localStorage (_markPending) so it survives this tab
+    // closing before the save confirms. Cleared per-row only once that row's
+    // chunk actually succeeds, so a real failure correctly stays eligible for
+    // retry-on-next-fetch AND retry-on-next-page-load.
+    if (!context.background) rows.forEach(function (r) { _markPending(r.id); });
+    // Small spinner next to the SKU count, not a full-width banner — this fires on
+    // every save, small or large, so a banner for every keystroke-triggered sync
+    // would be far too noisy. The banner is reserved for real problems (see the
+    // error paths below and in _withRetry).
+    _showSkuSyncSpinner();
     try {
-      for (var i = 0; i < rows.length; i += _CHUNK) {
-        let chunk = rows.slice(i, i + _CHUNK); // `let` for unambiguous closure capture
-        chunkNum++;
-        if (total > _CHUNK) {
-          _showSyncBar('⏳ Syncing products to shared database… ' + chunkNum + ' / ' + totalChunks,
-            '#e0edff', '#1e3a5f');
-        }
+      var chunks = _productRowChunks(rows);
+      for (var i = 0; i < chunks.length; i++) {
+        let chunk = chunks[i];
         var ok = await _withRetry(function () {
           return _sb.from('linesheet_products').upsert(chunk, { onConflict: 'id' });
-        }, 'save');
-        if (!ok) { _upsertInProgress = false; _hideSyncBar(); return false; }
+        }, 'save', 0, context);
+        if (!ok) {
+          if (context.lockConflict) rows.forEach(function(r){_clearPending(r.id);if(!context.background)window._btvLsConflictGroups.add(r.group_id);});
+          _upsertInProgress = false; _hideSkuSyncSpinner(); return false;
+        }
+        chunk.forEach(function (r) { _clearPending(r.id); });
+        if (!context.background) chunk.forEach(function(r){window._btvLsConflictGroups.delete(r.group_id);});
         // Brief pause between chunks so we don't flood the connection pool
-        if (i + _CHUNK < rows.length) {
+        if (i + 1 < chunks.length) {
           await new Promise(function (resolve) { setTimeout(resolve, _CHUNK_PAUSE); });
         }
       }
     } finally {
       _upsertInProgress = false;
-      _hideSyncBar();
-    }
-    if (total > _CHUNK) {
-      _showSyncBar('✓ ' + total + ' products synced to shared database.', '#dcfce7', '#166534');
-      setTimeout(_hideSyncBar, 4000);
+      _hideSkuSyncSpinner();
     }
     return true;
   };
 
+  // Manual "retry now" — wired to a click on the #btv-ls-pending-badge pill.
+  // Rebuilds rows for whatever's still pending straight from the in-memory
+  // products array (the same source _fetchAll's own resurrection uses) rather
+  // than waiting for the next automatic fetch/reconnect cycle.
+  window.btvLsRetryPending = function () {
+    if (!_pendingUpsertIds.size) return;
+    if (window._btvCurrentGroupId && _btvLsHeldLockId === window._btvCurrentGroupId && !window._btvLsHardLockBlocked) {
+      saveProductGroup();
+      return;
+    }
+    alert('Open the affected product to load its latest shared data, then use Save Product. Old pending rows are not replayed automatically.');
+  };
+
   // ── Delete helpers ────────────────────────────────────────────────────────
-  window.btvLsDeleteProducts = function (ids) {
+  window.btvLsDeleteProducts = function (ids, options) {
     if (!_sb || !ids || !ids.length) return Promise.resolve(false);
-    return _withRetry(function () { return _sb.from('linesheet_products').delete().in('id', ids); }, 'delete');
+    // Large master-data rebuilds can contain hundreds of rows. Keep each URL-sized
+    // `in()` filter modest so every delete is accepted by PostgREST.
+    return (async function () {
+      for (var i = 0; i < ids.length; i += 100) {
+        var chunk = ids.slice(i, i + 100);
+        var ok = await _withRetry(function () { return _sb.from('linesheet_products').delete().in('id', chunk); }, 'delete', 0, {background:!!(options && options.background)});
+        if (!ok) return false;
+      }
+      return true;
+    })();
   };
 
   window.btvLsDeleteProductsByGroup = function (groupId) {
@@ -16956,14 +16977,5 @@ window.btvReloadAndRender = function() {
   }
 })();
 </script>
+<script src="../js/linesheet-columns.js"></script>
 </body></html>
-
-
-
-
-
-
-
-
-
-

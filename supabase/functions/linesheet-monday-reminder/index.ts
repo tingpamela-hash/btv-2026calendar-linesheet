@@ -13,14 +13,13 @@
 //                          delivers to the Resend account owner's own email.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend";
+import { authorizeReminder } from "./authorization.mjs";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM_EMAIL = Deno.env.get("LINESHEET_FROM_EMAIL") || "BTV Planner <onboarding@resend.dev>";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const PRODUCTS_KEY = "btv_linesheet_products";
 const EMAILS_KEY = "btv-linesheet-notify-emails-v1";
 
 // Mirrors the TDEF role/field definitions in linesheet.html (btvCheckMondayReminder).
@@ -32,38 +31,31 @@ const TDEF = [
 ];
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed." }, 405);
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return json({ ok: false, error: "Reminder unavailable." }, 503);
+  const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const authorized = await authorizeReminder(req, {
+    secret: Deno.env.get("BTV_REMINDER_CRON_SECRET"),
+    client: sb,
+  });
+  if (!authorized) return json({ ok: false, error: "Not authorized." }, 403);
   if (!RESEND_API_KEY) {
     return json({ ok: false, error: "RESEND_API_KEY secret is not set." }, 500);
   }
 
-  // Quick connectivity check: call with ?ping=<email> to send a one-off
-  // "Hello World" test email and confirm the Resend API key works, without
-  // running the full outstanding-items logic below.
-  const pingTo = new URL(req.url).searchParams.get("ping");
-  if (pingTo) {
-    const resend = new Resend(RESEND_API_KEY);
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: pingTo,
-      subject: "Hello World",
-      html: "<p>Congrats on sending your <strong>first email</strong>!</p>",
-    });
-    return json({ ok: !error, data, error });
-  }
+  const [{ data: productRows, error: productsError }, { data: emailRows, error: emailsError }] = await Promise.all([
+    sb.from("linesheet_products").select("data"),
+    sb.from("app_state").select("value").eq("key", EMAILS_KEY),
+  ]);
 
-  const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  if (productsError) return json({ ok: false, error: productsError.message }, 500);
+  if (emailsError) return json({ ok: false, error: emailsError.message }, 500);
 
-  const { data: rows, error } = await sb
-    .from("app_state")
-    .select("key, value")
-    .in("key", [PRODUCTS_KEY, EMAILS_KEY]);
-
-  if (error) return json({ ok: false, error: error.message }, 500);
-
-  const productsRow = rows?.find((r) => r.key === PRODUCTS_KEY);
-  const emailsRow = rows?.find((r) => r.key === EMAILS_KEY);
-
-  const products: any[] = Array.isArray(productsRow?.value) ? productsRow!.value : [];
+  const products: any[] = (productRows || [])
+    .map((row) => row.data)
+    .filter((product) => product && typeof product === "object");
+  const emailsRow = emailRows?.[0];
   const roleEmails: Record<string, string[]> = emailsRow?.value || {};
 
   const today = new Date();
@@ -146,9 +138,15 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }

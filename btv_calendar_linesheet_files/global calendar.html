@@ -3,9 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Global Calendar 2026</title>
+<title>Global Calendar</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase-config.js"></script>
+<script src="../js/calendar-csv.js"></script>
+<script src="../js/calendar-records.js"></script>
+<script src="../js/creative-sync.js"></script>
+<script src="../js/markdown-calendar.js"></script>
+<script src="../js/markdown-sync.js"></script>
+<script src="../js/calendar-export.js"></script>
+<script src="../js/creative-events.js"></script>
+<script src="../js/linesheet-preview.js"></script>
 <script>
   // Opt this page out of the generic blob sync for the marketing-workflow key.
   // creative-calendar.html manages marketing entries via the per-entry
@@ -13,7 +21,15 @@
   // path caused: (a) a double-write per save, and (b) a blob Realtime event
   // from calendar.html overwriting in-memory marketingState without the
   // per-entry items, then the next diff falsely deleting those items.
-  window.BTV_SYNC_EXCLUDE = ['calendar-2026-marketing-workflow-v1'];
+  // Excludes a range of years (not just the one this loads with) since this
+  // list is read once by supabase-sync.js at startup — switching years later
+  // via the in-page year selector must not re-enable the blob path for
+  // whichever year you switch to.
+  window.BTV_SYNC_EXCLUDE = (function(){
+    var base = new Date().getFullYear(), out = [];
+    for (var y = base - 2; y <= base + 4; y++) out.push('calendar-' + y + '-marketing-workflow-v1');
+    return out;
+  })();
 </script>
 <script src="../js/supabase-sync.js"></script>
 <style>
@@ -234,6 +250,10 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 .rcard-badge.s-ip{background:#dde8f9;color:#1a4db0}
 .rcard-badge.s-ir{background:#fef3cd;color:#7a5800}
 .rcard-badge.s-del{background:#111;color:#fff}
+.rcard-badge+.rcard-badge,.chip .rcard-badge{margin-left:4px}
+.marketing-modal-heading{display:flex;align-items:center;gap:12px;padding-right:28px}
+.marketing-modal-heading .modal-title{flex:1;margin:0;min-width:0}
+.marketing-modal-heading button{flex:0 0 auto;padding:9px 14px}
 
 .day-chip-summary{font-size:8.5px;color:#888;line-height:1.25;margin-top:1px;word-break:break-word;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -262,6 +282,17 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 .modal-overlay{display:none;position:fixed;inset:0;z-index:500;
   background:rgba(0,0,0,.28);align-items:flex-start;justify-content:center;padding-top:36px}
 .modal-overlay.show{display:flex}
+/* Duplicate confirmation modals are opened from a button INSIDE another modal
+   that's still showing, so they always need to render above it. Previously
+   both shared the same z-index (500) and simply relied on DOM order to decide
+   which one painted on top — #mktDuplicateModal happens to be declared before
+   #marketingModal in the HTML, so #marketingModal silently rendered over it,
+   making the duplicate modal invisible and swallowing clicks meant for its
+   Confirm button. #duplicateModal/#entryModal worked only by coincidence
+   (declared in the other order) — pinning both explicitly here so neither
+   depends on source order again. */
+#duplicateModal,
+#mktDuplicateModal{z-index:600}
 .modal-card{background:#fbf8f1;border:1px solid var(--grid);border-radius:18px;
   padding:22px 20px 18px;width:100%;max-width:520px;
   box-shadow:0 10px 60px rgba(0,0,0,.2);position:relative;max-height:88vh;overflow-y:auto}
@@ -286,11 +317,19 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 .f-inp,.f-sel,.f-txt{width:100%;padding:8px 10px;border:1px solid var(--grid);border-radius:10px;
   font:inherit;font-size:12.5px;background:#fffdfa;color:var(--text);outline:none;
   transition:border-color .15s;-webkit-appearance:none}
-.f-inp:focus,.f-sel:focus,.f-txt:focus{border-color:var(--text);background:#fff}
+/* -webkit-appearance:none above strips the native dropdown arrow along with the
+   rest of the OS chrome, so every .f-sel (Country/Row in the Duplicate Activation
+   modal, and everywhere else this class is used) looked like a plain text box
+   with no indication it was a dropdown at all — functionally fine (still opens
+   on click), but genuinely invisible as a control. Restoring a visible chevron. */
+.f-sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23787470' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
+.f-inp:focus,.f-sel:focus,.f-txt:focus{border-color:var(--text);background-color:#fff}
 .f-txt{resize:vertical;min-height:55px}
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .f-conditional{display:none}.f-conditional.show{display:block}.f-conditional.f-row.show{display:grid}
-.f-actions{display:flex;gap:7px;margin-top:14px}
+.f-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.f-actions>button{max-width:100%;white-space:normal}
 .btn-primary{flex:1;padding:9px;border:none;border-radius:10px;background:var(--text);color:#fff;
   font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:background .15s}
 .btn-primary:hover{background:#333}
@@ -315,6 +354,7 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
   /* ── BTV Management Calendar reference card (mirrors calendar.html) ── */
   .btvcard{background:#fffdfa;border:1px solid var(--grid);border-radius:14px;padding:14px;text-align:left}
   .btvcard-date{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}
+  .btvcard.btvcard-delayed{background:#fff1f0;border-color:#c43030}
   .btvcard-entry-title{font-weight:700;font-size:14px;line-height:1.2;margin-bottom:6px}
   .btvcard-group{display:grid;grid-template-columns:64px 1fr;gap:12px;margin-top:10px}
   .btvcard-cat{font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
@@ -340,17 +380,24 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
   .btvcard-td .btvcard-prod-name,.btvcard-td .btvcard-prod-price{font-size:11px}
   .btvcard-td .btvcard-info,.btvcard-td .btvcard-status{font-size:10.5px;margin-top:4px}
   .btvcard-td .btvcard-date{font-size:10.5px}
+@media(max-width:600px){
+  .topbar{flex-wrap:wrap;gap:6px}
+  .topbar .page-title,.topbar .page-sub{flex-basis:100%;letter-spacing:0}
+  .topbar-right{margin-left:0;max-width:100%;flex-wrap:wrap}
+  .topbar-right button{white-space:nowrap}
+}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="topbar">
     <span class="page-title">Global Calendar</span>
-    <span class="page-sub">2026 — Beyond The Vines · DO DESIGN, DO LIFE.</span>
+    <span class="page-sub" id="ccYearSub">— Beyond The Vines · DO DESIGN, DO LIFE.</span>
     <div class="topbar-right">
+      <select id="ccYearSelect" onchange="switchCcYear(this.value)" style="margin-right:8px;padding:6px 10px;border-radius:8px;border:1.5px solid #d6d2cc;font:inherit;font-size:12px;font-weight:700"></select>
       <button class="today-btn" onclick="ccGoToToday()" title="Jump to the week that contains today's date">&#128197; Today</button>
-      <button class="seed-btn" onclick="ccConfigWebhooks()" title="Set up Teams chat notifications for Published/Draft Marketing entry changes">&#9881; Webhooks</button>
-      <button class="seed-btn" onclick="confirmSeed()" title="Load all 2026 launch data from CREATIVE CAL 2026.xlsx">&#x21BA; Load Excel Data</button>
+      <button class="seed-btn" id="ccWebhookBtn" onclick="ccConfigWebhooks()" title="Set up Teams chat notifications for Published/Draft Marketing entry changes">&#9881; Webhooks</button>
+      <button class="seed-btn" id="ccLoadExcelBtn" onclick="confirmSeed()" title="Load all 2026 launch data from CREATIVE CAL 2026.xlsx">&#x21BA; Load Excel Data</button>
     </div>
   </div>
   <div class="tab-bar">
@@ -407,7 +454,7 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
   <div class="view-panels">
     <div class="view-panel active" id="panelGlobal">
       <div class="global-bar">
-        <span class="global-bar-text">Global Calendar 2026</span>
+        <span class="global-bar-text" id="ccGlobalBarText">Global Calendar</span>
         <span class="readonly-badge">View Only</span>
       </div>
       <div class="table-scroll">
@@ -454,9 +501,9 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 
 <!-- BTV Launch Detail Popup (ported from Product Calendar Input — linesheet product detail
      view for launch entries) -->
-<div id="btvLDOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9900;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto" onclick="if(event.target===this)btvCloseLaunchDetail()">
-  <div style="background:#fbf8f1;border-radius:18px;width:100%;max-width:1100px;box-shadow:0 12px 48px rgba(0,0,0,.22);overflow:hidden;margin:auto">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;border-bottom:1px solid #e6e0d4;background:#fbf8f1">
+<div id="btvLDOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9900;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto" onclick="if(event.target===this)btvCloseLaunchDetail()">
+  <div style="background:#f7f7f7;border-radius:8px;width:100%;max-width:1600px;box-shadow:0 12px 48px rgba(0,0,0,.22);overflow:hidden;margin:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 24px 14px;border-bottom:1px solid #ddd;background:#f7f7f7">
       <div>
         <div id="btvLDTitle" style="font-size:17px;font-weight:700;color:#1a1a1a"></div>
         <div id="btvLDSub" style="font-size:12px;color:#888;margin-top:2px"></div>
@@ -466,7 +513,7 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
         <button onclick="btvCloseLaunchDetail()" style="background:none;border:none;cursor:pointer;font-size:22px;color:#666;line-height:1;padding:4px 8px" title="Close">&times;</button>
       </div>
     </div>
-    <div style="overflow:auto;max-height:72vh">
+    <div style="overflow:auto;max-height:calc(100dvh - 120px)">
       <div id="btvLDBody"></div>
     </div>
   </div>
@@ -476,7 +523,10 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 <div class="modal-overlay" id="entryModal">
   <div class="modal-card">
     <button class="modal-close" onclick="closeModal()">&times;</button>
-    <div class="modal-title" id="modalTitle">Add Entry</div>
+    <div class="marketing-modal-heading">
+      <div class="modal-title" id="modalTitle">Add Entry</div>
+      <button type="button" class="btn-primary" id="fPublishBtn" onclick="publishCreativeEntry()">Publish</button>
+    </div>
     <div class="modal-sub" id="modalSub"></div>
 
     <label class="f-lbl" for="fTitle">Title / Content Concept *</label>
@@ -520,6 +570,14 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
       </div>
     </div>
 
+    <div id="fPublicationWrap">
+      <label class="f-lbl" for="fPublication">Publication</label>
+      <select id="fPublication" class="f-sel" onchange="updateCreativePublicationControls()">
+        <option value="draft">Draft</option>
+        <option value="published">Published</option>
+      </select>
+    </div>
+
     <div id="fCtxDateWrap" class="f-conditional f-row">
       <div>
         <label class="f-lbl" for="fCtxStartDate">Start Date</label>
@@ -548,7 +606,7 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
         <input type="date" id="fDate" class="f-inp">
       </div>
       <div id="fStatusWrap">
-        <label class="f-lbl" for="fStatus">Status</label>
+        <label class="f-lbl" for="fStatus">Production Status</label>
         <select id="fStatus" class="f-sel">
           <option value="Not Started">Not Started</option>
           <option value="In Progress">In Progress</option>
@@ -622,7 +680,7 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
     </div>
 
     <div class="f-actions">
-      <button class="btn-primary" onclick="saveEntry()">Save</button>
+      <button class="btn-primary" id="fSaveBtn" onclick="saveEntry()">Save Draft</button>
       <button class="btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn-ghost" id="duplicateBtn" style="display:none" onclick="openDuplicateModal()">Duplicate</button>
       <button class="btn-danger" id="deleteBtn" style="display:none" onclick="deleteEntry()">Delete</button>
@@ -732,7 +790,10 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 <div class="modal-overlay" id="marketingModal">
   <div class="modal-card" style="max-width:600px">
     <button class="modal-close" onclick="closeMarketingModal()">&times;</button>
-    <div class="modal-title" id="mModalTitle">Add Event</div>
+    <div class="marketing-modal-heading">
+      <div class="modal-title" id="mModalTitle">Add Event</div>
+      <button type="button" class="btn-primary" id="mPublishBtn" onclick="publishMarketingEntry()">Publish</button>
+    </div>
     <div class="modal-sub" id="mModalSub"></div>
 
     <input type="hidden" id="mRowKey">
@@ -750,10 +811,10 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 
     <div class="f-row">
       <div>
-        <label class="f-lbl" for="mStatus">Status</label>
-        <select id="mStatus" class="f-sel">
+        <label class="f-lbl" for="mStatus">Publication</label>
+        <select id="mStatus" class="f-sel" onchange="updateMarketingPublicationControls()">
           <option value="draft">Draft</option>
-          <option value="published">Published — push to BTV Calendar</option>
+          <option value="published">Published</option>
         </select>
       </div>
       <div>
@@ -771,7 +832,7 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
     <div id="mImagesList"></div>
 
     <div class="f-actions">
-      <button class="btn-primary" onclick="saveMarketingEntry()">Save</button>
+      <button class="btn-primary" id="mSaveBtn" onclick="saveMarketingEntry()">Save Draft</button>
       <button class="btn-ghost" onclick="closeMarketingModal()">Cancel</button>
       <button class="btn-ghost" id="mExportBtn" onclick="exportMarketingEntry()">Export</button>
       <button class="btn-ghost" id="mDuplicateBtn" style="display:none" onclick="openMktDuplicateModal()">Duplicate</button>
@@ -784,16 +845,26 @@ html,body{height:100%;font-family:'Everett','Helvetica Neue',Helvetica,Arial,san
 <script>
 'use strict';
 
+const CC_APP_MODE = new URLSearchParams(window.location.search).get('mode') === 'creative' ? 'creative' : 'global';
+const CC_IS_GLOBAL_VIEW = CC_APP_MODE === 'global';
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'creative-cal-2026-v1';
+// ── Year-scoped keys ──────────────────────────────────────────────────────
+// Was hardcoded to 2026 (a single fixed calendar); now switchable — see
+// switchCcYear() further down. Existing 2026 data is untouched since the
+// generated key names are identical to the old hardcoded ones for y=2026.
+let CC_YEAR = new Date().getFullYear();
 const MARKETS = ['SG','TH','ID','PH','JP','CN'];
 const WEEK_DAYS = ['M','T','W','T','F','S','S'];
 
-const WEEKS = (function(){
+function buildCcWeeks(year){
   const Mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const out=[];
-  let d=new Date(2025,11,29);
+  // Monday on/before Jan 1 of `year` — generalizes the old hardcoded
+  // new Date(2025,11,29), which is exactly this same calculation for 2026.
+  let d = new Date(year, 0, 1);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   for(let n=1;n<=53;n++){
     const s=new Date(d),e=new Date(d);e.setDate(e.getDate()+6);
     const range=s.getMonth()===e.getMonth()
@@ -803,10 +874,21 @@ const WEEKS = (function(){
     d.setDate(d.getDate()+7);
   }
   return out;
-})();
-const CC_YEAR = WEEKS[Math.floor(WEEKS.length/2)].startDate.getFullYear();
+}
+let WEEKS = buildCcWeeks(CC_YEAR);
 
-const MONTH_STARTS={1:1,2:5,3:10,4:14,5:18,6:22,7:27,8:31,9:36,10:40,11:44,12:48};
+let STORAGE_KEY, MARKETING_STORAGE_KEY, BTV_CAL_STORAGE_KEY;
+function _ccApplyYearKeys(y){
+  STORAGE_KEY           = 'creative-cal-' + y + '-v1';
+  MARKETING_STORAGE_KEY = 'calendar-' + y + '-marketing-workflow-v1';
+  BTV_CAL_STORAGE_KEY   = 'calendar-' + y + '-working-v5';
+  window.BTV_CAL_STORAGE_KEY = BTV_CAL_STORAGE_KEY; // read by the separate launch-detail-popup <script> block
+  window.CC_YEAR = y;
+}
+_ccApplyYearKeys(CC_YEAR);
+
+// MONTH_STARTS (a fixed 2026 week-number table) removed — buildThead() now computes
+// month-start weeks live from WEEKS itself, which is correct for any year.
 
 const MKT_CSS={global:'mkt-global',SG:'mkt-sg',ID:'mkt-id',TH:'mkt-th',PH:'mkt-ph',CN:'mkt-cn',JP:'mkt-jp'};
 const SOCIAL_ROWS=new Set(['ig_grid','ig_stories','ig_mkt','tiktok','line','red_xhs','wechat','livestream']);
@@ -855,7 +937,7 @@ const HOLIDAYS={
 
 // ── BTV Management Calendar bridge (read-only — same Supabase-synced ────────
 // localStorage key as calendar.html, shared across same-origin iframes) ─────
-const BTV_CAL_STORAGE_KEY='calendar-2026-working-v5';
+// BTV_CAL_STORAGE_KEY is set by _ccApplyYearKeys() above.
 const BTV_MARKETS_ALL=['CN','ID','JP','PH','SG','TH'];
 const BTV_REF_SECTIONS=['global','china','restocks','store_openings'];
 
@@ -876,7 +958,7 @@ function btvCountEntrySkus(entry){ return (entry.lines||[]).reduce((sum,line)=>s
 function btvEntryMarkets(section,entry){
   if(section==='global') return BTV_MARKETS_ALL.filter(m=>!(entry.noLaunchMarkets||[]).includes(m));
   if(section==='china') return ['CN'];
-  if(section==='restocks') return entry.allMarkets?BTV_MARKETS_ALL.slice():(entry.markets||[]);
+  if(section==='restocks') return window.BtvCalendarCSV.effectiveMarkets(section,entry);
   if(section==='store_openings') return entry.market?[entry.market]:[];
   return [];
 }
@@ -887,7 +969,8 @@ function getBtvEntriesForMarketWeek(market,wn){
   if(!wkId) return [];
   const out=[];
   BTV_REF_SECTIONS.forEach(section=>{
-    ((st[section]||{})[wkId]||[]).forEach(entry=>{
+    window.BtvCalendarExport.entriesForWeek(st,section,{id:wkId,start:WEEKS[wn-1].startDate}).forEach(entry=>{
+      if(CC_IS_GLOBAL_VIEW && btvGetEntryStatus(entry,section)!=='published') return;
       if(btvEntryMarkets(section,entry).includes(market)) out.push({section,entry});
     });
   });
@@ -901,7 +984,8 @@ function getBtvEntriesForSectionsWeek(sectionKeys,wn,marketFilter){
   if(!wkId) return [];
   const out=[];
   sectionKeys.forEach(section=>{
-    ((st[section]||{})[wkId]||[]).forEach(entry=>{
+    window.BtvCalendarExport.entriesForWeek(st,section,{id:wkId,start:WEEKS[wn-1].startDate}).forEach(entry=>{
+      if(CC_IS_GLOBAL_VIEW && btvGetEntryStatus(entry,section)!=='published') return;
       const mkts=btvEntryMarkets(section,entry);
       if(marketFilter&&!marketFilter.some(m=>mkts.includes(m))) return;
       out.push({section,entry,_mkts:mkts});
@@ -910,14 +994,14 @@ function getBtvEntriesForSectionsWeek(sectionKeys,wn,marketFilter){
   return out;
 }
 
-function btvEntryTitle(entry){ return entry.launchTitle||entry.productTitle||entry.storeName||'(untitled)'; }
+function btvEntryTitle(entry){ return entry.launchTitle||entry.productTitle||entry.storeName||(entry.lines||[]).map(line=>line.productName||line.productTitle).filter(Boolean).join(', ')||'(untitled)'; }
 
 // Date + content summary for BTV-sourced Product rows (Launch/Restock/Store Opening) —
 // lets the card show readable info without opening the BTV reference popup.
 function btvEntryDateLabel(section,entry){
   if(section==='global'||section==='china') return entry.launchDate?formatDateWithDay(entry.launchDate):'';
-  if(section==='restocks') return entry.etaISO?('ETA '+formatDateWithDay(entry.etaISO)):(entry.eta?('ETA '+entry.eta):'');
-  if(section==='store_openings') return entry.targetOpenDate?('Target '+formatDateWithDay(entry.targetOpenDate)):'';
+  if(section==='restocks') return (entry.launchDate||entry.etaISO)?('ETA '+formatDateWithDay(entry.launchDate||entry.etaISO)):(entry.eta?('ETA '+entry.eta):'');
+  if(section==='store_openings') return (entry.openingDate || entry.targetOpenDate)?('Opens '+formatDateWithDay(entry.openingDate || entry.targetOpenDate)):'';
   return '';
 }
 // Full category-grouped product breakdown (name, colour, RRP) matching Product Calendar
@@ -953,8 +1037,7 @@ function btvEntryHoverText(section,entry){
 
 // ── Markdown/promo periods bridge — read-only, from Product Calendar Input's markdown data ──
 function loadBtvMarkdownState(){
-  try { return JSON.parse(localStorage.getItem(BTV_CAL_STORAGE_KEY.replace('working-v5','markdown-bars-v1')))||{}; }
-  catch(e){ return {}; }
+  return window.btvMarkdownLoadLocal();
 }
 // Markdown groups with their full week range (for colspan rendering) and market colour —
 // optionally scoped to one market (per-market tabs) or unscoped (Global tab, market:null).
@@ -993,7 +1076,7 @@ function renderMarkdownSpanRow(groups,gc){
       const cssClass=g.isGlobal?'mkt-global':(MKT_CSS[g.markets[0]]||'c-ns');
       const spanTag=g.weekEnd>w.n?`<span class="span-tag">→Wk${g.weekEnd}</span>`:'';
       const dateLabel=g.md.startDate?formatDateWithDay(g.md.startDate):weekStartDateLabel(w.n);
-      chips+=`<div class="chip ${cssClass}" title="${esc(g.title+'\n'+g.mktList)}">
+      chips+=`<div class="chip ${cssClass}" role="button" tabindex="0" data-markdown-id="${esc(g.md.id)}" onclick="openMarkdownSummary(this.dataset.markdownId);event.stopPropagation();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMarkdownSummary(this.dataset.markdownId);}" title="${esc(g.title+'\n'+BtvMarkdown.scope(g.md))}">
         <span class="date-tag">${esc(dateLabel)}</span>
         <span class="country-tag">${esc(g.mktList)}</span>
         ${spanTag}${esc(g.title)}
@@ -1003,6 +1086,16 @@ function renderMarkdownSpanRow(groups,gc){
   });
   return html;
 }
+function openMarkdownSummary(id){
+  const entry=loadBtvMarkdownState()[id];if(!entry)return;
+  document.getElementById('vm-title').textContent=entry.title || 'Markdown';
+  document.getElementById('vm-sub').textContent=entry.startDate+' to '+entry.endDate;
+  const latest=entry.history?.[entry.history.length-1];
+  document.getElementById('vm-body').innerHTML='<div class="btvcard">'+
+    '<div class="btvcard-info"><span class="btvcard-lbl">Participating Markets / Stores:</span><div>'+esc(BtvMarkdown.scope(entry))+'</div></div>'+
+    (latest?'<div class="btvcard-info"><span class="btvcard-lbl">Updated By:</span> '+esc(latest.actor.name || latest.actor.email)+'</div><div class="btvcard-info">'+esc(new Date(latest.at).toLocaleString('en-SG',{timeZone:'Asia/Singapore'}))+'</div>':'')+'</div>';
+  document.getElementById('viewModal').classList.add('show');
+}
 function btvEntrySummary(section,entry){
   if(section==='global'||section==='china'){
     const names=(entry.lines||[]).map(l=>l.productName).filter(Boolean);
@@ -1010,7 +1103,7 @@ function btvEntrySummary(section,entry){
   }
   if(section==='restocks'){
     const lines=(entry.lines&&entry.lines.length)?entry.lines:[{productTitle:entry.productTitle||''}];
-    return lines.map(l=>l.productTitle).filter(Boolean).join(', ');
+    return lines.map(l=>l.productName||l.productTitle).filter(Boolean).join(', ');
   }
   if(section==='store_openings') return entry.storeAddress||entry.storeSize||'';
   return entry.brief||entry.notes||'';
@@ -1042,7 +1135,7 @@ function btvRenderGlobalCard(entry,badgeHtml){
     </div></div>`).join('');
   const mktList=BTV_MARKETS_ALL.filter(m=>!(entry.noLaunchMarkets||[]).includes(m)).join(', ')||'—';
   const channel=(entry.noLaunchChannelsCollapsed||[]).map(item=>`${item.market}: ${(item.stores||[]).length?item.stores.join(', '):'—'}`).join(' | ')||'—';
-  return `<div class="btvcard">
+  return `<div class="btvcard ${entry.launchStatus === 'delay' ? 'btvcard-delayed' : ''}">
     <div class="btvcard-date">${entry.launchDate?formatDate(entry.launchDate):''}</div>
     <div class="btvcard-entry-title">${esc(entry.launchTitle||'')}</div>
     ${groups}
@@ -1073,15 +1166,17 @@ function btvRenderRegionalCard(entry,badgeHtml){
 }
 
 function btvRenderRestockCard(entry,badgeHtml){
-  const lines=(entry.lines&&entry.lines.length)?entry.lines:[{productTitle:entry.productTitle||'',colour:''}];
-  const displayTitle=lines.length>1?lines.map(l=>l.productTitle).filter(Boolean).join(', '):(lines[0]&&lines[0].productTitle||entry.productTitle||'');
-  const marketStr=(entry.allMarkets||false)?'All Markets':(esc((entry.markets||[]).join(', '))||'—');
-  const lineHTML=lines.filter(l=>l.productTitle||l.colour).map(line=>`<div class="btvcard-prod"><div class="btvcard-prod-name">${esc(line.productTitle||'—')}</div><div class="btvcard-prod-meta">${esc(line.colour||'')}</div></div>`).join('');
-  return `<div class="btvcard">
-    <div class="btvcard-date">${entry.etaISO?'ETA '+formatDate(entry.etaISO):(entry.eta?'ETA '+esc(entry.eta):'')}</div>
-    <div class="btvcard-entry-title">${esc(displayTitle)}</div>
+  const lines = entry.lines?.length ? entry.lines : [{productTitle:entry.productTitle || '',colour:entry.colors || ''}];
+  const markets = btvEntryMarkets('restocks',entry);
+  const lineHTML = lines.filter(line=>line.productName||line.productTitle||line.colour||line.size).map(line=>
+    `<div class="btvcard-prod"><div class="btvcard-prod-name">${esc(line.productName||line.productTitle||'')}</div><div class="btvcard-prod-meta">${esc(line.colour||'')}</div><div class="btvcard-prod-meta">${esc(line.size||'')}</div></div>`).join('');
+  const delayed = entry.launchStatus === 'delay';
+  return `<div class="btvcard ${delayed ? 'btvcard-delayed' : ''}">
+    <div class="btvcard-date">${esc(btvEntryDateLabel('restocks',entry))}</div>
+    <div class="btvcard-entry-title">${esc(entry.launchTitle || 'Restock')}</div>
     <div class="btvcard-group"><div class="btvcard-cat">Restock</div><div>${lineHTML}</div></div>
-    <div class="btvcard-info"><span class="btvcard-lbl">Markets:</span> ${marketStr}</div>
+    <div class="btvcard-info"><span class="btvcard-lbl">Markets:</span> ${esc(markets.length === BTV_MARKETS_ALL.length ? 'All Markets' : markets.join(', '))}</div>
+    ${delayed ? `<div class="btvcard-status">Delay Flagged</div><div class="btvcard-info">${(entry.delayMarkets||[]).map(delay=>esc(delay.market)+' | ETA '+esc(formatDate(delay.eta))).join(', ')}</div>` : ''}
     <div class="btvcard-info">${badgeHtml}</div>
   </div>`;
 }
@@ -1089,9 +1184,10 @@ function btvRenderRestockCard(entry,badgeHtml){
 function btvRenderStoreOpeningCard(entry,badgeHtml){
   return `<div class="btvcard">
     <div class="btvcard-entry-title">${esc(entry.storeName||'')}</div>
-    <div class="btvcard-date">${entry.targetOpenDate?'Target '+formatDate(entry.targetOpenDate):''}</div>
+    <div class="btvcard-date">${(entry.openingDate || entry.targetOpenDate)?'Opens '+formatDate(entry.openingDate || entry.targetOpenDate):''}</div>
     <div class="btvcard-info"><span class="btvcard-lbl">Market:</span> ${esc(entry.market||'—')}</div>
-    <div class="btvcard-info"><span class="btvcard-lbl">Store Size:</span> ${esc(entry.storeSize||'—')}</div>
+    <div class="btvcard-info"><span class="btvcard-lbl">Type:</span> ${entry.storeType === 'popup' ? 'Pop-up Store' : entry.storeType === 'permanent' ? 'Permanent Store' : 'Not specified'}</div>
+    ${entry.storeType === 'popup' && entry.closingDate ? `<div class="btvcard-info"><span class="btvcard-lbl">Closes:</span> ${formatDate(entry.closingDate)}</div>` : ''}
     <div class="btvcard-info"><span class="btvcard-lbl">Address:</span> ${esc(entry.storeAddress||'—')}</div>
     <div class="btvcard-info">${badgeHtml}</div>
   </div>`;
@@ -1205,7 +1301,7 @@ const SEED_DATA=[
 // the BTV Management Calendar's own state (calendar-2026-working-v5 → events),
 // mirroring what calendar.html's syncMarketingPublishToMain() does internally.
 
-const MARKETING_STORAGE_KEY = 'calendar-2026-marketing-workflow-v1';
+// MARKETING_STORAGE_KEY is set by _ccApplyYearKeys() above.
 const MARKETING_ROW_DEFS = ROW_DEFS.filter(r=>r.marketingRow);
 
 // Tracks whether a remote Supabase update is being applied — prevents saveMarketingState
@@ -1232,6 +1328,7 @@ function marketingWeekEnd(item){ return item.endDateISO?dateToWeekNum(item.endDa
 function marketingStatusClass(s){ return s==='published'?'c-ap':'c-ns'; }
 
 function matchesMarketingFilter(e){
+  if(CC_IS_GLOBAL_VIEW && e.status!=='published') return false;
   if(F.search){
     const q=F.search.toLowerCase();
     if(!(e.title||'').toLowerCase().includes(q) && !(e.notes||'').toLowerCase().includes(q)) return false;
@@ -1281,11 +1378,12 @@ function renderMarketingRow(market,row,gc){
 // must NOT be shown as one merged "Global" chip, since the details are genuinely different
 // per market. Only entries that are fully identical across markets get consolidated.
 function marketingEntryFingerprint(e){
-  return [
-    (e.title||'').trim().toLowerCase(), e.startDateISO||'', e.endDateISO||'', e.time||'', e.channel||'',
-    e.store||'', e.guests||'', e.objective||'', e.targetAudience||'', e.eventRundown||'',
-    e.mechanics||'', e.comms||'', e.tnc||'', e.owner||'', e.status||''
-  ].join('|');
+  return BtvCreativeEvents.fingerprint(e,{start:e.startDateISO||e.weekId||'',end:e.endDateISO||e.startDateISO||e.weekId||''});
+}
+function creativeEntryFingerprint(e){
+  const start=e.date||e.startDate||weekNumToISO(e.week)||'';
+  const end=e.endDate||(e.weekEnd?weekNumToISO(e.weekEnd):start)||start;
+  return BtvCreativeEvents.fingerprint(e,{start,end});
 }
 
 function buildGlobalMarketingCellHtml(rowKey,weekNum){
@@ -1354,15 +1452,20 @@ function _btvNotifyCalFrames(){
 // own state (events section), joined by linkedMarketingId so edits/deletes stay in sync.
 function pushMarketingToBtvCalendar(item,status){
   try{
+    // Local blob mutation kept for same-tab instant feedback if the Input Calendar
+    // iframe is open alongside this one (_btvNotifyCalFrames below reloads it). The
+    // calendar_entries upsert further down is what makes this survive the bridge's
+    // own refresh and show up cross-device — see the calendar_entries bridge in the
+    // per-entry sync IIFE.
     const raw=localStorage.getItem(BTV_CAL_STORAGE_KEY);
     const btvState=raw?JSON.parse(raw):{};
     btvState.events=btvState.events||{};
     Object.keys(btvState.events).forEach(function(wk){
       btvState.events[wk]=(btvState.events[wk]||[]).filter(function(x){ return x.linkedMarketingId!==item.id; });
     });
+    var syntheticEntry=null;
     if(status==='published'){
-      btvState.events[item.weekId]=btvState.events[item.weekId]||[];
-      btvState.events[item.weekId].push({
+      syntheticEntry={
         id:'mkt-'+item.id, section:'events', weekId:item.weekId,
         title:item.title, startDate:item.startDate||'', endDate:item.endDate||'',
         startDateISO:item.startDateISO||'', endDateISO:item.endDateISO||'',
@@ -1371,10 +1474,15 @@ function pushMarketingToBtvCalendar(item,status){
         workflowStatus:'published',
         linkedMarketingKey:`${item.market}|${item.row}|${item.title}`,
         linkedMarketingId:item.id
-      });
+      };
+      btvState.events[item.weekId]=btvState.events[item.weekId]||[];
+      btvState.events[item.weekId].push(syntheticEntry);
     }
     localStorage.setItem(BTV_CAL_STORAGE_KEY,JSON.stringify(btvState));
     _btvNotifyCalFrames();
+    if (typeof window.btvPushMarketingEventEntry === 'function') {
+      window.btvPushMarketingEventEntry('mkt-'+item.id, item.weekId, syntheticEntry);
+    }
   }catch(e){ console.error('[Creative Cal] Failed to sync marketing entry to BTV Calendar:',e); }
 }
 
@@ -1507,6 +1615,9 @@ function _setMField(id,val){ const el=document.getElementById(id); if(el) el.val
 function _getMField(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
 
 function openMarketingAddModal(market,rowKey,week){
+  window.btvCcClearNotice();
+  if(!ccCanLeave('marketing_entries'))return;
+  ccMarketingBaseline=null;ccMarketingDraftId=ccNewDraftId();ccDirty.marketing_entries=false;
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   marketingModalEntry=null;
   _marketingPendingImages=[];
@@ -1523,8 +1634,10 @@ function openMarketingAddModal(market,rowKey,week){
   document.getElementById('mDeleteBtn').style.display='none';
   document.getElementById('mDuplicateBtn').style.display='none';
   document.getElementById('mExportBtn').style.display='';
+  updateMarketingPublicationControls();
   document.getElementById('marketingModal').classList.add('show');
-  setTimeout(()=>document.getElementById('mTitle').focus(),60);
+  document.querySelector('#marketingModal .modal-card').scrollTop=0;
+  document.getElementById('mTitle').focus({preventScroll:true});
 }
 
 function openMarketingViewModal(id,market){
@@ -1533,7 +1646,10 @@ function openMarketingViewModal(id,market){
 }
 
 function openMarketingEditModal(item){
-  marketingModalEntry=item;
+  window.btvCcClearNotice();
+  if(!ccCanLeave('marketing_entries'))return;
+  marketingModalEntry=JSON.parse(JSON.stringify(item));ccMarketingDraftId=item.id;
+  ccMarketingBaseline=window.btvCcBaseline('marketing_entries',item.id);ccDirty.marketing_entries=false;
   _marketingPendingImages=(item.images||[]).slice();
   const rowLabel=(ROW_DEFS.find(r=>r.key===item.row)||{}).label||item.row;
   document.getElementById('mModalTitle').textContent='Edit '+rowLabel;
@@ -1563,13 +1679,35 @@ function openMarketingEditModal(item){
   document.getElementById('mDeleteBtn').style.display='';
   document.getElementById('mDuplicateBtn').style.display='';
   document.getElementById('mExportBtn').style.display='';
+  updateMarketingPublicationControls();
   document.getElementById('marketingModal').classList.add('show');
+  document.querySelector('#marketingModal .modal-card').scrollTop=0;
+}
+
+function updateMarketingPublicationControls(){
+  const draft=document.getElementById('mStatus').value==='draft';
+  document.getElementById('mPublishBtn').style.display=draft&&!CC_IS_GLOBAL_VIEW&&window._btvCanEdit!==false?'':'none';
+  document.getElementById('mSaveBtn').textContent=draft?'Save Draft':'Save Changes';
+}
+
+async function publishMarketingEntry(){
+  if(CC_IS_GLOBAL_VIEW || window._btvCanEdit===false) return;
+  const status=document.getElementById('mStatus');
+  const previous=status.value;
+  status.value='published';
+  await saveMarketingEntry();
+  // Validation errors must leave the unsaved event in its previous publication state.
+  if(document.getElementById('marketingModal').classList.contains('show')) status.value=previous;
+  updateMarketingPublicationControls();
 }
 
 function closeMarketingModal(){
+  if(!ccCanLeave('marketing_entries'))return false;
+  if(ccMarketingDraftId)window.btvCcForgetDraft('marketing_entries',ccMarketingDraftId);
   document.getElementById('marketingModal').classList.remove('show');
   marketingModalEntry=null;
   _marketingPendingImages=[];
+  ccDirty.marketing_entries=false;return true;
 }
 
 // ── Marketing entry Teams webhooks ──────────────────────────────────────────
@@ -1608,6 +1746,8 @@ function ccDiffMarketingEntry(before, after){
 }
 
 function ccSendMarketingWebhook(item, msgs, who){
+  var actor=window.btvGetCurrentActor?window.btvGetCurrentActor():null;
+  if(actor)who=actor.name+' ('+actor.email+')';
   if(!msgs.length) return;
   const isPublished = item.status === 'published';
   const urlKey = isPublished ? 'ccWebhookPublished' : 'ccWebhookDraft';
@@ -1618,7 +1758,7 @@ function ccSendMarketingWebhook(item, msgs, who){
   const label = isPublished ? 'Published' : 'Draft';
   const lines = [
     '**Global Calendar — ' + label + ' Activation Update**',
-    new Date().toLocaleString('en-SG'),
+    new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore'}),
     '',
     '**' + (item.title || 'Entry') + '** (' + (item.market || '—') + ' · ' + String(item.row || '').replace(/_/g,' ') + ')',
   ].concat(msgs.map(function(m){ return '• ' + m; }));
@@ -1652,8 +1792,8 @@ function ccConfigWebhooks(){
   alert('Webhook settings saved.');
 }
 
-function saveMarketingEntry(){
-  if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
+async function saveMarketingEntry(){
+  if (CC_IS_GLOBAL_VIEW || window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   const title=document.getElementById('mTitle').value.trim();
   const market=document.getElementById('mMarket').value;
   const row=document.getElementById('mRowKey').value;
@@ -1680,6 +1820,9 @@ function saveMarketingEntry(){
   const status=document.getElementById('mStatus').value;
   const _mr=ccResolveWeek(startDateISO);
   if(_mr.outOfRange){ errEl.textContent='Start date ('+_mr.dateStr+') falls outside the '+CC_YEAR+' calendar. Please pick a date within '+CC_YEAR+'.'; return; }
+  if(endDateISO && (endDateISO<startDateISO || ccResolveWeek(endDateISO).outOfRange)){
+    errEl.textContent='End date must be on or after the start date and within the displayed calendar.'; return;
+  }
   const startWeek=_mr.weekNum;
   const weekId=weekIdForWeekNum(startWeek);
   const startDate=formatDate(startDateISO), endDate=endDateISO?formatDate(endDateISO):'';
@@ -1688,28 +1831,14 @@ function saveMarketingEntry(){
   const who = (typeof window.btvGetCurrentEmail === 'function' ? window.btvGetCurrentEmail() : '') || '';
   const beforeSnapshot = marketingModalEntry ? JSON.parse(JSON.stringify(marketingModalEntry)) : null;
 
-  marketingState[market]=marketingState[market]||[];
-  let item;
-  if(marketingModalEntry){
-    item=marketingModalEntry;
-    const prevMarket=item.market;
-    Object.assign(item,d,{title,market,row,status,weekId,startDate,endDate,startDateISO,endDateISO,
-      images:_marketingPendingImages.slice(),notes,updatedBy:who,updated:new Date().toISOString()});
-    if(prevMarket!==market){
-      marketingState[prevMarket]=(marketingState[prevMarket]||[]).filter(x=>x.id!==item.id);
-      marketingState[market].unshift(item);
-    }
-  } else {
-    item=Object.assign({
-      id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-      market,weekId,row,status,title,startDate,endDate,startDateISO,endDateISO,relatedLaunch:'',
-      images:_marketingPendingImages.slice(),notes,updatedBy:who,
-      created:new Date().toISOString(),updated:new Date().toISOString()
-    },d);
-    item.linkedMarketingId=item.id;
-    marketingState[market].unshift(item);
-  }
-  saveMarketingState(marketingState);
+  let item=Object.assign({},marketingModalEntry || {created:new Date().toISOString(),relatedLaunch:''},d,{
+    id:ccMarketingDraftId,title,market,row,status,weekId,startDate,endDate,startDateISO,endDateISO,
+    images:_marketingPendingImages.slice(),notes,updatedBy:who
+  });
+  item.linkedMarketingId=item.id;
+  const confirmed=await ccCommitDraft('marketing_entries',item,ccMarketingBaseline,false,'mModalErr');
+  if(!confirmed)return;
+  item=confirmed.row.data;
   pushMarketingToBtvCalendar(item,status);
   closeMarketingModal();
   // Two separate Teams webhooks — one for Published entries, one for Draft — only fire
@@ -1721,12 +1850,10 @@ function saveMarketingEntry(){
   ccJumpToWeek(startWeek, item.id);
 }
 
-function deleteMarketingEntry(){
+async function deleteMarketingEntry(){
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   if(!marketingModalEntry||!confirm('Delete this entry?')) return;
-  const m=marketingModalEntry.market;
-  marketingState[m]=(marketingState[m]||[]).filter(e=>e.id!==marketingModalEntry.id);
-  saveMarketingState(marketingState);
+  if(!await ccCommitDraft('marketing_entries',marketingModalEntry,ccMarketingBaseline,true,'mModalErr'))return;
   pushMarketingToBtvCalendar(marketingModalEntry,'draft'); // removes any previously-pushed BTV Calendar copy
   closeMarketingModal();
   renderCurrent();
@@ -1737,6 +1864,8 @@ function deleteMarketingEntry(){
 // country, date, and row — all content fields are preserved.
 
 function openMktDuplicateModal(){
+  if(!ccCanLeave('marketing_entries'))return;
+  ccMarketingDuplicateDraftId=null;
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   if(!marketingModalEntry) return;
   document.getElementById('mDupDate').value = marketingModalEntry.startDateISO || '';
@@ -1747,11 +1876,13 @@ function openMktDuplicateModal(){
 }
 
 function closeMktDuplicateModal(){
+  if(ccSaving.marketing_entries)return;
+  if(ccMarketingDuplicateDraftId)window.btvCcForgetDraft('marketing_entries',ccMarketingDuplicateDraftId);
   document.getElementById('mktDuplicateModal').classList.remove('show');
 }
 
-function confirmMktDuplicate(){
-  if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
+async function confirmMktDuplicate(){
+  if (CC_IS_GLOBAL_VIEW || window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   if(!marketingModalEntry) return;
   const src = marketingModalEntry;
   const startDateISO = document.getElementById('mDupDate').value;
@@ -1762,27 +1893,26 @@ function confirmMktDuplicate(){
   if(!startDateISO){ errEl.textContent='Please choose a start date.'; return; }
   const _r = ccResolveWeek(startDateISO);
   if(_r.outOfRange){ errEl.textContent='Date falls outside the '+CC_YEAR+' calendar. Please pick a date within '+CC_YEAR+'.'; return; }
+  let range;
+  try { range=BtvCreativeEvents.shiftedRange(src.startDateISO||src.weekId,src.endDateISO,startDateISO); }
+  catch(error){ errEl.textContent=error.message; return; }
+  if(ccResolveWeek(range.end).outOfRange){ errEl.textContent='The copied end date falls outside the '+CC_YEAR+' calendar. Choose an earlier start date.'; return; }
 
   const startWeek = _r.weekNum;
   const weekId = weekIdForWeekNum(startWeek);
   const startDate = formatDate(startDateISO);
 
   // Build a new entry copying all content fields from the source
-  const newId = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  const newEntry = Object.assign({}, src, {
+  const newId = ccMarketingDuplicateDraftId || (ccMarketingDuplicateDraftId=ccNewDraftId());
+  const newEntry = Object.assign(JSON.parse(JSON.stringify(src)), {
     id: newId,
     market, row, weekId, startDate, startDateISO,
-    // End date: shift by the same duration as the source, if it had one
-    endDateISO: (src.endDateISO && src.startDateISO && src.endDateISO > src.startDateISO)
-      ? (function(){
-          const dur = new Date(src.endDateISO) - new Date(src.startDateISO);
-          return new Date(new Date(startDateISO).getTime() + dur).toISOString().slice(0,10);
-        })()
-      : startDateISO,
-    endDate: '', // will be recalculated on next save
-    images: (src.images||[]).slice(), // shallow copy of image refs
-    status: 'draft', // always start the copy as draft
+    endDateISO: range.end,
+    endDate: formatDate(range.end),
+    images: JSON.parse(JSON.stringify(src.images||[])),
+    status: src.status==='published'?'published':'draft',
     linkedMarketingId: newId,
+    updatedBy:typeof window.btvGetCurrentEmail==='function'?window.btvGetCurrentEmail():'',
     created: new Date().toISOString(),
     updated: new Date().toISOString(),
     _seeded: false,
@@ -1790,9 +1920,9 @@ function confirmMktDuplicate(){
   // Fix endDate display string
   newEntry.endDate = newEntry.endDateISO ? formatDate(newEntry.endDateISO) : '';
 
-  marketingState[market] = marketingState[market] || [];
-  marketingState[market].unshift(newEntry);
-  saveMarketingState(marketingState);
+  if(!await ccCommitDraft('marketing_entries',newEntry,null,false,'mDupErr'))return;
+  ccDirty.marketing_entries=false;
+  pushMarketingToBtvCalendar(newEntry,newEntry.status);
 
   closeMktDuplicateModal();
   closeMarketingModal();
@@ -1882,7 +2012,7 @@ function btvExportGlobalGridXLS(){
       MARKETS.forEach(mkt=>{
         getCellEntries(mkt,rk,wn).forEach(e=>{
           if(!matchesFilter(e)) return;
-          const k=(e.title||'').trim().toLowerCase();
+          const k=creativeEntryFingerprint(e);
           if(!tg[k]) tg[k]={title:e.title,markets:[]};
           if(!tg[k].markets.includes(mkt)) tg[k].markets.push(mkt);
         });
@@ -1908,7 +2038,7 @@ function btvExportGlobalGridXLS(){
 
   function markdownCellText(wn){
     return buildMarkdownSpanGroups(null).filter(g=>wn>=g.week&&wn<=g.weekEnd)
-      .map(g=>'['+(g.isGlobal?g.mktList:g.markets[0])+'] '+g.title).join('\n');
+      .map(g=>'['+(g.isGlobal?g.mktList:g.markets[0])+'] '+g.title+' | '+BtvMarkdown.scope(g.md)).join('\n');
   }
 
   function marketingCellText(rowKey,wn){
@@ -1935,9 +2065,8 @@ function btvExportGlobalGridXLS(){
     {label:'China',             fn:wn=>bridgeCellText(['china'],wn)},
     {label:'Restock',           fn:wn=>bridgeCellText(['restocks'],wn)},
     {label:'Store Opening',     fn:wn=>bridgeCellText(['store_openings'],wn)},
-    {label:'Social / Content',  fn:wn=>contextCellText(['ig_grid','ig_stories','ig_mkt','tiktok','line','red_xhs','wechat'],wn)},
-    {label:'Channel (EDM/Media)',fn:wn=>contextCellText(['edm','media_ooh'],wn)},
-  ].concat(MARKETING_ROW_DEFS.map(mRow=>({label:mRow.label,fn:wn=>marketingCellText(mRow.key,wn)})));
+  ].concat(GLOBAL_CREATIVE_ROWS.map(gRow=>({label:gRow.label,fn:wn=>contextCellText(gRow.srcKeys,wn)})),
+    MARKETING_ROW_DEFS.map(mRow=>({label:mRow.label,fn:wn=>marketingCellText(mRow.key,wn)})));
 
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n';
   xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"';
@@ -2090,6 +2219,33 @@ let state = loadState();
 let _prevStateJson = JSON.stringify(state); // snapshot for per-entry diffing (see sync IIFE below)
 let currentTab = 'global';
 let modalEntry = null;
+let ccModalBaseline,ccMarketingBaseline,ccDraftId,ccMarketingDraftId,ccDuplicateDraftId,ccMarketingDuplicateDraftId;
+const ccSaving={global_cal_entries:false,marketing_entries:false};
+const ccDirty={global_cal_entries:false,marketing_entries:false};
+function ccNewDraftId(){return BtvCalendarCSV.id('creative-');}
+function ccCanLeave(table){
+  if(ccSaving[table])return false;
+  return !ccDirty[table] || confirm('You have unsaved changes. Close without saving?');
+}
+async function ccCommitDraft(table,entry,baseline,remove,errorId){
+  if(ccSaving[table])return null;
+  const modal=document.getElementById(table==='global_cal_entries'?'entryModal':'marketingModal');
+  ccSaving[table]=true;
+  const duplicate=document.getElementById(table==='global_cal_entries'?'duplicateModal':'mktDuplicateModal');
+  const controls=Array.from(modal.querySelectorAll('input,select,textarea,button')).concat(Array.from(duplicate.querySelectorAll('input,select,textarea,button')));
+  const disabled=controls.map(input=>input.disabled);controls.forEach(input=>input.disabled=true);
+  try{
+    const row=await window.btvCcCommit(table,entry,baseline,remove);
+    ccDirty[table]=false;return {row};
+  }catch(error){const errorEl=document.getElementById(errorId);errorEl.textContent=error.message;errorEl.scrollIntoView({block:'nearest'});ccDirty[table]=true;return null;}
+  finally{ccSaving[table]=false;controls.forEach((input,i)=>input.disabled=disabled[i]);}
+}
+['global_cal_entries','marketing_entries'].forEach(table=>{
+  const modal=document.getElementById(table==='global_cal_entries'?'entryModal':'marketingModal');
+  modal.addEventListener('input',()=>ccDirty[table]=true);
+  modal.addEventListener('change',()=>ccDirty[table]=true);
+});
+window.addEventListener('beforeunload',event=>{if(Object.values(ccDirty).some(Boolean) || Object.values(ccSaving).some(Boolean)){event.preventDefault();event.returnValue='';}});
 let _viewCache = {};
 
 // Filter state
@@ -2229,8 +2385,11 @@ function buildRichCard(opts){
     ${dateLine}
     <div class="rcard-title">${esc(opts.title||'')}</div>
     ${summaryLine}
-    ${badge}
+    ${badge}${creativeDraftBadge(opts)}
   </div>`;
+}
+function creativeDraftBadge(entry){
+  return entry.workflowStatus && BtvCreativeEvents.publication(entry)==='draft'?'<span class="rcard-badge s-draft">Draft</span>':'';
 }
 // Structured field list for a Communication-group entry (EDM/Media OOH/In-Mall/etc) — labels
 // each collected field individually instead of dumping the raw brief text as one paragraph.
@@ -2277,7 +2436,14 @@ function bulletListHtml(text){
   if(!lines.length) return '';
   return '<ul>'+lines.map(l=>'<li>'+mdInline(l.replace(/^[-•]\s*/,''))+'</li>').join('')+'</ul>';
 }
-function dateToWeekNum(iso){ if(!iso)return 0; const d=new Date(iso+'T00:00:00'),wk1=new Date(2025,11,29),n=Math.floor((d-wk1)/(7*86400000))+1; return(n>=1&&n<=53)?n:0; }
+// Dates resolve against the displayed calendar, including its boundary weeks.
+function dateToWeekNum(iso){
+  if(!iso) return 0;
+  const d=new Date(iso+'T00:00:00');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)||Number.isNaN(d.getTime())||toLocalISODate(d)!==iso) return 0;
+  const week=WEEKS.find(w=>d>=w.startDate&&d<=w.endDate);
+  return week?week.n:0;
+}
 // Resolves a date to a week number, but — unlike bare dateToWeekNum — flags out-of-range
 // dates instead of letting callers silently fall back to Week 1 or leave the entry on its
 // old week while the date field shows something else. That silent fallback was what made
@@ -2292,11 +2458,41 @@ function ccResolveWeek(dateStr){
 // highlights the entry if entryId is given) so a saved date change is always visible
 // instead of silently landing off-screen.
 function ccGoToToday(){
+  const todayYear = new Date().getFullYear();
+  if (todayYear !== CC_YEAR) switchCcYear(todayYear);
   const todayISO=toLocalISODate(new Date());
   const wn=dateToWeekNum(todayISO);
   if(!wn){ ccToast("Today isn't within the "+CC_YEAR+" calendar."); return; }
   ccJumpToWeek(wn);
 }
+
+// ── Year switcher ────────────────────────────────────────────────────────
+// Was one hardcoded year (2026); now switchable, same pattern as Product
+// Calendar Input's switchCalYear(). Global Calendar's own entries
+// (global_cal_entries/marketing_entries) live in one shared table filtered
+// by each entry's own date, so switching years never needs new tables —
+// only the Product-Calendar-Input reference bridge (calendar_entries) needs
+// an explicit year filter, since that table holds multiple years at once.
+function switchCcYear(y){
+  y = parseInt(y, 10);
+  if (!y || y === CC_YEAR) return;
+  if(!ccCanLeave('global_cal_entries') || !ccCanLeave('marketing_entries')){document.getElementById('ccYearSelect').value=String(CC_YEAR);return;}
+  ccDirty.global_cal_entries=false;ccDirty.marketing_entries=false;
+  closeModal();closeMarketingModal();closeDuplicateModal();closeMktDuplicateModal();
+  CC_YEAR = y;
+  _ccApplyYearKeys(y);
+  WEEKS = buildCcWeeks(y);
+  var sel = document.getElementById('ccYearSelect'); if (sel) sel.value = String(y);
+  var excelBtn = document.getElementById('ccLoadExcelBtn'); if (excelBtn) excelBtn.style.display = (!CC_IS_GLOBAL_VIEW && y === 2026) ? '' : 'none';
+  var sub = document.getElementById('ccYearSub'); if (sub) sub.textContent = y + ' — Beyond The Vines · DO DESIGN, DO LIFE.';
+  var bar = document.getElementById('ccGlobalBarText'); if (bar) bar.textContent = 'Global Calendar ' + y;
+  var fWeek = document.getElementById('fWeek'); if (fWeek) fWeek.innerHTML = buildWeekOpts(1);
+  var fWeekEnd = document.getElementById('fWeekEnd'); if (fWeekEnd) fWeekEnd.innerHTML = buildWeekOpts(null, true);
+  window.btvRender();
+  if(window.btvCcRefreshEntries)window.btvCcRefreshEntries();
+  if (typeof window.btvCcRefreshBridgeForYear === 'function') window.btvCcRefreshBridgeForYear();
+}
+window.switchCcYear = switchCcYear;
 function ccJumpToWeek(weekNum, entryId){
   if(!weekNum) return;
   requestAnimationFrame(function(){
@@ -2306,7 +2502,18 @@ function ccJumpToWeek(weekNum, entryId){
       ? panel.querySelector('[data-entry-id="' + entryId + '"]')
       : panel.querySelector('th[data-wk="' + weekNum + '"]');
     if(!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    const scrollEl=panel.querySelector('.table-scroll');
+    if(!scrollEl) return;
+    const rect=target.getBoundingClientRect(),viewport=scrollEl.getBoundingClientRect();
+    const frozenWidth=panel.querySelector('th.row-head')?.getBoundingClientRect().width||0;
+    const left=scrollEl.scrollLeft+rect.left-viewport.left-frozenWidth-8;
+    let top=scrollEl.scrollTop;
+    if(entryId){
+      const headerHeight=panel.querySelector('thead')?.getBoundingClientRect().height||0;
+      if(rect.top<viewport.top+headerHeight) top+=rect.top-viewport.top-headerHeight-8;
+      else if(rect.bottom>viewport.bottom) top+=rect.bottom-viewport.bottom+8;
+    }
+    scrollEl.scrollTo({left:Math.max(0,left),top:Math.max(0,top),behavior:'smooth'});
     if(entryId){
       const old = target.style.outline;
       target.style.outline = '2px solid #DB6256';
@@ -2354,6 +2561,7 @@ function dayLabel(wn,di){ const w=WEEKS[wn-1];if(!w)return''; const d=new Date(w
 // ── Filter logic ──────────────────────────────────────────────────────────
 
 function matchesFilter(e){
+  if(CC_IS_GLOBAL_VIEW && BtvCreativeEvents.publication(e)!=='published') return false;
   if(F.search){
     const q=F.search.toLowerCase();
     if(!(e.title||'').toLowerCase().includes(q)&&!(e.brief||'').toLowerCase().includes(q)) return false;
@@ -2420,8 +2628,11 @@ function updateFilterCount(){
 
 function buildThead(){
   let h=`<tr><th class="row-head">Row</th>`;
-  WEEKS.forEach(w=>{
-    const isM=Object.values(MONTH_STARTS).includes(w.n);
+  WEEKS.forEach((w,i)=>{
+    // A "month start" week is wherever the month actually changes in THIS year's
+    // weeks — computed live instead of a fixed 2026 week-number table (MONTH_STARTS),
+    // since which week number a month starts on shifts slightly year to year.
+    const isM = i===0 || w.startDate.getMonth() !== WEEKS[i-1].startDate.getMonth();
     h+=`<th data-wk="${w.n}"${isM?' class="m-first"':''}>Wk ${w.n}<span class="wk-range">${w.range}</span></th>`;
   });
   return h+'</tr>';
@@ -2504,7 +2715,7 @@ function renderSpannableRow(market, row, gc){
         chips+=buildRichCard({
           date:(spanEntry.date?formatDateWithDay(spanEntry.date):weekStartDateLabel(w.n))+' → Wk'+spanEntry.weekEnd,
           title:spanEntry.title,summaryHtml:commEntrySummaryHtml(row.key,spanEntry),hoverText:commEntryHoverText(row.key,spanEntry),
-          badgeLabel:spanEntry.status,badgeClass:statusClass(spanEntry.status).replace('c-','s-'),
+          badgeLabel:spanEntry.status,badgeClass:statusClass(spanEntry.status).replace('c-','s-'),workflowStatus:spanEntry.workflowStatus,
           accentMkt:market,entryId:spanEntry.id,
           onclick:`openEditModal('${esc(spanEntry.id)}','${esc(market)}');event.stopPropagation();`
         });
@@ -2513,7 +2724,7 @@ function renderSpannableRow(market, row, gc){
         chips+=buildRichCard({
           date:e.date?formatDateWithDay(e.date):weekStartDateLabel(w.n),
           title:e.title,summaryHtml:commEntrySummaryHtml(row.key,e),hoverText:commEntryHoverText(row.key,e),
-          badgeLabel:e.status,badgeClass:statusClass(e.status).replace('c-','s-'),
+          badgeLabel:e.status,badgeClass:statusClass(e.status).replace('c-','s-'),workflowStatus:e.workflowStatus,
           accentMkt:market,entryId:e.id,
           onclick:`openEditModal('${esc(e.id)}','${esc(market)}');event.stopPropagation();`
         });
@@ -2554,12 +2765,12 @@ function renderSocialRow(market, rowKey, gc){
     const cellEntries=rowEntries.filter(e=>e.week===w.n);
     const byDay={u:[]};for(let d=0;d<7;d++)byDay[d]=[];
     cellEntries.forEach(e=>{ const di=e.date?dayOfWeek(e.date):-1; if(di>=0)byDay[di].push(e);else byDay.u.push(e); });
-    let content=`<div class="day-unscheduled">${byDay.u.map(e=>`<div class="chip ${statusClass(e.status)}" onclick="openEditModal('${esc(e.id)}','${esc(market)}');event.stopPropagation();">${e.pillar?`<span class="pillar-tag">${esc(e.pillar)}</span>`:''}${esc(e.title)}${e.brief?`<div class="day-chip-summary">${esc(e.brief)}</div>`:''}</div>`).join('')}</div>`;
+    let content=`<div class="day-unscheduled">${byDay.u.map(e=>`<div class="chip ${statusClass(e.status)}" onclick="openEditModal('${esc(e.id)}','${esc(market)}');event.stopPropagation();">${e.pillar?`<span class="pillar-tag">${esc(e.pillar)}</span>`:''}${esc(e.title)}${creativeDraftBadge(e)}${e.brief?`<div class="day-chip-summary">${esc(e.brief)}</div>`:''}</div>`).join('')}</div>`;
     for(let di=0;di<7;di++){
       const iso=isoForWeekDay(w.n,di),dn=dayLabel(w.n,di);
       content+=`<div class="day-slot" onclick="openAddModal('${esc(market)}','${esc(rowKey)}',${w.n},'${iso}')">
         <span class="day-lbl">${WEEK_DAYS[di]}<br>${dn}</span>
-        <div class="day-chips">${byDay[di].map(e=>`<div class="chip ${statusClass(e.status)}" onclick="openEditModal('${esc(e.id)}','${esc(market)}');event.stopPropagation();">${e.pillar?`<span class="pillar-tag">${esc(e.pillar)}</span>`:''}${esc(e.title)}${e.brief?`<div class="day-chip-summary">${esc(e.brief)}</div>`:''}</div>`).join('')}</div>
+        <div class="day-chips">${byDay[di].map(e=>`<div class="chip ${statusClass(e.status)}" onclick="openEditModal('${esc(e.id)}','${esc(market)}');event.stopPropagation();">${e.pillar?`<span class="pillar-tag">${esc(e.pillar)}</span>`:''}${esc(e.title)}${creativeDraftBadge(e)}${e.brief?`<div class="day-chip-summary">${esc(e.brief)}</div>`:''}</div>`).join('')}</div>
       </div>`;
     }
     html+=`<td class="${gc} day-cell">${content}</td>`;
@@ -2591,8 +2802,7 @@ const GLOBAL_CREATIVE_ROWS=[
   if(missing.length) console.warn('[Global Calendar] These communication rows are not wired into GLOBAL_CREATIVE_ROWS and will not appear on the Global tab:', missing);
 })();
 
-// Core helper: collect entries for a set of markets + row keys at a week,
-// group by normalised title → deduplicate with yellow for multi-market matches.
+// Combine matching dates and content; a shared title alone is not enough.
 function buildGlobalCellHtml(mkts, rowKeys, weekNum, opts){
   const tg={}; // normalisedTitle → { title, markets:[], entries:[] }
   const mktScope = mkts || MARKETS;
@@ -2602,7 +2812,7 @@ function buildGlobalCellHtml(mkts, rowKeys, weekNum, opts){
     mktScope.forEach(mkt=>{
       getCellEntries(mkt,rk,weekNum).forEach(e=>{
         if(!matchesFilter(e)) return;
-        const k=(e.title||'').trim().toLowerCase();
+        const k=creativeEntryFingerprint(e);
         if(!tg[k]) tg[k]={title:e.title,markets:[],entries:[]};
         if(!tg[k].markets.includes(mkt)) tg[k].markets.push(mkt);
         if(!tg[k].entries) tg[k].entries=[];
@@ -2642,7 +2852,7 @@ function buildGlobalSpannableRowHtml(rowKeys, gc){
   rowKeys.forEach(rk=>{
     MARKETS.forEach(mkt=>{
       getMarketEntries(mkt).filter(e=>e.row===rk&&matchesFilter(e)).forEach(e=>{
-        const k=(e.title||'').trim().toLowerCase();
+        const k=creativeEntryFingerprint(e);
         if(!tg[k]) tg[k]={title:e.title,markets:[],entries:[]};
         if(!tg[k].markets.includes(mkt)) tg[k].markets.push(mkt);
         tg[k].entries.push(e);
@@ -2657,28 +2867,21 @@ function buildGlobalSpannableRowHtml(rowKeys, gc){
     return {title:g.title,markets:g.markets,mktList,isGlobal,week:rep.week,weekEnd:rep.weekEnd,date:rep.date,cid};
   });
 
-  const coveredCells=new Set();
-  groups.forEach(g=>{ if(g.weekEnd&&g.weekEnd>g.week) for(let w=g.week+1;w<=g.weekEnd&&w<=53;w++) coveredCells.add(w); });
-
   let html='';
-  WEEKS.forEach(w=>{
-    if(coveredCells.has(w.n)) return;
-    const starts=groups.filter(g=>g.week===w.n);
-    const spanGroup=starts.filter(g=>g.weekEnd&&g.weekEnd>w.n).sort((a,b)=>b.weekEnd-a.weekEnd)[0];
-    const colspan=spanGroup?(spanGroup.weekEnd-w.n+1):1;
-    const colspanAttr=colspan>1?` colspan="${colspan}"`:'';
+  BtvCreativeEvents.segments(groups,WEEKS.length).forEach(segment=>{
+    const colspan=segment.end-segment.start+1;
     let chips='';
-    starts.forEach(g=>{
+    segment.groups.forEach(g=>{
       const cssClass=g.isGlobal?'mkt-global':(MKT_CSS[g.markets[0]]||'c-ns');
-      const spanTag=g.weekEnd&&g.weekEnd>w.n?`<span class="span-tag">→Wk${g.weekEnd}</span>`:'';
-      const dateLabel=g.date?formatDateWithDay(g.date):weekStartDateLabel(w.n);
+      const spanTag=g.weekEnd&&g.weekEnd>g.week?`<span class="span-tag">&#8594;Wk${g.weekEnd}</span>`:'';
+      const dateLabel=g.date?formatDateWithDay(g.date):weekStartDateLabel(g.week);
       chips+=`<div class="chip ${cssClass}" onclick="_viewEntry('${esc(g.cid)}');event.stopPropagation();" title="${esc(g.title)}">
         <span class="date-tag">${esc(dateLabel)}</span>
         <span class="country-tag">${esc(g.isGlobal?g.mktList:g.markets[0])}</span>
         ${spanTag}${esc(g.title)}
       </div>`;
     });
-    html+=`<td${colspanAttr} class="${gc} readonly">${chips}</td>`;
+    html+=`<td${colspan>1?` colspan="${colspan}"`:''} class="${gc} readonly">${chips}</td>`;
   });
   return html;
 }
@@ -2704,21 +2907,13 @@ function renderGlobal(){
   html+=`<tr class="g-context"><td class="row-head g-context">Public Holidays</td>${buildGlobalSpannableRowHtml(['public_holidays'],'g-context')}</tr>`;
 
   // Consumer Mindset — from entries
-  html+=`<tr class="g-context"><td class="row-head g-context">Consumer Mindset</td>`;
-  WEEKS.forEach(w=>{
-    html+=`<td class="g-context readonly">${buildGlobalCellHtml(null,['consumer_mindset'],w.n,{})}</td>`;
-  });
-  html+=`</tr>`;
+  // Consumer Mindset removed from the Global Calendar.
 
   // Retail Impact — from entries
-  html+=`<tr class="g-context"><td class="row-head g-context">Retail Impact</td>`;
-  WEEKS.forEach(w=>{
-    html+=`<td class="g-context readonly">${buildGlobalCellHtml(null,['retail_impact'],w.n,{})}</td>`;
-  });
-  html+=`</tr>`;
+  // Retail Impact removed from the Global Calendar.
 
   // ── FROM BTV CALENDAR section ──────────────────────────────────────────
-  html+=`<tr class="group-row g-btvrow"><td class="row-head" colspan="${W+1}">From BTV Calendar (Reference Only)</td></tr>`;
+  html+=`<tr class="group-row g-btvrow"><td class="row-head" colspan="${W+1}">Launch Calendar</td></tr>`;
 
   // Markdown/promo periods — read-only, from Product Calendar Input's markdown data.
   // Shown first (above Calendar/China/Restock/Store Opening), matching Product Calendar
@@ -2842,6 +3037,7 @@ function closeViewModal(){ document.getElementById('viewModal').classList.remove
 // ── Tab switching ─────────────────────────────────────────────────────────
 
 function switchTab(name){
+  if(CC_IS_GLOBAL_VIEW && name !== 'global') name = 'global';
   currentTab=name;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
@@ -2852,6 +3048,8 @@ function switchTab(name){
   const isGlobal = name==='global';
   const panelEl = document.getElementById('filterPanel');
   if(panelEl) panelEl.style.display = isGlobal ? '' : 'none';
+  const stsGrp=document.getElementById('filterGroupStatus');
+  if(stsGrp) stsGrp.style.display = CC_IS_GLOBAL_VIEW ? 'none' : (isGlobal ? '' : 'none');
   if(name==='global') renderGlobal(); else renderMarket(name);
 }
 
@@ -2878,6 +3076,7 @@ function onRowChange(){
   document.getElementById('fPerfWrap').classList.toggle('show',!isSimple&&PERF_ROWS.has(row));
   document.getElementById('fCtxDateWrap').classList.toggle('show',isSimple);
   document.getElementById('fStatusWrap').style.display=NO_STATUS_ROWS.has(row)?'none':'';
+  updateCreativePublicationControls();
   ['fWeekRow','fDateStatusRow','fBriefWrap','fLinksWrap','fOwnerWrap'].forEach(function(id){
     var el=document.getElementById(id);
     if(el) el.style.display=isSimple?'none':'';
@@ -2890,6 +3089,9 @@ function buildWeekOpts(sel,blank){
 }
 
 function openAddModal(market,rowKey,week,dateIso){
+  window.btvCcClearNotice();
+  if(!ccCanLeave('global_cal_entries'))return;
+  ccModalBaseline=null;ccDraftId=ccNewDraftId();ccDirty.global_cal_entries=false;
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   modalEntry=null;
   document.getElementById('modalTitle').textContent='Add Entry';
@@ -2909,17 +3111,22 @@ function openAddModal(market,rowKey,week,dateIso){
   document.getElementById('fPerfObj').value='';document.getElementById('fBrief').value='';
   document.getElementById('fLinks').value='';document.getElementById('fOwner').value='';
   document.getElementById('fStatus').value='Not Started';
+  document.getElementById('fPublication').value='draft';
   document.getElementById('deleteBtn').style.display='none';
   document.getElementById('duplicateBtn').style.display='none';
   document.getElementById('modalErr').textContent='';
   onRowChange();
   document.getElementById('entryModal').classList.add('show');
-  setTimeout(()=>document.getElementById('fTitle').focus(),60);
+  document.querySelector('#entryModal .modal-card').scrollTop=0;
+  document.getElementById('fTitle').focus({preventScroll:true});
 }
 
 function openEditModal(id,market){
+  window.btvCcClearNotice();
+  if(!ccCanLeave('global_cal_entries'))return;
   const e=getMarketEntries(market).find(x=>x.id===id);if(!e)return;
-  modalEntry=e;
+  modalEntry=JSON.parse(JSON.stringify(e));ccDraftId=e.id;
+  ccModalBaseline=window.btvCcBaseline('global_cal_entries',id);ccDirty.global_cal_entries=false;
   document.getElementById('modalTitle').textContent='Edit Entry';
   document.getElementById('modalSub').textContent=`${e.market} · ${e.row.replace(/_/g,' ')} · Wk ${e.week}`;
   document.getElementById('fTitle').value=e.title||'';
@@ -2939,18 +3146,47 @@ function openEditModal(id,market){
   document.getElementById('fPerfObj').value=e.perfObj||'';document.getElementById('fBrief').value=e.brief||'';
   document.getElementById('fLinks').value=(e.links||[]).join('\n');document.getElementById('fOwner').value=e.owner||'';
   document.getElementById('fStatus').value=e.status||'Not Started';
+  document.getElementById('fPublication').value=BtvCreativeEvents.publication(e);
   document.getElementById('deleteBtn').style.display='';
   document.getElementById('duplicateBtn').style.display='';
   document.getElementById('modalErr').textContent='';
   onRowChange();
   document.getElementById('entryModal').classList.add('show');
-  setTimeout(()=>document.getElementById('fTitle').focus(),60);
+  document.querySelector('#entryModal .modal-card').scrollTop=0;
+  document.getElementById('fTitle').focus({preventScroll:true});
 }
 
-function closeModal(){ document.getElementById('entryModal').classList.remove('show');modalEntry=null; }
+function updateCreativePublicationControls(){
+  const context=NO_STATUS_ROWS.has(document.getElementById('fRow').value);
+  const draft=document.getElementById('fPublication').value==='draft';
+  const readOnly=CC_IS_GLOBAL_VIEW || window._btvCanEdit===false;
+  document.getElementById('fPublicationWrap').style.display=context?'none':'';
+  document.getElementById('fPublication').disabled=readOnly;
+  document.getElementById('fPublishBtn').style.display=!context&&draft&&!readOnly?'':'none';
+  document.getElementById('fSaveBtn').textContent=context?'Save':draft?'Save Draft':'Save Changes';
+  document.getElementById('fSaveBtn').disabled=readOnly;
+  document.getElementById('deleteBtn').disabled=readOnly;
+  document.getElementById('duplicateBtn').disabled=readOnly;
+}
 
-function saveEntry(){
-  if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
+async function publishCreativeEntry(){
+  if(CC_IS_GLOBAL_VIEW || window._btvCanEdit===false) return;
+  const input=document.getElementById('fPublication'),previous=input.value;
+  input.value='published';
+  await saveEntry();
+  if(document.getElementById('entryModal').classList.contains('show')) input.value=previous;
+  updateCreativePublicationControls();
+}
+
+function closeModal(){
+  if(!ccCanLeave('global_cal_entries'))return false;
+  if(ccDraftId)window.btvCcForgetDraft('global_cal_entries',ccDraftId);
+  document.getElementById('entryModal').classList.remove('show');modalEntry=null;ccDirty.global_cal_entries=false;
+  return true;
+}
+
+async function saveEntry(){
+  if (CC_IS_GLOBAL_VIEW || window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   const title=document.getElementById('fTitle').value.trim();
   const market=document.getElementById('fMarket').value;
   const row=document.getElementById('fRow').value;
@@ -2966,6 +3202,9 @@ function saveEntry(){
     const _sr=ccResolveWeek(startDate);
     if(_sr.outOfRange){ errEl.textContent='Start date ('+_sr.dateStr+') falls outside the '+CC_YEAR+' calendar. Please pick a date within '+CC_YEAR+'.'; return; }
     const endWn=endDate?dateToWeekNum(endDate):0;
+    if(endDate && (!endWn || endDate<startDate)){
+      errEl.textContent='End date must be on or after the start date and within the displayed calendar.'; return;
+    }
     const finalWeek=_sr.weekNum;
     const finalWeekEnd=(endWn>finalWeek&&endWn<=53)?endWn:null;
     fields={week:finalWeek,weekEnd:finalWeekEnd,date:startDate,startDate,endDate:endDate||startDate,
@@ -2993,36 +3232,23 @@ function saveEntry(){
     fields={week:finalWeek,weekEnd:finalWeekEnd,date,pillar,edmMarket:edmM,edmType:edmT,kol,promo,perfObj,brief,links,owner,status};
   }
 
-  let entryId;
-  if(modalEntry){
-    entryId=modalEntry.id;
-    const prevMarket=modalEntry.market;
-    Object.assign(modalEntry,{title,market,row},fields,{_seeded:false,updated:new Date().toISOString()});
-    if(prevMarket!==market){
-      state[prevMarket]=(state[prevMarket]||[]).filter(x=>x.id!==modalEntry.id);
-      state[market]=state[market]||[];
-      state[market].unshift(modalEntry);
-    }
-  } else {
-    entryId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    state[market]=state[market]||[];
-    state[market].unshift(Object.assign({
-      id:entryId,
-      title,market,row
-    },fields,{_seeded:false,created:new Date().toISOString(),updated:new Date().toISOString()}));
-  }
-  saveState();closeModal();
+  fields.workflowStatus=NO_STATUS_ROWS.has(row)?'published':document.getElementById('fPublication').value;
+  if(!['draft','published'].includes(fields.workflowStatus)){errEl.textContent='Choose Draft or Published.';return;}
+  const entryId=ccDraftId;
+  const candidate=Object.assign({},modalEntry || {created:new Date().toISOString()},{id:entryId,title,market,row},fields,{_seeded:false});
+  if(!await ccCommitDraft('global_cal_entries',candidate,ccModalBaseline,false,'modalErr'))return;
+  closeModal();
   // The entry may have just moved to a different week or market than where the modal
   // was opened from — switch to the right tab and scroll there so it never looks lost.
   if(currentTab!=='global' && currentTab!==market) switchTab(market); else renderCurrent();
   ccJumpToWeek(fields.week, entryId);
 }
 
-function deleteEntry(){
+async function deleteEntry(){
+  if(CC_IS_GLOBAL_VIEW || window._btvCanEdit===false) return;
   if(!modalEntry||!confirm('Delete this entry?'))return;
-  const m=modalEntry.market;
-  state[m]=(state[m]||[]).filter(e=>e.id!==modalEntry.id);
-  saveState();closeModal();renderCurrent();
+  if(!await ccCommitDraft('global_cal_entries',modalEntry,ccModalBaseline,true,'modalErr'))return;
+  closeModal();renderCurrent();
 }
 
 // ── Duplicate entry ──────────────────────────────────────────────────────
@@ -3033,6 +3259,8 @@ function deleteEntry(){
 // changing.
 
 function openDuplicateModal(){
+  if(!ccCanLeave('global_cal_entries'))return;
+  ccDuplicateDraftId=null;
   if (window._btvCanEdit === false) { ccToast('You have view-only access to the Global Calendar'); return; }
   if(!modalEntry) return;
   document.getElementById('dupDate').value = modalEntry.date || modalEntry.startDate || weekNumToISO(modalEntry.week) || '';
@@ -3043,10 +3271,13 @@ function openDuplicateModal(){
 }
 
 function closeDuplicateModal(){
+  if(ccSaving.global_cal_entries)return;
+  if(ccDuplicateDraftId)window.btvCcForgetDraft('global_cal_entries',ccDuplicateDraftId);
   document.getElementById('duplicateModal').classList.remove('show');
 }
 
-function confirmDuplicate(){
+async function confirmDuplicate(){
+  if(CC_IS_GLOBAL_VIEW || window._btvCanEdit===false){ ccToast('You have view-only access to the Global Calendar'); return; }
   if(!modalEntry) return;
   const src = modalEntry;
   const dateVal = document.getElementById('dupDate').value;
@@ -3057,27 +3288,32 @@ function confirmDuplicate(){
   const _r = ccResolveWeek(dateVal);
   if(_r.outOfRange){ errEl.textContent='Date ('+_r.dateStr+') falls outside the '+CC_YEAR+' calendar. Please pick a date within '+CC_YEAR+'.'; return; }
 
-  // Mirrors saveEntry()'s two field shapes: Context rows only carry a date range,
-  // Communication rows carry the full content-production field set.
-  let fields;
+  let range;
+  try {
+    const start=src.date||src.startDate||weekNumToISO(src.week);
+    const end=src.endDate||(src.weekEnd?weekNumToISO(src.weekEnd):start);
+    range=BtvCreativeEvents.shiftedRange(start,end,dateVal);
+  } catch(error) { errEl.textContent=error.message; return; }
+  const endWeek=ccResolveWeek(range.end);
+  if(endWeek.outOfRange){ errEl.textContent='The copied end date falls outside the '+CC_YEAR+' calendar. Choose an earlier start date.'; return; }
+  const fields=JSON.parse(JSON.stringify(src));
+  Object.assign(fields,{week:_r.weekNum,weekEnd:endWeek.weekNum>_r.weekNum?endWeek.weekNum:null,date:range.start});
   if(SIMPLE_CONTEXT_ROWS.has(row)){
-    fields={week:_r.weekNum,weekEnd:null,date:dateVal,startDate:dateVal,endDate:dateVal,
-      pillar:'',edmMarket:'',edmType:'',kol:'',promo:'',perfObj:'',brief:'',links:[],owner:'',status:''};
+    Object.assign(fields,{startDate:range.start,endDate:range.end,pillar:'',edmMarket:'',edmType:'',kol:'',promo:'',perfObj:'',brief:'',links:[],owner:'',status:''});
   } else {
-    fields={week:_r.weekNum,weekEnd:null,date:dateVal,
-      pillar:src.pillar||'',edmMarket:src.edmMarket||'All',edmType:src.edmType||'Launch',
-      kol:src.kol||'',promo:src.promo||'',perfObj:src.perfObj||'',
-      brief:src.brief||'',links:(src.links||[]).slice(),owner:src.owner||'',
-      status:NO_STATUS_ROWS.has(row)?'':(src.status||'Not Started')};
+    if(src.startDate) fields.startDate=range.start;
+    if(src.endDate) fields.endDate=range.end;
+    fields.status=NO_STATUS_ROWS.has(row)?'':(src.status||'Not Started');
   }
+  // Preserve publication independently of production status when copying markets.
+  if(src.workflowStatus) fields.workflowStatus=src.workflowStatus;
 
-  const newId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  state[market]=state[market]||[];
-  state[market].unshift(Object.assign({
-    id:newId, title:src.title, market, row
-  },fields,{_seeded:false,created:new Date().toISOString(),updated:new Date().toISOString()}));
-
-  saveState();
+  const newId=ccDuplicateDraftId || (ccDuplicateDraftId=ccNewDraftId());
+  const candidate=Object.assign(fields,{
+    id:newId,title:src.title,market,row,_seeded:false,created:new Date().toISOString(),updated:new Date().toISOString()
+  });
+  if(!await ccCommitDraft('global_cal_entries',candidate,null,false,'dupErr'))return;
+  ccDirty.global_cal_entries=false;
   closeDuplicateModal();
   closeModal();
   ccToast('Duplicated to '+market+' · Wk '+fields.week);
@@ -3107,6 +3343,11 @@ window.btvRender=function(){
 window.btvReloadAndRender=window.btvRender;
 window._btvCalRender=window.btvRender;
 window.btvSyncStorageKey=STORAGE_KEY;
+// localStorage events reach sibling frames and tabs, including an open Global view.
+window.addEventListener('storage',function(event){
+  if(CC_IS_GLOBAL_VIEW && event.storageArea===localStorage &&
+      (event.key===STORAGE_KEY || event.key===MARKETING_STORAGE_KEY)) window.btvRender();
+});
 
 // ── Per-entry diff helpers ─────────────────────────────────────────────────
 // Called by saveState() / saveMarketingState() to push only the entries that
@@ -3191,387 +3432,70 @@ function _ccDiffAndSyncMarketing(v){
   if (deletedIds.length) window.btvMktDeleteEntries(deletedIds);
 }
 
-// ── Per-entry Realtime sync IIFE ──────────────────────────────────────────
-// Mirrors the linesheet_products architecture: one Supabase row per entry,
-// Realtime subscription for live per-entry updates.
-// Called by supabase-sync.js _goLive / _goPaused (btvCcEntriesInit / btvCcEntriesTeardown).
-(function(){
-  'use strict';
-
-  var _sb   = null;
-  var _uid  = null;
-  var _gcCh  = null;  // Realtime channel: global_cal_entries
-  var _mktCh = null;  // Realtime channel: marketing_entries
-
-  // ── Pending-entry maps (entries in-flight, not yet Supabase-confirmed) ────
-  // Keyed by entry id. Populated immediately on save; cleared on Realtime confirm.
-  // btvCcApplyPendingToState() and _fetchAll() both re-apply these on top of any
-  // Supabase snapshot so a blob Realtime overwrite can never wipe unsaved work.
-  var _pendingGcEntries  = new Map();
-  var _pendingMktEntries = new Map();
-
-  // ── Write-fail error bar ─────────────────────────────────────────────────
-  function _showCcBar(msg){
-    var bar = document.getElementById('btv-cc-write-fail-bar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'btv-cc-write-fail-bar';
-      bar.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);' +
-        'background:#c0392b;color:#fff;padding:10px 20px;border-radius:8px;z-index:9999;' +
-        'display:flex;align-items:center;gap:12px;font-family:sans-serif;font-size:13px;' +
-        'box-shadow:0 2px 8px rgba(0,0,0,.3);';
-      var txt = document.createElement('span');
-      txt.id = 'btv-cc-write-fail-msg';
-      var btn = document.createElement('button');
-      btn.textContent = 'Retry';
-      btn.style.cssText = 'background:#fff;color:#c0392b;border:none;border-radius:4px;' +
-        'padding:4px 10px;cursor:pointer;font-weight:bold;';
-      btn.onclick = function(){ window.btvCcRetryPending(); };
-      bar.appendChild(txt);
-      bar.appendChild(btn);
-      document.body.appendChild(bar);
-    }
-    document.getElementById('btv-cc-write-fail-msg').textContent = msg;
-    bar.style.display = 'flex';
-  }
-
-  function _hideCcBar(){
-    var bar = document.getElementById('btv-cc-write-fail-bar');
-    if (bar) bar.style.display = 'none';
-  }
-
-  // ── Utility ───────────────────────────────────────────────────────────────
-  function _delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
-
-  // ── Upsert with retry (3 attempts: 0 ms / 1 s / 3 s backoff) ─────────────
-  async function _upsertWithRetry(table, rows, pendingMap, entries){
-    var delays = [0, 1000, 3000];
-    for (var i = 0; i < delays.length; i++) {
-      if (delays[i]) await _delay(delays[i]);
-      var res = await _sb.from(table).upsert(rows, { onConflict: 'id' });
-      if (!res.error) {
-        // Confirmed — remove from pending map and clear error bar
-        entries.forEach(function(e){ pendingMap.delete(e.id); });
-        _hideCcBar();
-        return;
-      }
-      console.warn('[BTV CC] ' + table + ' upsert attempt ' + (i + 1) + ' failed:', res.error.message);
-    }
-    // All 3 attempts failed — surface error bar with Retry button
-    _showCcBar('Save failed — some changes may not be saved. Click Retry.');
-    console.error('[BTV CC] ' + table + ' upsert failed after 3 attempts.');
-  }
-
-  // ── Re-apply pending entries on top of in-memory state ───────────────────
-  // Called from btvRender() so that a blob Realtime overwrite of localStorage
-  // never wipes unconfirmed entries from the UI between the save and the
-  // Supabase Realtime confirmation arriving.
-  window.btvCcApplyPendingToState = function(){
-    if (_pendingGcEntries.size === 0 && _pendingMktEntries.size === 0) return;
-
-    _pendingGcEntries.forEach(function(entry, id){
-      var mkt = entry.market;
-      if (!mkt) return;
-      Object.keys(state).forEach(function(m){
-        if (Array.isArray(state[m]))
-          state[m] = state[m].filter(function(e){ return e.id !== id; });
-      });
-      state[mkt] = state[mkt] || [];
-      state[mkt].unshift(entry);
-    });
-
-    _pendingMktEntries.forEach(function(entry, id){
-      var mkt = entry.market;
-      if (!mkt) return;
-      Object.keys(marketingState).forEach(function(m){
-        if (Array.isArray(marketingState[m]))
-          marketingState[m] = marketingState[m].filter(function(e){ return e.id !== id; });
-      });
-      marketingState[mkt] = marketingState[mkt] || [];
-      marketingState[mkt].unshift(entry);
-    });
-
-    // Update snapshots so the next diff sees the combined (confirmed + pending) state
-    _prevStateJson    = JSON.stringify(state);
-    _prevMktStateJson = JSON.stringify(marketingState);
-  };
-
-  // ── Retry button handler ─────────────────────────────────────────────────
-  window.btvCcRetryPending = function(){
-    if (_pendingGcEntries.size) {
-      var gcEntries = Array.from(_pendingGcEntries.values());
-      var gcRows = gcEntries.map(function(e){
-        return { id: e.id, market: e.market, data: e,
-                 updated_at: new Date().toISOString(), updated_by: _uid };
-      });
-      _upsertWithRetry('global_cal_entries', gcRows, _pendingGcEntries, gcEntries);
-    }
-    if (_pendingMktEntries.size) {
-      var mktEntries = Array.from(_pendingMktEntries.values());
-      var mktRows = mktEntries.map(function(e){
-        return { id: e.id, market: e.market, data: e,
-                 updated_at: new Date().toISOString(), updated_by: _uid };
-      });
-      _upsertWithRetry('marketing_entries', mktRows, _pendingMktEntries, mktEntries);
-    }
-  };
-
-  // ── Fetch all entries from Supabase and rebuild in-memory state ────────────
-  async function _fetchAll(){
-    // ── Global Calendar entries ──
-    var gcRes = await _sb.from('global_cal_entries')
-      .select('id, market, data, updated_at');
-    if (!gcRes.error && gcRes.data && gcRes.data.length > 0) {
-      var newState = {};
-      gcRes.data.forEach(function(row){
-        newState[row.market] = newState[row.market] || [];
-        newState[row.market].push(Object.assign({}, row.data, { id: row.id, market: row.market }));
-      });
-      // Re-apply any pending (not-yet-Realtime-confirmed) entries on top of Supabase snapshot
-      // so tab-switch _fetchAll calls never wipe in-flight saves from the UI.
-      _pendingGcEntries.forEach(function(entry, id){
-        var mkt = entry.market;
-        if (!mkt) return;
-        Object.keys(newState).forEach(function(m){
-          newState[m] = newState[m].filter(function(e){ return e.id !== id; });
-        });
-        newState[mkt] = newState[mkt] || [];
-        newState[mkt].unshift(entry);
-      });
-      _ccApplyingRemote = true;
-      try {
-        Object.keys(state).forEach(function(k){ delete state[k]; });
-        Object.assign(state, newState);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        _prevStateJson = JSON.stringify(state);
-      } finally { _ccApplyingRemote = false; }
-    } else if (gcRes.error) {
-      console.error('[BTV CC] _fetchAll global_cal_entries error:', gcRes.error.message);
-    }
-
-    // ── Marketing Workflow entries ──
-    var mktRes = await _sb.from('marketing_entries')
-      .select('id, market, data, updated_at');
-    if (!mktRes.error && mktRes.data && mktRes.data.length > 0) {
-      var newMkt = { SG:[], TH:[], ID:[], PH:[], JP:[], CN:[] };
-      mktRes.data.forEach(function(row){
-        newMkt[row.market] = newMkt[row.market] || [];
-        newMkt[row.market].push(Object.assign({}, row.data, { id: row.id, market: row.market }));
-      });
-      // Re-apply pending marketing entries on top of Supabase snapshot
-      _pendingMktEntries.forEach(function(entry, id){
-        var mkt = entry.market;
-        if (!mkt) return;
-        Object.keys(newMkt).forEach(function(m){
-          newMkt[m] = newMkt[m].filter(function(e){ return e.id !== id; });
-        });
-        newMkt[mkt] = newMkt[mkt] || [];
-        newMkt[mkt].unshift(entry);
-      });
-      _ccApplyingRemote = true;
-      try {
-        Object.keys(marketingState).forEach(function(k){ delete marketingState[k]; });
-        Object.assign(marketingState, newMkt);
-        localStorage.setItem(MARKETING_STORAGE_KEY, JSON.stringify(marketingState));
-        _prevMktStateJson = JSON.stringify(marketingState);
-      } finally { _ccApplyingRemote = false; }
-    } else if (mktRes.error) {
-      console.error('[BTV CC] _fetchAll marketing_entries error:', mktRes.error.message);
-    }
-
-    // Re-render with fresh data
-    if (typeof window.btvRender === 'function') window.btvRender();
-  }
-
-  // ── Apply a single global_cal_entries change from Realtime ─────────────────
-  function _applyGcEntry(payload){
-    _ccApplyingRemote = true;
-    try {
-      if (payload.eventType === 'DELETE') {
-        // REPLICA IDENTITY DEFAULT: payload.old only has the PK (id).
-        var delId = payload.old && payload.old.id;
-        if (delId) {
-          _pendingGcEntries.delete(delId);  // confirmed delete — clear from pending
-          Object.keys(state).forEach(function(mkt){
-            if (Array.isArray(state[mkt]))
-              state[mkt] = state[mkt].filter(function(e){ return e.id !== delId; });
-          });
-        }
-      } else {
-        var row   = payload.new;
-        var entry = Object.assign({}, row.data, { id: row.id, market: row.market });
-        _pendingGcEntries.delete(row.id);  // Realtime arrival = Supabase confirmed
-        // Remove from all markets first (handles market-change edits)
-        Object.keys(state).forEach(function(mkt){
-          if (Array.isArray(state[mkt]))
-            state[mkt] = state[mkt].filter(function(e){ return e.id !== row.id; });
-        });
-        state[row.market] = state[row.market] || [];
-        state[row.market].unshift(entry);
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      _prevStateJson = JSON.stringify(state);
-      if (typeof window.btvRender === 'function') window.btvRender();
-    } catch(e) {
-      console.error('[BTV CC] _applyGcEntry error:', e);
-    } finally {
-      _ccApplyingRemote = false;
-    }
-  }
-
-  // ── Apply a single marketing_entries change from Realtime ──────────────────
-  function _applyMktEntry(payload){
-    _ccApplyingRemote = true;
-    try {
-      if (payload.eventType === 'DELETE') {
-        var delId = payload.old && payload.old.id;
-        if (delId) {
-          _pendingMktEntries.delete(delId);  // confirmed delete
-          Object.keys(marketingState).forEach(function(mkt){
-            if (Array.isArray(marketingState[mkt]))
-              marketingState[mkt] = marketingState[mkt].filter(function(e){ return e.id !== delId; });
-          });
-        }
-      } else {
-        var row   = payload.new;
-        var entry = Object.assign({}, row.data, { id: row.id, market: row.market });
-        _pendingMktEntries.delete(row.id);  // confirmed
-        Object.keys(marketingState).forEach(function(mkt){
-          if (Array.isArray(marketingState[mkt]))
-            marketingState[mkt] = marketingState[mkt].filter(function(e){ return e.id !== row.id; });
-        });
-        marketingState[row.market] = marketingState[row.market] || [];
-        marketingState[row.market].unshift(entry);
-      }
-      localStorage.setItem(MARKETING_STORAGE_KEY, JSON.stringify(marketingState));
-      _prevMktStateJson = JSON.stringify(marketingState);
-      if (typeof window.btvRender === 'function') window.btvRender();
-    } catch(e) {
-      console.error('[BTV CC] _applyMktEntry error:', e);
-    } finally {
-      _ccApplyingRemote = false;
-    }
-  }
-
-  // ── Public API — called by supabase-sync.js ────────────────────────────────
-
-  window.btvCcUpsertEntries = async function(entries){
-    // Add to pending immediately — even before _sb is ready (pre-init saves).
-    // _fetchAll and btvCcApplyPendingToState will re-apply them until confirmed.
-    entries.forEach(function(e){ if (e.id) _pendingGcEntries.set(e.id, e); });
-    if (!_sb || !_uid) return;  // will be flushed in btvCcEntriesInit
-    var rows = entries.map(function(e){
-      return { id: e.id, market: e.market, data: e,
-               updated_at: new Date().toISOString(), updated_by: _uid };
-    });
-    await _upsertWithRetry('global_cal_entries', rows, _pendingGcEntries, entries);
-  };
-
-  window.btvCcDeleteEntries = async function(ids){
-    if (!ids.length) return;
-    // Remove from pending — a deleted entry is gone regardless of Supabase confirm
-    ids.forEach(function(id){ _pendingGcEntries.delete(id); });
-    if (!_sb || !_uid) return;
-    var res = await _sb.from('global_cal_entries').delete().in('id', ids);
-    if (res.error) console.error('[BTV CC] Delete error:', res.error.message);
-  };
-
-  window.btvMktUpsertEntries = async function(entries){
-    // Add to pending immediately
-    entries.forEach(function(e){ if (e.id) _pendingMktEntries.set(e.id, e); });
-    if (!_sb || !_uid) return;  // will be flushed in btvCcEntriesInit
-    var rows = entries.map(function(e){
-      return { id: e.id, market: e.market, data: e,
-               updated_at: new Date().toISOString(), updated_by: _uid };
-    });
-    await _upsertWithRetry('marketing_entries', rows, _pendingMktEntries, entries);
-  };
-
-  window.btvMktDeleteEntries = async function(ids){
-    if (!ids.length) return;
-    ids.forEach(function(id){ _pendingMktEntries.delete(id); });
-    if (!_sb || !_uid) return;
-    var res = await _sb.from('marketing_entries').delete().in('id', ids);
-    if (res.error) console.error('[BTV Mkt] Delete error:', res.error.message);
-  };
-
-  window.btvCcEntriesInit = async function(session){
-    if (!window._btvSb) {
-      console.warn('[BTV CC] _btvSb not available — per-entry sync skipped.');
-      return;
-    }
-    _sb  = window._btvSb;
-    _uid = session.user.id;
-
-    // Fetch current state from per-entry tables (pending entries re-applied inside _fetchAll)
-    await _fetchAll();
-
-    // Flush any entries that were saved before _sb was ready (pre-init window)
-    if (_pendingGcEntries.size) {
-      var gcEntries = Array.from(_pendingGcEntries.values());
-      var gcRows = gcEntries.map(function(e){
-        return { id: e.id, market: e.market, data: e,
-                 updated_at: new Date().toISOString(), updated_by: _uid };
-      });
-      await _upsertWithRetry('global_cal_entries', gcRows, _pendingGcEntries, gcEntries);
-    }
-    if (_pendingMktEntries.size) {
-      var mktEntries = Array.from(_pendingMktEntries.values());
-      var mktRows = mktEntries.map(function(e){
-        return { id: e.id, market: e.market, data: e,
-                 updated_at: new Date().toISOString(), updated_by: _uid };
-      });
-      await _upsertWithRetry('marketing_entries', mktRows, _pendingMktEntries, mktEntries);
-    }
-
-    // Subscribe to Realtime for live per-entry changes from teammates
-    if (!_gcCh) {
-      _gcCh = _sb.channel('btv_gc_entries_v1')
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'global_cal_entries' },
-          function(payload){ _applyGcEntry(payload); })
-        .subscribe(function(status){
-          console.log('[BTV CC] global_cal_entries Realtime:', status);
-        });
-    }
-
-    if (!_mktCh) {
-      _mktCh = _sb.channel('btv_mkt_entries_v1')
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'marketing_entries' },
-          function(payload){ _applyMktEntry(payload); })
-        .subscribe(function(status){
-          console.log('[BTV Mkt] marketing_entries Realtime:', status);
-        });
-    }
-
-    console.log('[BTV CC] Per-entry sync active.');
-  };
-
-  window.btvCcEntriesTeardown = function(){
-    if (_gcCh)  { try { _gcCh.unsubscribe();  } catch(e){} _gcCh  = null; }
-    if (_mktCh) { try { _mktCh.unsubscribe(); } catch(e){} _mktCh = null; }
-    console.log('[BTV CC] Per-entry sync paused.');
-  };
-
-})();
-
+// Per-entry shared reads and version-checked writes live in js/creative-sync.js.
 // ── Init ─────────────────────────────────────────────────────────────────
 document.getElementById('fWeek').innerHTML=buildWeekOpts(1);
 document.getElementById('fWeekEnd').innerHTML=buildWeekOpts(null,true);
-// Auto-seed on first load if no launch data exists for any market
-const hasData=MARKETS.some(m=>(state[m]||[]).some(e=>e.row==='launch'));
-if(!hasData){ seedData(false); }
-seedPublicHolidays(false);
+(function _ccPopulateYearSelect(){
+  try {
+    var sel = document.getElementById('ccYearSelect');
+    if (!sel) return;
+    var base = new Date().getFullYear(), lo = Math.min(base - 2, CC_YEAR), hi = Math.max(base + 4, CC_YEAR);
+    var html = '';
+    for (var y = lo; y <= hi; y++) html += '<option value="' + y + '">' + y + '</option>';
+    sel.innerHTML = html;
+    sel.value = String(CC_YEAR);
+    var excelBtn = document.getElementById('ccLoadExcelBtn'); if (excelBtn) excelBtn.style.display = (!CC_IS_GLOBAL_VIEW && CC_YEAR === 2026) ? '' : 'none';
+    var sub = document.getElementById('ccYearSub'); if (sub) sub.textContent = CC_YEAR + ' — Beyond The Vines · DO DESIGN, DO LIFE.';
+    var bar = document.getElementById('ccGlobalBarText'); if (bar) bar.textContent = 'Global Calendar ' + CC_YEAR;
+  } catch(e) { console.error('[BTV CC] year select population failed:', e); }
+})();
+// Auto-seed on first load if no launch data exists for any market — SEED_DATA and
+// HOLIDAYS are both real 2026-specific content (actual launch dates; actual holiday
+// dates like Chinese New Year, which move every year and aren't derivable by
+// formula), so neither must ever seed into another year. A future year's public
+// holidays need to be entered manually (or the HOLIDAYS object extended with that
+// year's real dates) — there's no calendar library here to compute lunar-calendar
+// holidays automatically.
+if (CC_YEAR === 2026) {
+  const hasData=MARKETS.some(m=>(state[m]||[]).some(e=>e.row==='launch'));
+  if(!hasData){ seedData(false); }
+  seedPublicHolidays(false);
+}
 _sanitizeSeededIds();
-// Init filter bar visibility (global = all controls visible)
-(function(){
+// Init mode-specific chrome. The app shell opens this same file twice:
+// mode=global for the read-only consolidated view, mode=creative for market input.
+(function _ccApplyAppMode(){
+  document.body.classList.add(CC_IS_GLOBAL_VIEW ? 'mode-global' : 'mode-creative');
+  const title=document.querySelector('.page-title');
+  if(title) title.textContent = CC_IS_GLOBAL_VIEW ? 'Global Calendar' : 'Creative Calendar Input';
+  const webhookBtn=document.getElementById('ccWebhookBtn');
+  const excelBtn=document.getElementById('ccLoadExcelBtn');
+  const exportBtn=document.querySelector('.export-btn');
+  if(CC_IS_GLOBAL_VIEW){
+    if(webhookBtn) webhookBtn.remove();
+    if(excelBtn) excelBtn.remove();
+  }else{
+    if(webhookBtn) webhookBtn.style.display = '';
+    if(excelBtn) excelBtn.style.display = CC_YEAR === 2026 ? '' : 'none';
+  }
+  if(exportBtn) exportBtn.style.display = CC_IS_GLOBAL_VIEW ? '' : 'none';
   const mktGrp=document.getElementById('filterGroupMarket');
   const stsGrp=document.getElementById('filterGroupStatus');
   if(mktGrp) mktGrp.style.display='';
-  if(stsGrp) stsGrp.style.display='';
+
+  if(CC_IS_GLOBAL_VIEW){
+    if(stsGrp) stsGrp.remove();
+    MARKETS.forEach(m=>{ const btn=document.getElementById('tab'+m); if(btn) btn.remove(); });
+    currentTab='global';
+    renderGlobal();
+  }else{
+    if(stsGrp) stsGrp.style.display='none';
+    const globalBtn=document.getElementById('tabGlobal');
+    if(globalBtn) globalBtn.style.display='none';
+    switchTab('SG');
+  }
 })();
-renderGlobal();
 // ── Apply viewer mode ────────────────────────────────────────────────────────
 (function _btvApplyViewMode() {
   function _apply() {
@@ -3593,7 +3517,13 @@ renderGlobal();
 <script>
 function _btvLoadMergedCalState() {
   var merged = {};
-  ['calendar-2026-working-v5', 'calendar-2027-working-v5'].forEach(function(key) {
+  // window.BTV_CAL_STORAGE_KEY is the CURRENTLY SELECTED year's bridge (dynamic —
+  // see switchCcYear/_ccApplyYearKeys). input calendar-2027.html (and its
+  // 'calendar-2027-working-v5' blob) has been retired now that Calendar 2027 is
+  // unified into input calendar-2026.html's year-switcher, so no separate
+  // fallback key is needed here anymore — the year-scoped bridge covers it.
+  [window.BTV_CAL_STORAGE_KEY].forEach(function(key) {
+    if (!key) return;
     var st = {};
     try { st = JSON.parse(localStorage.getItem(key) || '{}'); } catch(ex) {}
     ['global', 'china'].forEach(function(sec) {
@@ -3607,20 +3537,22 @@ function _btvLoadMergedCalState() {
   return merged;
 }
 
-function btvShowLaunchDetail(entryId) {
+var _btvLaunchPreviewRequest = 0;
+async function btvShowLaunchDetail(entryId) {
+  var requestId = ++_btvLaunchPreviewRequest;
   // Inject card styles once
   if (!document.getElementById('btvLDStyles')) {
     var s = document.createElement('style');
     s.id = 'btvLDStyles';
     s.textContent = [
-      '.btv-ld-card{background:#fff;border-radius:14px;border:1px solid #e8e2d8;padding:24px 20px;margin-bottom:18px}',
+      '.btv-ld-card{background:#fff;border-radius:6px;border:1px solid #d8d8d8;padding:20px;margin-bottom:14px}',
       '.btv-ld-card.btv-ld-notready{border-color:#e0a89c;border-left:5px solid #c0392b}',
       '.btv-ld-notready-banner{display:flex;align-items:center;gap:8px;background:#fdecea;color:#a23a2f;border:1px solid #f3b7ae;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;letter-spacing:.02em;margin-bottom:16px}',
       '.btv-ld-ready-banner{display:flex;align-items:center;gap:8px;background:#e6f6ec;color:#1a7f3a;border:1px solid #b5dfc5;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;letter-spacing:.02em;margin-bottom:16px}',
-      '.btv-ld-grid{display:grid;grid-template-columns:120px 1fr 260px;gap:20px;align-items:start}',
+      '.btv-ld-grid{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(220px,300px);gap:20px;align-items:start}',
       '.btv-ld-imgs{display:flex;flex-direction:column;gap:10px}',
       '.btv-ld-imgwrap{width:110px;height:110px;border-radius:10px;overflow:hidden;border:1px solid #e0dbd2;background:#f5f3ef;display:flex;align-items:center;justify-content:center}',
-      '.btv-ld-imgwrap img{width:100%;height:100%;object-fit:cover;display:block}',
+      '.btv-ld-imgwrap img{width:100%;height:100%;object-fit:contain;display:block}',
       '.btv-ld-imgblank{color:#ccc;font-size:10px;text-align:center;padding:4px}',
       '.btv-ld-info{min-width:0}',
       '.btv-ld-pname{font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:6px;line-height:1.3}',
@@ -3632,7 +3564,7 @@ function btvShowLaunchDetail(entryId) {
       '.btv-ld-desc{font-size:12px;color:#555;line-height:1.6;margin-top:12px;padding-top:12px;border-top:1px solid #f0ebe4}',
       '.btv-ld-ph{font-size:10px;font-weight:700;letter-spacing:.08em;color:#888;margin-top:14px;margin-bottom:6px;text-transform:uppercase}',
       '.btv-ld-pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e8e2d8;border:1px solid #e8e2d8;border-radius:8px;overflow:hidden}',
-      '.btv-ld-pcell{background:#fbf8f1;padding:8px 10px;text-align:center}',
+      '.btv-ld-pcell{background:#f7f7f7;padding:8px 10px;text-align:center}',
       '.btv-ld-plabel{font-size:9px;font-weight:700;color:#888;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}',
       '.btv-ld-pval{font-size:13px;font-weight:600;color:#1a1a1a}',
       '.btv-ld-approval{margin-top:12px;font-size:12px;font-family:monospace;letter-spacing:.08em;color:#555;display:flex;align-items:center;gap:8px}',
@@ -3645,7 +3577,11 @@ function btvShowLaunchDetail(entryId) {
       '.btv-ld-sktable{width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e0dbd2}',
       '.btv-ld-skth{padding:6px 8px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;color:#666;border:1px solid #e0dbd2;border-bottom:2px solid #e0dbd2;white-space:nowrap}',
       '.btv-ld-skcell{padding:5px 8px;border:1px solid #e0dbd2;color:#333;vertical-align:top;word-break:break-all}',
-      '.btv-ld-sknum{font-family:monospace;font-size:10px;color:#555}'
+      '.btv-ld-sknum{font-family:monospace;font-size:11px;color:#333}',
+      '.btv-ld-code-warning{font-size:12px;color:#9f2d22;margin:8px 0}',
+      '.btv-ld-measurewrap{overflow-x:auto;max-width:100%}',
+      '.btv-ld-measuretable{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;table-layout:auto}.btv-ld-measuretable th,.btv-ld-measuretable td{padding:12px 10px;border:1px solid #242424;text-align:center;min-width:75px}.btv-ld-measuretable th{background:#55d36b;color:#111;font-weight:700}.btv-ld-unit{display:flex;align-items:center;gap:8px;width:max-content;margin:10px 0;font-weight:700;font-size:12px}.btv-ld-unit input{appearance:none;width:42px;height:24px;border-radius:24px;background:#111;position:relative;cursor:pointer;margin:0}.btv-ld-unit input:before{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:white;top:3px;left:3px}.btv-ld-unit input:checked:before{left:21px}.btv-ld-unit input:focus-visible{outline:2px solid #2268c9;outline-offset:3px}.btv-ld-tolerance{font-size:12px;line-height:1.6;margin:8px 0}',
+      '@media(max-width:760px){.btv-ld-grid{grid-template-columns:minmax(0,1fr)}.btv-ld-imgs{flex-direction:row}.btv-ld-card{padding:14px}.btv-ld-pname{overflow-wrap:anywhere}.btv-ld-pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
     ].join('');
     document.head.appendChild(s);
   }
@@ -3654,6 +3590,35 @@ function btvShowLaunchDetail(entryId) {
   var bodyEl  = document.getElementById('btvLDBody');
   var titleEl = document.getElementById('btvLDTitle');
   var subEl   = document.getElementById('btvLDSub');
+  var pdfButton = overlay.querySelector('button[onclick="btvExportLaunchPDF()"]');
+  if (pdfButton) pdfButton.disabled = true;
+  titleEl.textContent = 'Linesheet';
+  subEl.textContent = '';
+  bodyEl.textContent = 'Loading shared product details...';
+  overlay.style.display = 'flex';
+  var latestProducts = [];
+  try {
+    if (!window._btvSb) throw new Error('Shared connection is not ready.');
+    for (var offset=0; ;offset+=500) {
+      var query=window._btvSb.from('linesheet_products').select('id,group_id,data');
+      query=query.order('id').range(offset,offset+499);
+      var timeout;
+      var result;
+      try {
+        result=await Promise.race([query,new Promise(function(resolve,reject){timeout=setTimeout(function(){reject(new Error('Product loading timed out.'));},10000);})]);
+      } finally {clearTimeout(timeout);}
+      if(result.error)throw new Error('Could not load the latest shared products.');
+      var batch=result.data || [];
+      batch.forEach(function(row){latestProducts.push(Object.assign({},row.data,{id:row.id,groupId:row.group_id}));});
+      if(batch.length<500)break;
+    }
+    if(requestId!==_btvLaunchPreviewRequest)return;
+    localStorage.setItem('btv_linesheet_products',JSON.stringify(latestProducts));
+  } catch(error) {
+    if(requestId!==_btvLaunchPreviewRequest)return;
+    bodyEl.textContent = 'Unable to load current linesheet details. Close and reopen this launch after checking your connection.';
+    return;
+  }
 
   var calEntry = null;
   var _btvCalSt = _btvLoadMergedCalState();
@@ -3684,7 +3649,7 @@ function btvShowLaunchDetail(entryId) {
   }
 
   var allProducts = [];
-  try { allProducts = JSON.parse(localStorage.getItem('btv_linesheet_products') || '[]'); } catch(ex) {}
+  allProducts = latestProducts;
 
   var _btvNorm = function(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
   // Calendar lines sometimes list several colourways in one field (e.g. "Navy, Terracotta")
@@ -3700,11 +3665,13 @@ function btvShowLaunchDetail(entryId) {
   // countries launch it at different times.
   var _btvLineKeys  = new Set(); // "normName|normColourToken" — one entry per colourway
   var _btvLineNames = new Set(); // normName only — when no real colour specified, match any variant
+  var previewLines = calEntry ? (calEntry.lines || []).slice() : [];
   try {
     ['global','china'].forEach(function(sec) {
       Object.values(_btvCalSt[sec] || {}).forEach(function(wEntries) {
         (Array.isArray(wEntries) ? wEntries : []).forEach(function(e) {
           if (!_btvSibIds.has(e.id)) return;
+          if (!calEntry || e.id !== calEntry.id) previewLines.push.apply(previewLines, e.lines || []);
           (e.lines || []).forEach(function(l) {
             var nm = _btvNorm(l.productName || l.productTitle || '');
             if (!nm) return;
@@ -3741,9 +3708,11 @@ function btvShowLaunchDetail(entryId) {
     if (_btvCalDate && p.launchDate && p.launchDate === _btvCalDate) { _btvSeen.add(p.id); return true; }
     return false;
   });
+  products = BtvLinesheetPreview.launchOrder(BtvLinesheetPreview.groupProducts(products), previewLines);
+  if (pdfButton) pdfButton.disabled = !products.length;
 
   titleEl.textContent = calEntry ? (calEntry.launchTitle || entryId) : entryId;
-  subEl.textContent   = (calEntry && calEntry.launchDate) ? 'Launch Date: ' + calEntry.launchDate : '';
+  subEl.textContent = [(calEntry && calEntry.launchDate) ? 'Launch Date: ' + calEntry.launchDate : '', products.length + (products.length===1 ? ' product' : ' products'), products.reduce(function(n,p){return n+p.previewSizes.length;},0) + ' sizes'].filter(Boolean).join(' | ');
 
   if (!products.length) {
     bodyEl.innerHTML = '<div style="padding:40px;text-align:center;color:#999;font-size:14px">No linesheet products linked to this launch yet.<br><small style="color:#bbb;margin-top:6px;display:block">Products appear here once the linesheet is synced from the calendar.</small></div>';
@@ -3751,7 +3720,7 @@ function btvShowLaunchDetail(entryId) {
     return;
   }
 
-  var x = function(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  var x = function(v) { return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
 
   function fld(label, value, pre) {
     if (!value && value !== 0) return '<div class="btv-ld-field"><span class="btv-ld-label">' + label + ':</span> <span style="color:#ccc">—</span></div>';
@@ -3760,18 +3729,7 @@ function btvShowLaunchDetail(entryId) {
   }
 
   function skuTable(p) {
-    var sizes = [];
-    if (p.sizeSKUs && Object.keys(p.sizeSKUs).length) {
-      var order = ['XXS','XS','S','M','L','XL','XXL'];
-      Object.keys(p.sizeSKUs).sort(function(a,b){
-        var ai=order.indexOf(a), bi=order.indexOf(b);
-        return (ai>=0&&bi>=0) ? ai-bi : a.localeCompare(b);
-      }).forEach(function(sz) {
-        sizes.push({sz:sz, sk:p.sizeSKUs[sz]||'', bc:(p.sizeBarcodes||{})[sz]||''});
-      });
-    } else {
-      sizes.push({sz:'ONE SIZE', sk:p.sku||'', bc:p.barcode||''});
-    }
+    var sizes = p.previewSizes.map(function(row){return {sz:row.size,sk:row.sku || 'Not entered',bc:row.barcode || 'Not entered'};});
     return '<table class="btv-ld-sktable"><thead><tr>'
       + '<th class="btv-ld-skth">SIZE</th><th class="btv-ld-skth">SKU</th><th class="btv-ld-skth">BARCODE</th>'
       + '</tr></thead><tbody>'
@@ -3788,12 +3746,11 @@ function btvShowLaunchDetail(entryId) {
   }
 
   function approvalRow(p) {
-    var d = p.approvedDesigner ? '<span class="btv-ld-appr">D</span>' : '<span class="btv-ld-appgrey">D</span>';
-    var s = p.approvedSC       ? '<span class="btv-ld-appr">SC</span>' : '<span class="btv-ld-appgrey">SC</span>';
-    var m = p.approvedMerch    ? '<span class="btv-ld-appr">M</span>' : '<span class="btv-ld-appgrey">M</span>';
-    var all = isFullyApproved(p);
-    var badge = all ? '<span class="btv-ld-badgeok">&#10003; Approved</span>' : '<span class="btv-ld-badgepend">Pending</span>';
-    return '<div class="btv-ld-approval">' + d + ' / ' + s + ' / ' + m + ' ' + badge + '</div>';
+    return ['generalApprovals','variantApprovals'].map(function(scope){
+      var approvals=p[scope]||{},roles=['designer','sc','merch'];
+      var all=roles.every(function(role){return !!approvals[role]?.approved;});
+      return '<div class="btv-ld-approval"><strong>'+(scope==='generalApprovals'?'General':'Variant')+'</strong> '+roles.map(function(role,i){return '<span class="'+(approvals[role]?.approved?'btv-ld-appr':'btv-ld-appgrey')+'">'+['D','SC','M'][i]+'</span>';}).join(' / ')+' <span class="'+(all?'btv-ld-badgeok':'btv-ld-badgepend')+'">'+(all?'Approved':'Pending')+'</span></div>';
+    }).join('');
   }
 
   // Big, impossible-to-miss banner at the TOP of each card so viewers immediately know
@@ -3810,27 +3767,22 @@ function btvShowLaunchDetail(entryId) {
     return '<div class="btv-ld-notready-banner">&#9888; NOT READY — awaiting approval from ' + x(missing.join(', ')) + '</div>';
   }
 
-  // Renders the measurement matrix (as entered in the linesheet's own input table) rather
-  // than the flattened text summary — same columns: Measurement Point, Inch/CM per size,
-  // Tolerance.
   function measurementTableHtml(p) {
     var matrix = p.measurementMatrix;
     if (!matrix || !matrix.length) return '';
-    var sizes = ['XS','S','M','L','XL','XXL'];
-    var header = '<tr><th class="btv-ld-skth">Measurement Point</th>'
-      + sizes.map(function(sz){ return '<th class="btv-ld-skth" colspan="2">' + sz + '</th>'; }).join('')
-      + '<th class="btv-ld-skth">Tolerance</th></tr>'
-      + '<tr><th class="btv-ld-skth"></th>'
-      + sizes.map(function(){ return '<th class="btv-ld-skth">In</th><th class="btv-ld-skth">Cm</th>'; }).join('')
-      + '<th class="btv-ld-skth"></th></tr>';
-    var rows = matrix.map(function(row) {
-      var cells = sizes.map(function(sz) {
-        var v = (row.values && row.values[sz]) || {};
-        return '<td class="btv-ld-skcell btv-ld-sknum">' + x(v.inch || '—') + '</td><td class="btv-ld-skcell btv-ld-sknum">' + x(v.cm || '—') + '</td>';
-      }).join('');
-      return '<tr><td class="btv-ld-skcell">' + x(row.label || '') + '</td>' + cells + '<td class="btv-ld-skcell">' + x(row.tolerance || '—') + '</td></tr>';
-    }).join('');
-    return '<table class="btv-ld-sktable" style="margin-top:4px">' + header + rows + '</table>';
+    var sizes = p.measurementSizes;
+    var tolerances = matrix.filter(function(row){return row.tolerance !== '' && row.tolerance != null;});
+    return '<section class="btv-ld-measurements">'
+      + '<label class="btv-ld-unit">CM <input type="checkbox" role="switch" aria-label="Show measurements in inches"> IN</label>'
+      + (tolerances.length ? '<p class="btv-ld-tolerance">Tolerance: '+tolerances.map(function(row){return x(row.point || row.label)+': '+x(row.tolerance);}).join(' | ')+'</p>' : '')
+      + '<div class="btv-ld-measurewrap"><table class="btv-ld-measuretable"><thead><tr><th scope="col">SIZE</th>'
+      + matrix.map(function(row){return '<th scope="col">'+x(row.point || row.label || '')+'</th>';}).join('')
+      + '</tr></thead><tbody>'+sizes.map(function(size){
+        return '<tr><th scope="row">'+x(size)+'</th>'+matrix.map(function(row){
+          var value = row.values.find(function(v){return String(v.size).toLowerCase()===size.toLowerCase();}) || {};
+          return '<td data-cm="'+x(BtvLinesheetPreview.measurementValue(value,'cm'))+'" data-inch="'+x(BtvLinesheetPreview.measurementValue(value,'inch'))+'">'+x(BtvLinesheetPreview.measurementValue(value,'cm'))+'</td>';
+        }).join('')+'</tr>';
+      }).join('')+'</tbody></table></div></section>';
   }
 
   var html = products.map(function(p) {
@@ -3846,6 +3798,7 @@ function btvShowLaunchDetail(entryId) {
 
     return '<div class="btv-ld-card' + (isFullyApproved(p) ? '' : ' btv-ld-notready') + '">'
       + notReadyBanner(p)
+      + (p.previewSizes.some(function(row){return row.conflict;}) ? '<div class="btv-ld-code-warning">Conflicting size codes need review.</div>' : '')
       + '<div class="btv-ld-grid">'
       // ── Images ──
       + '<div class="btv-ld-imgs">' + img(p.productImg,'Product') + img(p.lookbookImg,'Lookbook') + '</div>'
@@ -3856,7 +3809,7 @@ function btvShowLaunchDetail(entryId) {
         + (p.hscode10 ? '<div class="btv-ld-hs">HS Code (10): ' + x(p.hscode10) + '</div>' : '')
         + '<div class="btv-ld-fields">'
           + fld('CATEGORY', p.category)
-          + fld('LAUNCH DATE', p.launchDate)
+          + fld('LAUNCH DATE', calEntry && calEntry.launchDate)
           + fld('MARKETS', markets)
           + (channels ? '<div class="btv-ld-field"><span class="btv-ld-label">LAUNCH CHANNELS:</span><div class="btv-ld-channels">' + x(channels) + '</div></div>' : '')
           + fld('SIZES', sizing)
@@ -3886,9 +3839,14 @@ function btvShowLaunchDetail(entryId) {
   }).join('');
 
   bodyEl.innerHTML = html;
+  bodyEl.querySelectorAll('.btv-ld-unit input').forEach(function(toggle){toggle.addEventListener('change',function(){
+    var unit = this.checked ? 'inch' : 'cm';
+    this.closest('.btv-ld-measurements').querySelectorAll('td[data-cm]').forEach(function(cell){cell.textContent = cell.dataset[unit];});
+  });});
   overlay.style.display = 'flex';
 }
 function btvCloseLaunchDetail() {
+  ++_btvLaunchPreviewRequest;
   document.getElementById('btvLDOverlay').style.display = 'none';
 }
 function btvExportLaunchPDF() {
