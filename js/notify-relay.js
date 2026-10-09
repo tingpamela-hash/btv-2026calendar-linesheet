@@ -5,22 +5,35 @@
     return String(cfg.url).replace(/\/+$/, '') + '/functions/v1/notify-teams';
   }
 
-  function token() {
-    try {
-      if (typeof root.btvAccessToken === 'function') return String(root.btvAccessToken() || '');
-    } catch (err) {}
-    return '';
+  function sessionToken() {
+    var sb = root._btvSb;
+    if (!sb || !sb.auth || typeof sb.auth.getSession !== 'function') return Promise.resolve('');
+    return Promise.resolve().then(function () {
+      return sb.auth.getSession();
+    }).then(function (result) {
+      var session = result && result.data && result.data.session;
+      var access = session && session.access_token;
+      return access ? String(access) : '';
+    }, function () { return ''; });
+  }
+
+  function showNeedsSignIn() {
+    var message = 'Teams notification was not sent. Sign in and try again.';
+    if (typeof root.alert === 'function') root.alert(message);
   }
 
   function btvPostNotification(channel, message) {
     var text = String(message || '').replace(/^\s+|\s+$/g, '');
     var url = endpoint();
-    var bearer = token();
-    if ((channel !== 'linesheet' && channel !== 'calendar') || !text || !url || !bearer) {
-      return Promise.resolve(false);
-    }
-    var cfg = root.BTV_SUPABASE_CONFIG || {};
-    return fetch(url, {
+    var allowed = channel === 'linesheet' || channel === 'calendar';
+    if (!allowed || !text || !url) return Promise.resolve(false);
+    return sessionToken().then(function (bearer) {
+      if (!bearer) {
+        showNeedsSignIn();
+        return false;
+      }
+      var cfg = root.BTV_SUPABASE_CONFIG || {};
+      return fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -36,6 +49,7 @@
         return true;
       }, function () { return true; });
     }, function () { return false; });
+    });
   }
 
   function btvClearStoredWebhooks() {

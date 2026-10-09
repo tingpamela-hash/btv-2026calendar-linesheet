@@ -100,7 +100,13 @@ function postPage(file, fnName, channel, token) {
       removeItem: function (key) { delete store[key]; }
     },
     BTV_SUPABASE_CONFIG: { url: 'https://planner.example', anonKey: 'anon-test' },
-    btvAccessToken: function () { return token || ''; },
+    _btvSb: {
+      auth: {
+        getSession: function () {
+          return Promise.resolve({ data: { session: token ? { access_token: token } : null } });
+        }
+      }
+    },
     window: {},
     alert: function () {},
     console: console
