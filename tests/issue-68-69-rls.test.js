@@ -448,6 +448,18 @@ insert into public.calendar_entries (id, section, week_id, year, data) values
   const revokedEntryAgain = callText(PRODUCT, "public.try_lock_calendar_entry('cal-lock-revoked-again', 'product@local.test')");
   check('a product calendar editor cannot lock an entry after the edit grant is revoked', revokedEntryAgain === 'false', revokedEntryAgain);
 
+  const staleLinesheetZero = attempt(ADMIN, "perform public.try_lock_linesheet_group('stale-ls-zero', 'admin@local.test', 0);");
+  check('try_lock_linesheet_group rejects a stale threshold of zero', staleLinesheetZero === '22023', staleLinesheetZero);
+  const staleLinesheetNegative = attempt(ADMIN, "perform public.try_lock_linesheet_group('stale-ls-neg', 'admin@local.test', -1);");
+  check('try_lock_linesheet_group rejects a stale threshold below zero', staleLinesheetNegative === '22023', staleLinesheetNegative);
+  psql(DB, "insert into public.calendar_entries (id, section, week_id, year, data) values ('cal-stale', 'global', '2026-10-05', 2026, '{}'::jsonb);");
+  const staleCalendarZero = attempt(ADMIN, "perform public.try_lock_calendar_entry('cal-stale', 'admin@local.test', 0);");
+  check('try_lock_calendar_entry rejects a stale threshold of zero', staleCalendarZero === '22023', staleCalendarZero);
+  const staleCalendarNegative = attempt(ADMIN, "perform public.try_lock_calendar_entry('cal-stale', 'admin@local.test', -1);");
+  check('try_lock_calendar_entry rejects a stale threshold below zero', staleCalendarNegative === '22023', staleCalendarNegative);
+  const refreshArgs = psqlValue(DB, "select pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('refresh_linesheet_group_lock', 'refresh_calendar_entry_lock') order by p.proname");
+  check('refresh lock functions do not take a stale threshold', refreshArgs.indexOf('stale') === -1, refreshArgs);
+
   const lockRollback = path.join(root, 'supabase', 'rollbacks', '20261009140000_lock_requires_edit_grant.sql');
   const lockMigration = path.join(root, 'supabase', 'migrations', '20261009140000_lock_requires_edit_grant.sql');
   psqlFile(lockRollback);
