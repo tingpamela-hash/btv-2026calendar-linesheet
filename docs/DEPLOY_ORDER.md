@@ -16,6 +16,7 @@ Do not apply these files to the live project from this repository change. Pam ap
 10. `supabase/migrations/20261007150000_scope_reads_and_private_bucket.sql`
 11. `supabase/migrations/20261007180000_scope_catalog_reads.sql`
 12. `supabase/migrations/20261009120000_scope_calendar_entries_and_locks.sql`
+13. `supabase/migrations/20261009140000_lock_requires_edit_grant.sql`
 
 Steps 4 to 8 create her tables and leave them open to every signed-in user. Step 12 closes `calendar_entries` and `linesheet_product_locks`, and it drops the open policy names on `global_cal_entries` and `marketing_entries` that step 9 does not drop. Do not run steps 4 to 8 again after step 12. Do not run `supabase-rls-lockdown-migration.sql` after step 9. That file drops the policies this list installs.
 
@@ -53,14 +54,19 @@ After step 11, run `scripts/verify-anon-storage-select.sql`. Empty output means 
 
 A signed-in person with product calendar, global calendar, or linesheet access can read `calendar_entries` and `linesheet_product_locks`. A profile with none of those flags sees no rows. A product calendar editor can write any calendar section. A global calendar editor can write only `section = 'events'`. A linesheet editor can read calendar rows and cannot write them. Lock rows have no insert, update, or delete policy. The lock functions are security definer and still write those rows.
 
+## What step 13 changes for staff
+
+Taking or refreshing a lock requires the matching edit grant. A linesheet lock needs linesheet edit. A calendar lock needs product calendar edit, or global calendar edit when the row section is `events`. An admin can still lock. Unlock clears a lock only when the caller holds it, including after that edit grant is revoked. Someone who does not hold the lock cannot clear it. The rollback is `supabase/rollbacks/20261009140000_lock_requires_edit_grant.sql`.
+
 ## Roll the files back
 
-Roll back in reverse order. Run the step 12 rollback before the step 11 rollback. Run the step 11 rollback before the step 10 rollback. The `change_log` select policy from step 11 calls `btv.app_state_read`. The step 10 rollback drops that function. Dropping the function while the policy still names it fails.
+Roll back in reverse order. Run the step 13 rollback before the step 12 rollback. Run the step 12 rollback before the step 11 rollback. Run the step 11 rollback before the step 10 rollback. The `change_log` select policy from step 11 calls `btv.app_state_read`. The step 10 rollback drops that function. Dropping the function while the policy still names it fails.
 
-1. Step 12, `supabase/rollbacks/20261009120000_scope_calendar_entries_and_locks.sql`
-2. Step 11, `supabase/rollbacks/20261007180000_scope_catalog_reads.sql`
-3. Step 10, `supabase/rollbacks/20261007150000_scope_reads_and_private_bucket.sql`
-4. Step 9, `supabase/rollbacks/20261007000000_role_aware_rls.sql`
+1. Step 13, `supabase/rollbacks/20261009140000_lock_requires_edit_grant.sql`
+2. Step 12, `supabase/rollbacks/20261009120000_scope_calendar_entries_and_locks.sql`
+3. Step 11, `supabase/rollbacks/20261007180000_scope_catalog_reads.sql`
+4. Step 10, `supabase/rollbacks/20261007150000_scope_reads_and_private_bucket.sql`
+5. Step 9, `supabase/rollbacks/20261007000000_role_aware_rls.sql`
 
 ## Runbook
 
