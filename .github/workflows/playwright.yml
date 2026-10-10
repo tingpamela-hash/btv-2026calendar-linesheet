@@ -13,6 +13,13 @@ jobs:
         node-version: '24'
     - name: Install dependencies
       run: npm ci
+    - name: Install local Postgres
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql postgresql-contrib
+        major=$(psql --version | awk '{print $3}' | cut -d. -f1)
+        sudo apt-get install -y "postgresql-${major}-cron"
+        sudo pg_ctlcluster "$major" main start
     - name: Run isolated unit tests
       run: npm test
     - name: Build website assets

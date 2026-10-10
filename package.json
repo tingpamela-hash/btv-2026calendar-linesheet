@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test --test-isolation=none tests/*.test.js",
+    "test": "node --test --test-isolation=none --test-concurrency=1 tests/*.test.js",
     "build": "node scripts/build-site.js",
     "verify:rollback": "node scripts/build-site.js --verify-original",
     "scan:secrets": "node scripts/scan-client-secrets.mjs",
