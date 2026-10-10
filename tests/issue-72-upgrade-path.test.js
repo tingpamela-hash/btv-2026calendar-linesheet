@@ -196,11 +196,12 @@ where id = '${BLOCKED}';
 `);
 
 function snapshot() {
-  return psqlValue(DB, 'select ' + FLAGS.join(", '|', ") + " from public.user_profiles where id = '" + BLOCKED + "'");
+  const expr = FLAGS.map(function (flag) { return 'coalesce(' + flag + "::text, 'null')"; }).join(" || '|' || ");
+  return psqlValue(DB, 'select ' + expr + " from public.user_profiles where id = '" + BLOCKED + "'");
 }
 
 const before = snapshot();
-if (before.split('|').some(function (flag) { return flag !== 'f' && flag !== 'false'; })) {
+if (before.split('|').some(function (flag) { return flag !== 'false'; })) {
   fail('blocked profile was not seeded false: ' + before);
 }
 files.forEach(function (rel) {

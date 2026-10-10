@@ -1,8 +1,10 @@
 # Apply the database files
 
-Apply these files on the staging project, in this order. Step 1 does not schedule the Monday reminder. Repeating these numbered steps does not schedule that job and does not call the live function. Steps 4 to 8 are not safe to repeat after step 12. The last numbered file has to stay last. Do not run an older numbered file on its own after a later numbered file.
+There are two paths. Use one of them. Do not apply either path to the live project from this repository change. Pam applies the chosen path on staging after QA. Rollback of either path against BTV's real schema is unverified until it is run on a snapshot of that schema.
 
-Do not apply these files to the live project from this repository change. Pam applies them on staging after QA.
+## A. Fresh project setup
+
+Use this path on an empty database. Step 1 does not schedule the Monday reminder. Repeating these numbered steps does not schedule that job and does not call the live function. Steps 4 to 8 are not safe to repeat after step 12. The last numbered file has to stay last. Do not run an older numbered file on its own after a later numbered file.
 
 1. `supabase-setup.sql`
 2. `supabase-user-profiles-rename-migration.sql`
@@ -20,6 +22,22 @@ Do not apply these files to the live project from this repository change. Pam ap
 14. `supabase/migrations/20261009130000_private_creative_marketing_bucket.sql`
 
 Do not apply step 14 until `global calendar.html` signs creative image URLs. Steps 10 to 12 install `btv.can_access` and the later policies without marking `creative-marketing` private. Step 14 is the only numbered file that does that. Its rollback is `supabase/rollbacks/20261009130000_private_creative_marketing_bucket.sql`.
+
+## B. Upgrade an existing BTV database
+
+Use this path on the live database and on staging when the tables already exist. Do not run `supabase-setup.sql` on this path. Do not run `supabase-monday-reminder-cron.sql` on this path. Do not run steps 2 to 8 from the fresh path. Those files recreate open policies. This path does not update `user_profiles` and it does not change an existing access flag, edit flag, or admin flag.
+
+1. `supabase/migrations/20261009160000_upgrade_existing_objects.sql`
+2. `supabase/migrations/20261007000000_role_aware_rls.sql`
+3. `supabase/migrations/20261007150000_scope_reads_and_private_bucket.sql`
+4. `supabase/migrations/20261007180000_scope_catalog_reads.sql`
+5. `supabase/migrations/20261009120000_scope_calendar_entries_and_locks.sql`
+6. `supabase/migrations/20261009140000_lock_requires_edit_grant.sql`
+7. `supabase/migrations/20261009130000_private_creative_marketing_bucket.sql`
+
+Do not apply the private bucket file until `global calendar.html` signs creative image URLs. The files before it install `btv.can_access` and the later policies without marking `creative-marketing` private. The private bucket file is the only file on this path that does that. Its rollback is `supabase/rollbacks/20261009130000_private_creative_marketing_bucket.sql`. The object file's rollback is `supabase/rollbacks/20261009160000_upgrade_existing_objects.sql`. That rollback drops a table only when this object file created it and the table has no rows.
+
+`scripts/rls-inventory.sql` is a read-only inventory of `pg_class`, `pg_policies`, and `storage.buckets`. Pam can run it on BTV's real schema and send the result back. Do not run it against live or staging from this repository change. Compare that result with the policies this path installs.
 
 ## Monday reminder cron
 
