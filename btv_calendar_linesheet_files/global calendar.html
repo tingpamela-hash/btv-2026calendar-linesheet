@@ -2587,7 +2587,7 @@ function renderMarket(market){
   rows.forEach(row=>{
     if(row.group!==lastGroup){
       lastGroup=row.group;
-      html+=`<tr class="group-row g-${row.group}"><td class="row-head" colspan="${WEEKS.length+1}">${GROUP_LABELS[row.group]||row.group}</td></tr>`;
+      html+=`<tr class="group-row g-${String(row.group||'').replace(/[^A-Za-z0-9_-]/g,'')}"><td class="row-head" colspan="${WEEKS.length+1}">${esc(GROUP_LABELS[row.group]||row.group||'')}</td></tr>`;
     }
     const gc='g-'+row.group;
     html+=`<tr class="${gc}">`;

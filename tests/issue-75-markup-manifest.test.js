@@ -31,8 +31,8 @@ test('stored names, prices, errors, and markdown ids are escaped before HTML', (
   const global = read('btv_calendar_linesheet_files/global calendar.html');
   assert.equal(linesheet.includes(' + name + loc'), false);
   assert.equal(linesheet.includes(' + names + '), false);
-  assert.equal(linesheet.includes("(res.error.message || res.error.code) +"), false);
-  assert.equal(input.includes(' + _btvMdHolder + '), false);
+  assert.equal(linesheet.includes('escapeHtml(res.error.message || res.error.code)'), true);
+  assert.equal(input.includes("innerHTML = '🔒 <strong>' + _btvMdHolder +"), false);
   assert.equal(input.includes("openMarkdownEditor('${md.id}')"), false);
   assert.equal(input.includes('${r.priority}'), false);
   assert.equal(input.includes('${r.sgdRrp'), false);

@@ -16,6 +16,14 @@
       "sha1": "2742b688ccc008edeb2fedebb8c8f6c0b93bd918"
     },
     {
+      "path": "js/notify-relay.js",
+      "sha1": "1b2cb6d59c1aadc29e375cc8e4cf0a8b9384f8e4"
+    },
+    {
+      "path": "js/safe-url.js",
+      "sha1": "d2bb394891e51ac3d791e14f33ca14ca1a3de3aa"
+    },
+    {
       "path": "js/supabase-config.js",
       "sha1": "0892ea9a5492764f27ae02d85e1f15d62434f171"
     },

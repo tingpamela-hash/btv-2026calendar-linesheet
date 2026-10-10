@@ -5550,8 +5550,8 @@ function render(){
             const isEnd   = cov[cov.length-1] === w.id;
             const spanCls = (isStart && isEnd) ? '' : (isStart ? 'md-start' : (isEnd ? 'md-end' : 'md-mid'));
             const topPx   = _laneOf[idx] * _trackH;
-            html += `<div class="markdown-track" data-lane="${_laneOf[idx]}" style="position:absolute;top:${topPx}px;left:0;right:0"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
-              (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${fmtDDMMM(md.startDate)}→${fmtDDMMM(md.endDate)}</div>` : '') +
+            html += `<div class="markdown-track" data-lane="${_laneOf[idx]}" style="position:absolute;top:${topPx}px;left:0;right:0"><div class="markdown-bubble-span ${spanCls}" data-markdown-id="${esc(md.id)}" onclick="openMarkdownEditor(this.dataset.markdownId)" style="cursor:pointer">` +
+              (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${esc(fmtDDMMM(md.startDate))}→${esc(fmtDDMMM(md.endDate))}</div>` : '') +
               `</div></div>`;
           }
         });
@@ -6278,7 +6278,7 @@ window.openMarkdownEditor = function(id){
     if (_btvMdHolder) {
       var _btvMdBanner = document.createElement('div');
       _btvMdBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7a5a00;line-height:1.6;';
-      _btvMdBanner.innerHTML = '🔒 <strong>' + _btvMdHolder + '</strong> is currently editing this markdown. Inputs are locked.';
+      _btvMdBanner.innerHTML = '🔒 <strong>' + esc(_btvMdHolder) + '</strong> is currently editing this markdown. Inputs are locked.';
       e('modalBody').insertBefore(_btvMdBanner, e('modalBody').firstChild);
       e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = true; });
       var _cfmMd = e('confirmBtn'); if (_cfmMd) { _cfmMd.disabled = true; _cfmMd.style.opacity = '0.35'; }
@@ -8144,9 +8144,9 @@ function renderLaunchList(){
 
   tbody.innerHTML = rows.map(r => `<tr>
 
-    <td>${esc(r.launchTitle)}</td><td>${fmtDDMMM(r.launchDate)}</td><td>${r.priority}</td>
+    <td>${esc(r.launchTitle)}</td><td>${esc(fmtDDMMM(r.launchDate))}</td><td>${esc(r.priority)}</td>
 
-    <td>${esc(r.category)}</td><td>${esc(r.productTitle)}</td><td>${r.sgdRrp ? "$"+r.sgdRrp : ""}</td>
+    <td>${esc(r.category)}</td><td>${esc(r.productTitle)}</td><td>${esc(r.sgdRrp ? "$"+r.sgdRrp : "")}</td>
 
     <td>${esc(r.colour)}</td><td>${esc(r.size)}</td>
 

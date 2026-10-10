@@ -15569,7 +15569,7 @@ function _btvLsUpdateColabBar(users) {
   users.forEach(function(u) {
     var name = (u.email || '').split('@')[0];
     var loc  = u.item ? ((u.field || u.dirty) ? ' · editing product' : ' · viewing product') : ' · browsing';
-    html += '<span style="color:#555;font-size:10px;">' + name + loc + '</span><br>';
+    html += '<span style="color:#555;font-size:10px;">' + escapeHtml(name) + escapeHtml(loc) + '</span><br>';
   });
   bar.innerHTML = html;
 }
@@ -15660,7 +15660,7 @@ function _btvLsApplyFieldLocks(groupId) {
       if (fv) fv.insertBefore(banner, fv.firstChild);
     }
     var names = editors.map(function(u) { return u.email.split('@')[0]; }).join(', ');
-    banner.innerHTML = '🔒 <strong>' + names + '</strong> is editing this product — wait for them to save or discard before editing';
+    banner.innerHTML = '🔒 <strong>' + escapeHtml(names) + '</strong> is editing this product — wait for them to save or discard before editing';
     banner.style.display = 'flex';
   } else {
     if (banner) banner.style.display = 'none';
@@ -16422,7 +16422,7 @@ window.btvReloadAndRender = function() {
     if (res.error) {
       console.warn('[BTV LS Products] fetch error:', res.error.code, res.error.message);
       if (typeof window._btvLsHideInitialLoadBar === 'function') window._btvLsHideInitialLoadBar();
-      _showSyncBar('⚠ Could not load shared products: ' + (res.error.message || res.error.code) +
+      _showSyncBar('⚠ Could not load shared products: ' + escapeHtml(res.error.message || res.error.code) +
         '. Showing locally cached data.', '#fee2e2', '#7f1d1d');
       setTimeout(_hideSyncBar, 8000);
       return;
