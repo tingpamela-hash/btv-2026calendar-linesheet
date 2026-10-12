@@ -8,7 +8,7 @@
 
 
 
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/notify-relay.js"></script><script src="../js/safe-url.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <script src="../js/product-launches.js"></script>
 <script src="../js/linesheet-identity.js"></script>
 <script src="../js/linesheet-products.js"></script>
@@ -7850,7 +7850,8 @@ function createImageBoxHTML(type, imageData=''){
 
 
 
-  return imageData ? `<img src="${imageData}" alt="${type} image">` : `<div class="placeholder">${placeholder}<br>JPG / PNG</div>`;
+  var href = (typeof safeResourceUrl === 'function') ? safeResourceUrl(imageData, 'image') : '';
+  return href ? `<img src="${href}" alt="${type} image">` : `<div class="placeholder">${placeholder}<br>JPG / PNG</div>`;
 
 
 
@@ -8390,7 +8391,7 @@ function addVariantCard(prefill={}){
 
 
 
-        <div class="image-box variant-product-box" onclick="this.previousElementSibling.previousElementSibling.click()" ondragover="handleImageDragOver(event,this)" ondragleave="handleImageDragLeave(event,this)" ondrop="handleImageDrop(event,this,'product')">${createImageBoxHTML('product', prefill.productImg || '')}</div>
+        <div class="image-box variant-product-box" onclick="this.previousElementSibling.previousElementSibling.click()" ondragover="handleImageDragOver(event,this)" ondragleave="handleImageDragLeave(event,this)" ondrop="handleImageDrop(event,this,'product')"></div>
 
 
 
@@ -8450,7 +8451,7 @@ function addVariantCard(prefill={}){
 
 
 
-        <div class="image-box variant-lookbook-box" onclick="this.previousElementSibling.previousElementSibling.click()" ondragover="handleImageDragOver(event,this)" ondragleave="handleImageDragLeave(event,this)" ondrop="handleImageDrop(event,this,'lookbook')">${createImageBoxHTML('lookbook', prefill.lookbookImg || '')}</div>
+        <div class="image-box variant-lookbook-box" onclick="this.previousElementSibling.previousElementSibling.click()" ondragover="handleImageDragOver(event,this)" ondragleave="handleImageDragLeave(event,this)" ondrop="handleImageDrop(event,this,'lookbook')"></div>
 
 
 
@@ -8482,6 +8483,10 @@ function addVariantCard(prefill={}){
 
 
   wrap.appendChild(div);
+  if (typeof btvPaintStoredImage === 'function') {
+    btvPaintStoredImage(div.querySelector('.variant-product-box'), prefill.productImg || '', 'Product image');
+    btvPaintStoredImage(div.querySelector('.variant-lookbook-box'), prefill.lookbookImg || '', 'Lookbook image');
+  }
   div._btvApprovalSignature=BtvLinesheetApprovals.signature(prefill,'variant');
   div._btvApprovals=prefill.variantApprovals||{};
 
@@ -8562,7 +8567,7 @@ function removeVariantCard(btn){
 
 
 
-    cards[0].querySelector('.variant-product-box').innerHTML = createImageBoxHTML('product');
+    btvPaintStoredImage(cards[0].querySelector('.variant-product-box'), '', 'Product image');
 
 
 
@@ -8572,7 +8577,7 @@ function removeVariantCard(btn){
 
 
 
-    cards[0].querySelector('.variant-lookbook-box').innerHTML = createImageBoxHTML('lookbook');
+    btvPaintStoredImage(cards[0].querySelector('.variant-lookbook-box'), '', 'Lookbook image');
 
 
 
@@ -8682,7 +8687,7 @@ function processVariantFile(file, card, type){
 
 
 
-      card.querySelector('.variant-product-box').innerHTML = `<img src="${e.target.result}" alt="product image">`;
+      btvPaintStoredImage(card.querySelector('.variant-product-box'), e.target.result, 'Product image');
 
 
 
@@ -8712,7 +8717,7 @@ function processVariantFile(file, card, type){
 
 
 
-      card.querySelector('.variant-lookbook-box').innerHTML = `<img src="${e.target.result}" alt="lookbook image">`;
+      btvPaintStoredImage(card.querySelector('.variant-lookbook-box'), e.target.result, 'Lookbook image');
 
 
 
@@ -9460,7 +9465,8 @@ function btvNotifyChange(url, source, product, field, fromVal, toVal){
 
 
 
-    fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(){});
+    if(typeof btvPostNotification!=='function') return Promise.resolve(false);
+    return btvPostNotification('linesheet', (source||'Linesheet')+'\n'+(product||'')+'\n'+(field||'')+': '+(fromVal||'')+' → '+(toVal||''));
 
 
 
@@ -9545,38 +9551,8 @@ function buildLsTeamsSummary(entries){
 }
 
 function btvSendTeamsSummary(url, message){
-  if(!url || !message) return;
-  try{
-    var summaryText = String(message).trim();
-    if(!summaryText) return;
-
-    // Teams Incoming Webhook / MessageCard format.
-    // Important: do NOT include top-level 'text'. Teams renders that as one flattened paragraph.
-    // The formatted version lives in sections[0].text using <br> for line breaks.
-    var htmlText = summaryText
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
-      .replace(/\n/g,'<br>');
-
-    var payload = {
-      '@type': 'MessageCard',
-      '@context': 'http://schema.org/extensions',
-      'themeColor': '8B6F4E',
-      'summary': 'BTV Planner — Linesheet',
-      'message': summaryText,
-      'sections': [{
-        'text': htmlText
-      }]
-    };
-
-    fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    }).catch(function(e){ console.warn('BTV LS Teams summary webhook failed', e); });
-  }catch(e){ console.warn('BTV LS Teams summary webhook error', e); }
+  if(typeof btvPostNotification!=='function') return Promise.resolve(false);
+  return btvPostNotification('linesheet', message);
 }
 
 function btvNotifyChangeBatch(url, summaryText){
@@ -9589,114 +9565,10 @@ function btvNotifyChangeBatch(url, summaryText){
 
 
 function btvConfigLsWebhook(){
-
-
-
-
-
-
-
-
-
-  var cur=(function(){ try{ return localStorage.getItem('btvLsWebhook')||''; }catch(e){ return ''; }})();
-
-
-
-
-
-
-
-
-
-  var v=window.prompt('Enter Teams webhook URL for Linesheet Approval channel:\n(Leave blank to disable)',cur);
-
-
-
-
-
-
-
-
-
-  if(v===null) return;
-
-
-
-
-
-
-
-
-
-  try{ localStorage.setItem('btvLsWebhook',v.trim()); }catch(e){}
-
-
-
-
-
-
-
-
-
-  BTV_LS_WEBHOOK_URL=v.trim();
-
-
-
-
-
-
-
-
-
-  alert('Saved. Reload page to confirm.');
-
-
-
-
-
-
-
-
-
+  try{ localStorage.removeItem('btvLsWebhook'); }catch(e){}
+  BTV_LS_WEBHOOK_URL='';
+  alert('Teams notifications are sent by the server for signed-in editors. This page does not store a webhook URL.');
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ---- Change Log ----
-
-
-
-
-
-
-
-
-
-const BTV_CHANGE_LOG_KEY = 'btvLinesheetChangeLog';
-
-
-
-
-
-
-
-
 
 function getChangeLog(){
   var local=[];try{local=JSON.parse(localStorage.getItem(BTV_CHANGE_LOG_KEY)||'[]');}catch(e){}
@@ -11105,7 +10977,6 @@ async function saveProductGroup(){
 
 
 
-    if(!BTV_LS_WEBHOOK_URL) return;
     var __btvNewCount = _btvSaveEntries.length;
     if(__btvNewCount <= 0) return;
     var __btvNewEntries = _btvSaveEntries;
@@ -12758,8 +12629,14 @@ function btvLsOpenProduct(id){
   if(document.getElementById('view-master').classList.contains('active'))_btvLsMasterPosition=btvLsCaptureMasterPosition();
   var view=document.getElementById('view-overview');
   if(!view){view=document.createElement('div');view.id='view-overview';view.className='view';document.getElementById('view-master').parentNode.appendChild(view);}
-  view.innerHTML='<h2>'+escapeHtml(members[0].name)+'</h2><p>'+escapeHtml(members[0].description||'')+'</p><div style="overflow:auto;margin-top:16px"><table class="ls-table"><thead><tr><th>Colour</th><th>Size</th><th>SKU</th><th>Barcode</th><th>Product image</th><th>Lookbook image</th><th>Fabric</th><th>Washcare</th><th></th></tr></thead><tbody>'+members.map(function(p){return '<tr><td>'+escapeHtml(p.variant||'')+'</td><td>'+escapeHtml(p.size||p.sizing||'')+'</td><td>'+escapeHtml(p.sku||Object.values(p.sizeSKUs||{}).filter(Boolean).join(', '))+'</td><td>'+escapeHtml(p.barcode||Object.values(p.sizeBarcodes||{}).filter(Boolean).join(', '))+'</td><td>'+(p.productImg?'<img src="'+escapeHtml(p.productImg)+'" alt="Product" style="width:72px;height:72px;object-fit:contain">':'')+'</td><td>'+(p.lookbookImg?'<img src="'+escapeHtml(p.lookbookImg)+'" alt="Lookbook" style="width:72px;height:72px;object-fit:contain">':'')+'</td><td>'+escapeHtml(p.fabric||'')+'</td><td>'+escapeHtml(p.washcare||'')+'</td><td><button class="btn" data-gid="'+escapeHtml(p.groupId)+'" onclick="editGroup(this.dataset.gid)">Edit</button></td></tr>';}).join('')+'</tbody></table></div>';
+  view.innerHTML='<h2>'+escapeHtml(members[0].name)+'</h2><p>'+escapeHtml(members[0].description||'')+'</p><div style="overflow:auto;margin-top:16px"><table class="ls-table"><thead><tr><th>Colour</th><th>Size</th><th>SKU</th><th>Barcode</th><th>Product image</th><th>Lookbook image</th><th>Fabric</th><th>Washcare</th><th></th></tr></thead><tbody>'+members.map(function(p){return '<tr><td>'+escapeHtml(p.variant||'')+'</td><td>'+escapeHtml(p.size||p.sizing||'')+'</td><td>'+escapeHtml(p.sku||Object.values(p.sizeSKUs||{}).filter(Boolean).join(', '))+'</td><td>'+escapeHtml(p.barcode||Object.values(p.sizeBarcodes||{}).filter(Boolean).join(', '))+'</td><td class="btv-product-img"></td><td class="btv-lookbook-img"></td><td>'+escapeHtml(p.fabric||'')+'</td><td>'+escapeHtml(p.washcare||'')+'</td><td><button class="btn" data-gid="'+escapeHtml(p.groupId)+'" onclick="editGroup(this.dataset.gid)">Edit</button></td></tr>';}).join('')+'</tbody></table></div>';
   if(window._btvCanEdit===false)view.querySelectorAll('button').forEach(function(button){button.remove();});
+  view.querySelectorAll('tbody tr').forEach(function (rowEl, index) {
+    var item = members[index];
+    if (!item || typeof btvPaintStoredImage !== 'function') return;
+    btvPaintStoredImage(rowEl.querySelector('.btv-product-img'), item.productImg, 'Product image');
+    btvPaintStoredImage(rowEl.querySelector('.btv-lookbook-img'), item.lookbookImg, 'Lookbook image');
+  });
   switchView('overview');
   if(!view.classList.contains('active'))return;
   if(!history.state || !history.state.btvLsRoute)history.replaceState({btvLsRoute:'master'},'');
@@ -12783,7 +12660,7 @@ async function btvLsGroupAction(id,role,checked){
   var entry={ts:Date.now(),productName:rows[0].name,variant:'(shared)',field:field,from:from,to:checked?'Yes':'No',action:'update',actorId:actor.id,actorName:actor.name,actorEmail:actor.email};
   addChangeEntry(entry);
   if(window.btvWriteChangeLog)window.btvWriteChangeLog([entry]);
-  if(BTV_LS_WEBHOOK_URL)btvNotifyChangeBatch(BTV_LS_WEBHOOK_URL,buildLsTeamsSummary([entry]));
+  btvNotifyChangeBatch('',buildLsTeamsSummary([entry]));
   localStorage.setItem('btv_linesheet_products',JSON.stringify(products));renderMaster();renderLinesheet();updateCount();
 }
 function renderMaster(){
@@ -13288,7 +13165,7 @@ function renderLinesheet(){
 
 
 
-    const productImgHtml = p.productImg ? `<img class="ls-img" src="${p.productImg}" alt="${escapeHtml(p.name)}" style="margin-bottom:4px">` : `<div class="ls-img-placeholder">No product image</div>`;
+    const productImgHtml = '<div class="ls-img-slot" data-btv-image="product"></div>';
 
 
 
@@ -13298,7 +13175,7 @@ function renderLinesheet(){
 
 
 
-    const lookbookImgHtml = p.lookbookImg ? `<img class="ls-img" src="${p.lookbookImg}" alt="lookbook">` : `<div class="ls-img-placeholder">No lookbook image</div>`;
+    const lookbookImgHtml = '<div class="ls-img-slot" data-btv-image="lookbook"></div>';
 
 
 
@@ -13318,7 +13195,7 @@ function renderLinesheet(){
 
 
 
-      <div class="ls-product">
+      <div class="ls-product" data-product-id="${escapeHtml(p.id || '')}">
 
 
 
@@ -13590,24 +13467,17 @@ function renderLinesheet(){
 
 
   }).join('');
-
-
-
-
-
-
-
-
-
+  list.forEach(function (row) {
+    var card = null;
+    var cards = grid.querySelectorAll('[data-product-id]');
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].getAttribute('data-product-id') === String(row.id || '')) card = cards[i];
+    }
+    if (!card || typeof btvPaintStoredImage !== 'function') return;
+    btvPaintStoredImage(card.querySelector('[data-btv-image="product"]'), row.productImg, 'Product image');
+    btvPaintStoredImage(card.querySelector('[data-btv-image="lookbook"]'), row.lookbookImg, 'Lookbook image');
+  });
 }
-
-
-
-
-
-
-
-
 
 function updateCount(){
 
@@ -15378,8 +15248,7 @@ function uploadMeasurementCSV(file){
 
 
 function btvNotifyNewCalendarPush(newItems){
-  var url; try{ url=localStorage.getItem('btvLsWebhook')||''; }catch(e){ url=''; }
-  if(!url||!newItems||!newItems.length) return;
+  if(!newItems||!newItems.length) return;
   var lines=['**BTV Planner — New Items Synced from Calendar**',''];
   lines.push(newItems.length+' new product(s) pushed to the linesheet:','');
   var launchIndex=btvProductLaunchIndex();
@@ -15388,7 +15257,7 @@ function btvNotifyNewCalendarPush(newItems){
     lines.push('• '+(p.name||'Unnamed')+(p.variant?' — '+p.variant:'')+(date?' [Launch: '+date+']':'')+(p.category?' ('+p.category+')':''));
   });
   lines.push('','Please update the linesheet with full product details.');
-  btvSendTeamsSummary(url, lines.join('\n'));
+  btvSendTeamsSummary('', lines.join('\n'));
 }
 
 
@@ -15405,8 +15274,6 @@ function btvCheckMondayReminder(){
   var launchIndex=btvProductLaunchIndex();
   var sentKey='btvMondayReminderSent_'+mondayKey;
   try{ if(localStorage.getItem(sentKey)) return; }catch(e){ return; }
-  var url; try{ url=localStorage.getItem('btvLsWebhook')||''; }catch(e){ url=''; }
-  if(!url) return;
   var cutoff=BtvProductLaunches.shiftDate(mondayKey,30);
   var TDEF=[
     {label:'Merch',fields:['name','category','variant','sgd'],flabels:['Product Name','Category','Colour/Variant','SGD RRP']},
@@ -15433,7 +15300,7 @@ function btvCheckMondayReminder(){
     lines.push('');
   });
   if(!hasAny){ lines.push('All tasks are on track — no outstanding items in the next 30 days.'); }
-  btvSendTeamsSummary(url, lines.join('\n'));
+  btvSendTeamsSummary('', lines.join('\n'));
   try{ localStorage.setItem(sentKey,'1'); }catch(e){}
 }
 
@@ -15702,7 +15569,7 @@ function _btvLsUpdateColabBar(users) {
   users.forEach(function(u) {
     var name = (u.email || '').split('@')[0];
     var loc  = u.item ? ((u.field || u.dirty) ? ' · editing product' : ' · viewing product') : ' · browsing';
-    html += '<span style="color:#555;font-size:10px;">' + name + loc + '</span><br>';
+    html += '<span style="color:#555;font-size:10px;">' + escapeHtml(name) + escapeHtml(loc) + '</span><br>';
   });
   bar.innerHTML = html;
 }
@@ -15793,7 +15660,7 @@ function _btvLsApplyFieldLocks(groupId) {
       if (fv) fv.insertBefore(banner, fv.firstChild);
     }
     var names = editors.map(function(u) { return u.email.split('@')[0]; }).join(', ');
-    banner.innerHTML = '🔒 <strong>' + names + '</strong> is editing this product — wait for them to save or discard before editing';
+    banner.innerHTML = '🔒 <strong>' + escapeHtml(names) + '</strong> is editing this product — wait for them to save or discard before editing';
     banner.style.display = 'flex';
   } else {
     if (banner) banner.style.display = 'none';
@@ -16555,7 +16422,7 @@ window.btvReloadAndRender = function() {
     if (res.error) {
       console.warn('[BTV LS Products] fetch error:', res.error.code, res.error.message);
       if (typeof window._btvLsHideInitialLoadBar === 'function') window._btvLsHideInitialLoadBar();
-      _showSyncBar('⚠ Could not load shared products: ' + (res.error.message || res.error.code) +
+      _showSyncBar('⚠ Could not load shared products: ' + escapeHtml(res.error.message || res.error.code) +
         '. Showing locally cached data.', '#fee2e2', '#7f1d1d');
       setTimeout(_hideSyncBar, 8000);
       return;

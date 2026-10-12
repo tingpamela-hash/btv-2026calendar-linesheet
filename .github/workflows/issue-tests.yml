@@ -1,0 +1,42 @@
+name: Issue tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  issue-tests:
+    name: Issue unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Scan client files for webhook secrets
+        run: npm run scan:secrets
+
+      - name: Install local Postgres
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql postgresql-contrib
+          major=$(psql --version | awk '{print $3}' | cut -d. -f1)
+          sudo apt-get install -y "postgresql-${major}-cron"
+          sudo pg_ctlcluster "$major" main start
+
+      - name: Run issue unit tests
+        run: npm run test:issues

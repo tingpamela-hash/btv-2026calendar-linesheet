@@ -6,6 +6,8 @@
 <title>Global Calendar</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase-config.js"></script>
+<script src="../js/notify-relay.js"></script>
+<script src="../js/safe-url.js"></script>
 <script src="../js/calendar-csv.js"></script>
 <script src="../js/calendar-export.js"></script>
 <script src="../js/creative-events.js"></script>
@@ -1725,48 +1727,24 @@ function ccDiffMarketingEntry(before, after){
 function ccSendMarketingWebhook(item, msgs, who){
   var actor=window.btvGetCurrentActor?window.btvGetCurrentActor():null;
   if(actor)who=actor.name+' ('+actor.email+')';
-  if(!msgs.length) return;
-  const isPublished = item.status === 'published';
-  const urlKey = isPublished ? 'ccWebhookPublished' : 'ccWebhookDraft';
-  let raw = '';
-  try{ raw = localStorage.getItem(urlKey) || ''; }catch(e){}
-  const urls = ccParseWebhookUrls(raw);
-  if(!urls.length) return;
+  if(!msgs || !msgs.length) return Promise.resolve(false);
+  const isPublished = item && item.status === 'published';
   const label = isPublished ? 'Published' : 'Draft';
   const lines = [
     '**Global Calendar — ' + label + ' Activation Update**',
     new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore'}),
     '',
-    '**' + (item.title || 'Entry') + '** (' + (item.market || '—') + ' · ' + String(item.row || '').replace(/_/g,' ') + ')',
+    '**' + ((item && item.title) || 'Entry') + '** (' + ((item && item.market) || '—') + ' · ' + String((item && item.row) || '').replace(/_/g,' ') + ')',
   ].concat(msgs.map(function(m){ return '• ' + m; }));
   if(who) lines.push('', '_changed by ' + who + '_');
-  const summaryText = lines.join('\n');
-  const htmlText = summaryText
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/_(.*?)_/g,'<i>$1</i>')
-    .replace(/\n/g,'<br>');
-  const payload = {
-    "@type":"MessageCard","@context":"http://schema.org/extensions",
-    "themeColor": isPublished ? "3ba55d" : "999999",
-    "summary": "Global Calendar Update",
-    "message": summaryText,
-    "sections":[{"text": htmlText}]
-  };
-  urls.forEach(function(url){
-    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(err){ console.warn('Global Calendar webhook failed', err); });
-  });
+  if(typeof btvPostNotification!=='function') return Promise.resolve(false);
+  return btvPostNotification('calendar', lines.join('\n'));
 }
 
 function ccConfigWebhooks(){
-  let curPub = ''; try{ curPub = localStorage.getItem('ccWebhookPublished') || ''; }catch(e){}
-  const vPub = window.prompt('Teams webhook URL(s) to notify when a PUBLISHED Marketing entry (Brand Events / Community Activation / Retail Activation / Digital Activation) is changed.\nSeparate multiple URLs with a comma.\n(Leave blank to disable)', curPub);
-  if(vPub !== null){ try{ localStorage.setItem('ccWebhookPublished', vPub.trim()); }catch(e){} }
-
-  let curDraft = ''; try{ curDraft = localStorage.getItem('ccWebhookDraft') || ''; }catch(e){}
-  const vDraft = window.prompt('Teams webhook URL(s) to notify when a DRAFT Marketing entry is changed.\nSeparate multiple URLs with a comma.\n(Leave blank to disable)', curDraft);
-  if(vDraft !== null){ try{ localStorage.setItem('ccWebhookDraft', vDraft.trim()); }catch(e){} }
-
-  alert('Webhook settings saved.');
+  try{ localStorage.removeItem('ccWebhookPublished'); }catch(e){}
+  try{ localStorage.removeItem('ccWebhookDraft'); }catch(e){}
+  alert('Teams notifications are sent by the server for signed-in editors. This page does not store a webhook URL.');
 }
 
 function saveMarketingEntry(){
@@ -1948,7 +1926,7 @@ function renderMarketingImagesList(){
   if(!list) return;
   list.innerHTML=_marketingPendingImages.map((img,i)=>`
     <div style="display:flex;gap:8px;margin-top:8px;padding:8px;border:1px solid var(--grid);border-radius:9px;background:#fafaf9">
-      <img src="${esc(img.url)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--grid);flex-shrink:0">
+      ${(function(){ var href=(typeof safeResourceUrl==='function')?safeResourceUrl(img.url,'image'):''; return href?`<img src="${esc(href)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--grid);flex-shrink:0">`:''; })()}
       <div style="flex:1;min-width:0">
         <input type="text" value="${esc(img.title||'')}" placeholder="Reference title — e.g. Coach Play"
           style="width:100%;font:inherit;font-size:11.5px;font-weight:700;border:none;border-bottom:1px solid var(--grid);padding:2px 0 4px;margin-bottom:4px;background:transparent;outline:none"
@@ -1956,7 +1934,7 @@ function renderMarketingImagesList(){
         <textarea placeholder="Notes — one bullet per line" rows="2"
           style="width:100%;font:inherit;font-size:10.5px;border:none;background:transparent;outline:none;resize:vertical"
           oninput="_marketingPendingImages[${i}].notes=this.value">${esc(img.notes||'')}</textarea>
-        <a href="${esc(img.url)}" target="_blank" style="font-size:9.5px;color:#1a4db0;display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(img.name||'image')}</a>
+        ${(function(){ var href=(typeof safeResourceUrl==='function')?safeResourceUrl(img.url,'image'):''; return href?`<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="font-size:9.5px;color:#1a4db0;display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(img.name||'image')}</a>`:`<span>${esc(img.name||'image')}</span>`; })()}
       </div>
       <button type="button" onclick="removeMarketingImage(${i})" style="background:none;border:none;color:#c43030;cursor:pointer;font-size:14px;flex-shrink:0">&times;</button>
     </div>`).join('');
@@ -2609,7 +2587,7 @@ function renderMarket(market){
   rows.forEach(row=>{
     if(row.group!==lastGroup){
       lastGroup=row.group;
-      html+=`<tr class="group-row g-${row.group}"><td class="row-head" colspan="${WEEKS.length+1}">${GROUP_LABELS[row.group]||row.group}</td></tr>`;
+      html+=`<tr class="group-row g-${String(row.group||'').replace(/[^A-Za-z0-9_-]/g,'')}"><td class="row-head" colspan="${WEEKS.length+1}">${esc(GROUP_LABELS[row.group]||row.group||'')}</td></tr>`;
     }
     const gc='g-'+row.group;
     html+=`<tr class="${gc}">`;
@@ -2954,7 +2932,7 @@ function openViewModal(e){
   if(e.kol) body+=vfG('KOL / Handle',esc(e.kol));
   if(e.promo) body+=vfG('Promo Mechanic',esc(e.promo));
   if(e.perfObj) body+=vfG('Ad Objective',esc(e.perfObj));
-  if(e.links&&e.links.length) body+=vfG('Reference Links',`<div class="vf-val">${e.links.map(l=>`<a href="${esc(l)}" target="_blank">${esc(l)}</a>`).join('<br>')}</div>`);
+  if(e.links&&e.links.length) body+=vfG('Reference Links',`<div class="vf-val">${e.links.map(function(l){ var href=(typeof safeResourceUrl==='function')?safeResourceUrl(l,'link'):''; return href?`<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(href)}</a>`:`<span>${esc(l)}</span>`; }).join('<br>')}</div>`);
   document.getElementById('vm-body').innerHTML=body||'<p style="font-size:12px;color:#aaa">No additional details.</p>';
   document.getElementById('viewModal').classList.add('show');
 }
@@ -2984,8 +2962,8 @@ function openMarketingReadOnlyModal(entry,marketsLabel){
   if(entry.comms) body+=vfG('Comms',`<div class="vf-val">${esc(entry.comms)}</div>`);
   if(entry.tnc) body+=vfG('Terms & Conditions',`<div class="vf-val">${esc(entry.tnc)}</div>`);
   if(entry.owner) body+=vfG('Owner',esc(entry.owner));
-  if(entry.links&&entry.links.length) body+=vfG('Reference Links',`<div class="vf-val">${entry.links.map(l=>`<a href="${esc(l)}" target="_blank">${esc(l)}</a>`).join('<br>')}</div>`);
-  if(entry.images&&entry.images.length) body+=vfG('Images',entry.images.map(img=>`<div style="margin-bottom:6px"><a href="${esc(img.url)}" target="_blank">${esc(img.title||img.url)}</a>${img.notes?`<div style="font-size:11px;color:#888">${esc(img.notes)}</div>`:''}</div>`).join(''));
+  if(entry.links&&entry.links.length) body+=vfG('Reference Links',`<div class="vf-val">${entry.links.map(function(l){ var href=(typeof safeResourceUrl==='function')?safeResourceUrl(l,'link'):''; return href?`<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(href)}</a>`:`<span>${esc(l)}</span>`; }).join('<br>')}</div>`);
+  if(entry.images&&entry.images.length) body+=vfG('Images',entry.images.map(function(img){ var href=(typeof safeResourceUrl==='function')?safeResourceUrl(img&&img.url,'image'):''; var label=esc((img&&(img.title||img.url))||''); var notes=img&&img.notes?`<div style="font-size:11px;color:#888">${esc(img.notes)}</div>`:''; return href?`<div style="margin-bottom:6px"><a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${label}</a>${notes}</div>`:`<div style="margin-bottom:6px"><span>${label}</span>${notes}</div>`; }).join(''));
   document.getElementById('vm-body').innerHTML=body||'<p style="font-size:12px;color:#aaa">No additional details.</p>';
   document.getElementById('viewModal').classList.add('show');
 }
@@ -4221,8 +4199,9 @@ async function btvShowLaunchDetail(entryId) {
     var sizing   = p.sizing || (p.sizeSKUs ? Object.keys(p.sizeSKUs).join(', ') : '');
 
     function img(url, alt) {
-      if (url) return '<div class="btv-ld-imgwrap"><a href="'+x(url)+'" target="_blank" rel="noopener"><img src="'+x(url)+'" alt="'+alt+'" onerror="this.parentNode.className+=\' btv-ld-imgblank\'"></a></div>';
-      return '<div class="btv-ld-imgwrap btv-ld-imgblank"><span>' + alt + '</span></div>';
+      var href = (typeof safeResourceUrl === 'function') ? safeResourceUrl(url, 'image') : '';
+      if (!href) return '<div class="btv-ld-imgwrap btv-ld-imgblank"><span>' + x(alt) + '</span></div>';
+      return '<div class="btv-ld-imgwrap"><a href="'+x(href)+'" target="_blank" rel="noopener noreferrer"><img src="'+x(href)+'" alt="'+x(alt)+'"></a></div>';
     }
 
     return '<div class="btv-ld-card' + (isFullyApproved(p) ? '' : ' btv-ld-notready') + '">'

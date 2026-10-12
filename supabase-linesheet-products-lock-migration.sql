@@ -81,6 +81,9 @@ as $$
 declare
   v_updated int;
 begin
+  if p_stale_minutes is null or p_stale_minutes <= 0 then
+    raise exception 'stale threshold must be positive' using errcode = '22023';
+  end if;
   insert into public.linesheet_product_locks (group_id, locked_by, locked_by_email, locked_at)
   values (p_group_id, auth.uid(), p_email, now())
   on conflict (group_id) do update

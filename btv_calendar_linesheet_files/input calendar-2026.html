@@ -2,7 +2,7 @@
 
 <!-- saved from url=(0060)file:///C:/Users/BTV%20-%20Charmaine/Downloads/calendar.html -->
 
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../js/supabase-config.js"></script><script src="../js/notify-relay.js"></script><script src="../js/safe-url.js"></script><script src="../js/supabase-sync.js"></script><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 
 
@@ -5550,8 +5550,8 @@ function render(){
             const isEnd   = cov[cov.length-1] === w.id;
             const spanCls = (isStart && isEnd) ? '' : (isStart ? 'md-start' : (isEnd ? 'md-end' : 'md-mid'));
             const topPx   = _laneOf[idx] * _trackH;
-            html += `<div class="markdown-track" data-lane="${_laneOf[idx]}" style="position:absolute;top:${topPx}px;left:0;right:0"><div class="markdown-bubble-span ${spanCls}" onclick="openMarkdownEditor('${md.id}')" style="cursor:pointer">` +
-              (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${fmtDDMMM(md.startDate)}→${fmtDDMMM(md.endDate)}</div>` : '') +
+            html += `<div class="markdown-track" data-lane="${_laneOf[idx]}" style="position:absolute;top:${topPx}px;left:0;right:0"><div class="markdown-bubble-span ${spanCls}" data-markdown-id="${esc(md.id)}" onclick="openMarkdownEditor(this.dataset.markdownId)" style="cursor:pointer">` +
+              (isStart ? `<div class="markdown-title">${esc(md.title||'')}</div><div>${esc(fmtDDMMM(md.startDate))}→${esc(fmtDDMMM(md.endDate))}</div>` : '') +
               `</div></div>`;
           }
         });
@@ -6278,7 +6278,7 @@ window.openMarkdownEditor = function(id){
     if (_btvMdHolder) {
       var _btvMdBanner = document.createElement('div');
       _btvMdBanner.style.cssText = 'background:#fef9e7;border:1.5px solid #e6a817;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7a5a00;line-height:1.6;';
-      _btvMdBanner.innerHTML = '🔒 <strong>' + _btvMdHolder + '</strong> is currently editing this markdown. Inputs are locked.';
+      _btvMdBanner.innerHTML = '🔒 <strong>' + esc(_btvMdHolder) + '</strong> is currently editing this markdown. Inputs are locked.';
       e('modalBody').insertBefore(_btvMdBanner, e('modalBody').firstChild);
       e('modalBody').querySelectorAll('input, textarea, select').forEach(function(el) { el.disabled = true; });
       var _cfmMd = e('confirmBtn'); if (_cfmMd) { _cfmMd.disabled = true; _cfmMd.style.opacity = '0.35'; }
@@ -6604,7 +6604,8 @@ function btvNotifyChange(url, source, product, field, fromVal, toVal){
 
     };
 
-    fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(err){ console.warn('BTV webhook failed', err); });
+    if(typeof btvPostNotification!=='function') return Promise.resolve(false);
+    return btvPostNotification('calendar', (source||'Calendar')+'\n'+(product||'')+'\n'+(field||'')+': '+(fromVal||'')+' → '+(toVal||''));
 
   }catch(e){}
 
@@ -6618,54 +6619,14 @@ function btvParseWebhookUrls(raw){
 }
 
 function btvSendTeamsSummary(urlOrUrls, message){
-
-  if(!urlOrUrls || !message) return;
-
-  try{
-
-    var rawText = String(message).trim();
-    if(!rawText) return;
-
-    var nowText = new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore'});
-    var summaryText = rawText;
-
-    // Keep all calendar webhook messages in one clean section to avoid duplicate flattened Teams text.
-    if(rawText.indexOf('BTV Calendar Update') !== 0 && rawText.indexOf('**BTV Calendar Update**') !== 0){
-      summaryText = '**BTV Calendar Update**\n' + nowText + '\n' + rawText;
-    }
-
-    var actor=window.btvGetCurrentActor?window.btvGetCurrentActor():null;
-    if(actor)summaryText+='\nEdited by: '+actor.name+' ('+actor.email+')';
-    var htmlText = summaryText
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
-      .replace(/\n/g,'<br>');
-
-    var payload = {
-
-      "@type":"MessageCard","@context":"http://schema.org/extensions",
-
-      "themeColor":"8B6F4E","summary":"BTV Calendar Update",
-
-      "message": summaryText,
-
-      "sections":[{"text": htmlText}]
-
-    };
-
-    btvParseWebhookUrls(urlOrUrls).forEach(function(url){
-      fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(function(err){ console.warn('BTV Calendar Teams summary webhook failed', err); });
-    });
-
-  }catch(e){ console.warn('BTV Calendar Teams summary webhook error', e); }
-
+  if(typeof btvPostNotification!=='function') return Promise.resolve(false);
+  return btvPostNotification('calendar', message);
 }
+window.btvSendTeamsSummary = btvSendTeamsSummary;
 
 function btvNotifyChangeBatch(url, entries){
 
-  if(!url || !entries) return;
+  if(!entries) return;
 
   try{
 
@@ -6715,8 +6676,8 @@ function __btvFlushCalBatch(){
   // one message per field) — not just on "Save Version". __btvPushCalChange
   // already records the exact field/from/to for every change; this just
   // needed to actually send what was already being collected.
-  if(__btvCalBatch.length && BTV_MGMT_WEBHOOK_URL){
-    btvNotifyChangeBatch(BTV_MGMT_WEBHOOK_URL, __btvCalBatch.slice());
+  if(__btvCalBatch.length){
+    btvNotifyChangeBatch('', __btvCalBatch.slice());
   }
   __btvCalBatch=[];
   __btvCalBatchTimer=null;
@@ -6724,26 +6685,19 @@ function __btvFlushCalBatch(){
 
 var __btvWhkKey = '';
 function btvConfigCalWebhook(){
-  var cur = '';
-  try{ cur = localStorage.getItem('btvMgmtWebhook') || ''; }catch(e){}
-  var v = window.prompt('Enter Teams webhook URL(s) for Calendar changes.\nSeparate multiple URLs with a comma to notify more than one chat.\n(Leave blank to disable)', cur);
-  if(v === null) return;
-  v = (v || '').trim();
-  try{ localStorage.setItem('btvMgmtWebhook', v); }catch(e){}
-  BTV_MGMT_WEBHOOK_URL = v;
-  var n = btvParseWebhookUrls(v).length;
-  alert(v ? ('Calendar webhook saved (' + n + ' URL' + (n===1?'':'s') + ').') : 'Calendar webhook disabled.');
+  try{ localStorage.removeItem('btvMgmtWebhook'); }catch(e){}
+  BTV_MGMT_WEBHOOK_URL = '';
+  alert('Teams notifications are sent by the server for signed-in editors. This page does not store a webhook URL.');
 }
 function btvConfigWebhook(key,label){
   btvConfigCalWebhook();
 }
 function __btvSaveWebhook(){
-  var inp = document.getElementById('btvWhkInput');
-  var v = inp ? inp.value.trim() : '';
-  try{ localStorage.setItem(__btvWhkKey, v); }catch(e){}
-  if(__btvWhkKey==='btvMgmtWebhook') BTV_MGMT_WEBHOOK_URL = v;
+  try{ localStorage.removeItem('btvMgmtWebhook'); }catch(e){}
+  BTV_MGMT_WEBHOOK_URL = '';
   var modal = document.getElementById('btvWebhookModal');
   if(modal) modal.style.display = 'none';
+  alert('Teams notifications are sent by the server for signed-in editors. This page does not store a webhook URL.');
 }
 // ---- BTV Linesheet KPI Change Log ----
 
@@ -8190,9 +8144,9 @@ function renderLaunchList(){
 
   tbody.innerHTML = rows.map(r => `<tr>
 
-    <td>${esc(r.launchTitle)}</td><td>${fmtDDMMM(r.launchDate)}</td><td>${r.priority}</td>
+    <td>${esc(r.launchTitle)}</td><td>${esc(fmtDDMMM(r.launchDate))}</td><td>${esc(r.priority)}</td>
 
-    <td>${esc(r.category)}</td><td>${esc(r.productTitle)}</td><td>${r.sgdRrp ? "$"+r.sgdRrp : ""}</td>
+    <td>${esc(r.category)}</td><td>${esc(r.productTitle)}</td><td>${esc(r.sgdRrp ? "$"+r.sgdRrp : "")}</td>
 
     <td>${esc(r.colour)}</td><td>${esc(r.size)}</td>
 
@@ -8588,8 +8542,8 @@ on("saveVersionBtn", "click", () => { try {
 
   renderDashboard();
 
-  if (BTV_MGMT_WEBHOOK_URL && flat.length > 0) {
-    btvSendTeamsSummary(BTV_MGMT_WEBHOOK_URL, teamsText);
+  if (flat.length > 0) {
+    btvSendTeamsSummary('', teamsText);
   }
 
   _btvHasUnsavedChanges = false;
