@@ -31,8 +31,8 @@ begin
     create table public.user_profiles (
       id uuid primary key references auth.users(id) on delete cascade,
       email text,
-      can_access_product_calendar boolean not null default false,
-      can_access_linesheet boolean not null default false,
+      can_access_product_calendar boolean not null default true,
+      can_access_linesheet boolean not null default true,
       created_at timestamptz not null default now()
     );
     alter table public.user_profiles enable row level security;
@@ -46,6 +46,39 @@ alter table public.user_profiles
   add column if not exists can_edit_global_calendar boolean not null default false,
   add column if not exists can_edit_linesheet boolean not null default false,
   add column if not exists is_admin boolean not null default false;
+
+alter table public.user_profiles
+  alter column can_access_product_calendar set default true,
+  alter column can_access_global_calendar set default true,
+  alter column can_access_linesheet set default true,
+  alter column can_edit_product_calendar set default false,
+  alter column can_edit_global_calendar set default false,
+  alter column can_edit_linesheet set default false,
+  alter column is_admin set default false;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.user_profiles (
+    id,
+    email,
+    can_access_product_calendar,
+    can_access_global_calendar,
+    can_access_linesheet,
+    can_edit_product_calendar,
+    can_edit_global_calendar,
+    can_edit_linesheet,
+    is_admin
+  )
+  values (new.id, new.email, true, true, true, false, false, false, false)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
 
 insert into storage.buckets (id, name, public)
 select 'creative-marketing', 'creative-marketing', false
