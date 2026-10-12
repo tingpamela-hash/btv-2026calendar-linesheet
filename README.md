@@ -9,6 +9,16 @@ Static calendar and Linesheet application backed by Supabase. Current browser mo
 
 Shared helpers live in `js/`. Website assets were restored from deployment `6ac7533eac067a19b508b3e6` at the user's request on 2026-10-09. Later Markdown store/per-row sync and calendar conflict-protection changes are intentionally rolled back and remain recoverable in Git history. The app still uses iframe modules; historical work and verification limitations are tracked in `RESTRUCTURE_PROGRESS.md` and `REVIEW_REMEDIATION.md`.
 
+## Working on this repo
+
+Read [AGENT.md](AGENT.md) before you change anything. In short:
+- The source of truth is the `planner-tested-updates-2026-10-09` branch of this repo.
+- Work on a `silas/...` or `charmaine/...` branch, one topic per PR, and open the PR into that branch. Never push to `main` or the base directly.
+- Tests, [docs/VERIFY.md](docs/VERIFY.md) and a staging check must pass before anyone merges. Nothing may break.
+- Tag each merge (v1.0, v1.1, ...) and add a line to [CHANGELOG.md](CHANGELOG.md).
+- No secrets in code. No SQL or deploys on live without both Silas and Charmaine agreeing, a named person running it, and a backup first.
+- If something breaks, revert and fix it in a new PR.
+
 ## Verification
 
 With Node 24 or newer:
