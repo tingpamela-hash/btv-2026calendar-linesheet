@@ -25,7 +25,7 @@ Do not apply step 14 until `global calendar.html` signs creative image URLs. Ste
 
 ## B. Upgrade an existing BTV database
 
-Use this path on the live database and on staging when the tables already exist. Do not run `supabase-setup.sql` on this path. Do not run `supabase-monday-reminder-cron.sql` on this path. Do not run steps 2 to 8 from the fresh path. Those files recreate open policies. This path does not update `user_profiles` and it does not change an existing access flag, edit flag, or admin flag.
+Use this path on the live database and on staging when the tables already exist. Do not run `supabase-setup.sql` on this path. Do not run `supabase-monday-reminder-cron.sql` on this path. Do not run steps 2 to 8 from the fresh path. Those files recreate open policies. This path does not update `user_profiles` and it does not change an existing access flag, edit flag, or admin flag. New sign-ups are view-only: `can_access_*` defaults to true, and `can_edit_*` and `is_admin` default to false.
 
 1. `supabase/migrations/20261009160000_upgrade_existing_objects.sql`
 2. `supabase/migrations/20261007000000_role_aware_rls.sql`
