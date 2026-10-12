@@ -1,7 +1,3 @@
-# Free-tier issue regression suite.
-# ubuntu-latest only. No larger or paid runners.
-# No repository secrets. Most tests read local files and in-process mocks.
-# tests/issue-68-69-rls.test.js also builds a local Postgres and PostgREST.
 name: Issue tests
 
 on:
